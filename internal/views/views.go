@@ -87,6 +87,12 @@ func NewDNSCheck(probes []service.DNSProbe) DNSCheck {
 	return c
 }
 
+// BackupRequest asks for a backup. The passphrase encrypts it, and it's the only thing that
+// does: a backup holds the secret key beside the database it unlocks.
+type BackupRequest struct {
+	Passphrase string `json:"passphrase"`
+}
+
 // DiagnosticCheck is one host diagnostic's result (`drawbridge doctor`). Status is "pass",
 // "warn", "fail", or "skip"; Hint says how to fix a warning or a failure.
 type DiagnosticCheck struct {

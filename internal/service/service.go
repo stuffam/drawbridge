@@ -43,6 +43,10 @@ type Service struct {
 	// can't run the diagnostics.
 	Diag *diag.Host
 
+	// SecretKeyPath is the at-rest encryption key's file, which a backup carries (backup.go);
+	// empty means the daemon can't make backups.
+	SecretKeyPath string
+
 	// TrafficRawInterval, TrafficRawRetention, and TrafficHourlyRetention configure the
 	// traffic-history sampler (traffic.go); zero means the Default* constant there. They
 	// exist so a host on an SD card can keep the conservative defaults while one on an

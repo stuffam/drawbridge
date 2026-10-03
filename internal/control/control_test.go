@@ -16,6 +16,7 @@ import (
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
+	"github.com/stuffam/drawbridge/internal/backup"
 	"github.com/stuffam/drawbridge/internal/diag"
 	"github.com/stuffam/drawbridge/internal/firewall"
 	"github.com/stuffam/drawbridge/internal/keys"
@@ -33,6 +34,8 @@ func (nopFirewall) Remove(context.Context) error                   { return nil 
 func (nopFirewall) Revision(context.Context) (string, bool, error) { return "", true, nil }
 
 type testEnv struct {
+	// key is the at-rest key the daemon is sealed with and holds in a file, as a backup needs.
+	key    []byte
 	client *Client
 	wg     *wg.Fake
 	rec    *reconcile.Reconciler
@@ -63,7 +66,11 @@ func newTestEnv(t *testing.T, tunnelUp bool) *testEnv {
 		}
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	svc := &service.Service{Store: st, Rec: rec, WG: backend, Log: log,
+	keyFile := filepath.Join(dir, "secret.key")
+	if err := os.WriteFile(keyFile, bytes.Repeat([]byte{3}, keys.SecretSize), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	svc := &service.Service{Store: st, Rec: rec, WG: backend, Log: log, SecretKeyPath: keyFile,
 		Diag: &diag.Host{Nft: func(context.Context) ([]byte, error) { return []byte(`{"nftables":[]}`), nil }},
 		// A resolver answers on IPv4 only, so no test sends a real query.
 		DNSProbe: func(_ context.Context, a netip.Addr) service.DNSProbe {
@@ -78,7 +85,7 @@ func newTestEnv(t *testing.T, tunnelUp bool) *testEnv {
 	srv := NewServer(svc, log, "AB:CD")
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
-	return &testEnv{client: NewClient(sock), wg: backend, rec: rec, socket: sock}
+	return &testEnv{key: bytes.Repeat([]byte{3}, keys.SecretSize), client: NewClient(sock), wg: backend, rec: rec, socket: sock}
 }
 
 func status(err error) int {
@@ -332,4 +339,44 @@ func mustParseKey(t *testing.T, s string) wgtypes.Key {
 		t.Fatal(err)
 	}
 	return k
+}
+
+func TestBackupOverTheSocket(t *testing.T) {
+	env := newTestEnv(t, true)
+	ctx := context.Background()
+	if _, err := env.client.AddClient(ctx, "a phone"); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	info, err := env.client.Backup(ctx, "a long enough passphrase", &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Size != int64(buf.Len()) || !strings.HasPrefix(info.Name, "drawbridge-") || !strings.HasSuffix(info.Name, ".backup") || strings.ContainsAny(info.Name, `/\`) {
+		t.Errorf("info %+v for %d bytes", info, buf.Len())
+	}
+	var db bytes.Buffer
+	_, key, err := backup.Read(bytes.NewReader(buf.Bytes()), "a long enough passphrase", &db)
+	if err != nil || !bytes.Equal(key, env.key) || db.Len() == 0 {
+		t.Fatalf("the downloaded backup: key matches %v, %d database bytes, %v", bytes.Equal(key, env.key), db.Len(), err)
+	}
+
+	// A passphrase that's too short is the caller's mistake, and nothing is written.
+	var none bytes.Buffer
+	_, err = env.client.Backup(ctx, "too short", &none)
+	if status(err) != http.StatusBadRequest || !strings.Contains(err.Error(), "at least 12 characters") || none.Len() != 0 {
+		t.Errorf("a short passphrase: status %d, err %v, %d bytes written", status(err), err, none.Len())
+	}
+	// It's an event, with who asked.
+	events, _ := env.client.Events(ctx, "", 50)
+	made := 0
+	for _, e := range events {
+		if e.Kind == "backup.created" {
+			made++
+		}
+	}
+	if made != 1 {
+		t.Errorf("%d backup events, want 1 (the refused one isn't an event)", made)
+	}
 }
