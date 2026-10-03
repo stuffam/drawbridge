@@ -12,7 +12,8 @@ in the product name.
 > Status: **M0–M4 are built** (the tunnel, the CLI, the authenticated API, the web UI, and
 > monitoring and logging, which ends with the AdGuard Home integration). The kernel tests pass in
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
-> `drawbridge doctor` and the diagnostics page, the first slices of M5, are built too.
+> `drawbridge doctor`, the diagnostics page, and `drawbridge backup create|restore`, the first
+> slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -135,7 +136,7 @@ All roles are subcommands of a single binary, `drawbridge`:
 | `drawbridge events [--client NAME]` | The event log: changes from the web and the CLI, logins, and corrected drift (M2). |
 | `drawbridge apply [--dry-run]` | Reconciles once and prints the diff (M5). |
 | `drawbridge admin create\|reset-password\|disable-2fa\|setup-token` | Recovery when locked out of the UI (M2; `disable-2fa` M5). |
-| `drawbridge backup create\|restore` | Consistent DB snapshot (`VACUUM INTO`), optionally encrypted (M5). |
+| `drawbridge backup create\|restore` | `create` makes a passphrase-encrypted file with a consistent DB snapshot and the key, through the daemon. `restore` (root, daemon stopped) puts one back (§6.6, M5). |
 | `drawbridge export --format wg-quick` | Prints an equivalent `wg-quick` config, for transparency or migrating away (M6). |
 | `drawbridge import --from wg-quick\|wg-easy <file>` | Migration from an existing setup (M6). |
 | `drawbridge doctor` | Host diagnostics in the terminal (see §6.6, M5). |
@@ -144,7 +145,8 @@ The CLI talks to the daemon over `/run/drawbridge/control.sock` (mode 0660, owne
 `drawbridge:drawbridge`, in a 0750 directory), so root and members of the drawbridge group can
 use it. The socket's peer credentials name the CLI user in the event log. In M2, the `admin`
 commands go through the socket too. Making the recovery commands (`admin`, `backup`, `doctor`)
-work with the daemon stopped, by opening the DB directly, is M5.
+work with the daemon stopped, by opening the DB directly, is M5: `backup restore` does (it needs
+root and a stopped daemon), and `backup create` still goes through the daemon.
 
 ### 4.2 Process and privilege model
 
@@ -917,11 +919,42 @@ stateDiagram-v2
   - *The clock check recognizes only systemd-timesyncd, so a host that uses chrony or ntpd sees
     a warning.*
   - *The overlap hint is limited because the VPN's subnets can't change after setup.*
-- **Backup and restore:**
-  - One-click download of a consistent snapshot, optionally encrypted with a passphrase
-    (Argon2id key derivation + XChaCha20-Poly1305).
-  - Restore through the UI or CLI.
-  - Nightly local snapshots with rotation.
+- **Backup and restore (decided 2026-10-03):**
+  - **A backup is one file with the database and the key.** The database's secrets (the
+    server's and the clients' private keys, the AdGuard Home password) are encrypted with
+    `/etc/drawbridge/secret.key`, which sits on the same SD card. A backup without the key
+    couldn't restore after the card fails, so the file holds a consistent snapshot (`VACUUM INTO`)
+    and the key.
+  - **The passphrase is required**, 12 characters or more, because the file holds the key beside
+    what it unlocks. (This replaces "optionally encrypted".) The whole file is encrypted with a
+    key from the passphrase (Argon2id, 64 MiB, four passes) and XChaCha20-Poly1305 in 64 KiB
+    chunks. Each chunk is bound to its position, and the last is marked, so a damaged, reordered,
+    or cut-short file is refused. The payload is a gzipped tar of `manifest.json` (the format, the
+    time, the Drawbridge version, and the schema version), `secret.key`, and `drawbridge.db`.
+  - `drawbridge backup create` (through the daemon) makes one. The web download is a later slice.
+    Making one is an event, `backup.created`, because the file holds every secret.
+  - **Restore is `sudo drawbridge backup restore FILE`, with the daemon stopped, and only there**
+    (decided 2026-10-03). A web restore would let a hijacked session replace the whole database,
+    the admin's password hash included, and the daemon can't write `secret.key` anyway. The
+    commands that matter when something has gone wrong are the ones that work at a terminal.
+    Restore decrypts into a temporary file and checks it before touching anything: the file
+    is intact, the schema isn't newer than this Drawbridge understands, SQLite's integrity check
+    passes, and the key opens the database's own encrypted server key. Then it ends every
+    session, records `backup.restored`, moves the current database (and its WAL files) and key
+    aside as `*.before-restore`, installs the new ones with the right owner and mode, and says
+    to restart both units. A failure at any step leaves the current files where they were. An
+    older backup's schema is migrated forward when restore opens it. The TLS certificate isn't in
+    a backup: the host keeps its own, which names the host's addresses and the VPN's as they
+    were when it made it. (`rm -r /var/lib/drawbridge/tls`, with the daemon stopped, makes a new
+    one that names the restored VPN's addresses.) API tokens survive a restore; `drawbridge admin
+    reset-password` revokes them.
+  - **Built (2026-10-03):** the file format and `drawbridge backup create|restore`
+    (`internal/backup`), with the passphrase read from the terminal with no echo (the one new
+    dependency is `golang.org/x/term`, for that), from `--passphrase-file`, or from standard
+    input. The web download, the nightly snapshots, and the snapshot before a migration aren't.
+  - Nightly local snapshots with rotation, and the snapshot before a migration (§7), are a later
+    slice. They hold the database only, in the daemon's own directory, and protect against a
+    bad change or a bad migration, not against a lost card.
 - **TLS:** the daemon creates a self-signed ECDSA certificate on first start, with SANs for the
   hostname (and `.local`), loopback, and the LAN and VPN addresses, and replaces it 30 days before
   it expires. It lasts 800 days, under the 825 days Apple's platforms accept. Its SHA-256
@@ -1296,7 +1329,9 @@ Each milestone ends in a usable, tested state.
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
-  built (§6.6). The dashboard doesn't show the warnings yet.*
+  built (§6.6). The dashboard doesn't show the warnings yet.* Of the backups, `backup
+  create|restore` are built; the web download, the nightly snapshots, and the pre-migration
+  snapshot aren't.
 - **Exit:**
   - The security checklist passes.
   - Upgrading from v0.x keeps all data and keeps the tunnel up.
@@ -1367,6 +1402,7 @@ Each milestone ends in a usable, tested state.
 | DNS | Public resolvers by default; a resolver on the host (such as AdGuard Home) at the server's VPN addresses when a check finds one answering | D12: the wizard offers the host's resolver only when it works, and there's optional AdGuard Home name sync and per-client DNS logs (§6.3) |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
+| Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03) |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |
 | IPv6 endpoint | Supported when the router allows inbound UDP 51820 to the host's stable address | Verified on the reference platform with a real client (docs/MANUAL_CHECKLIST.md §2, 2026-09-28) |

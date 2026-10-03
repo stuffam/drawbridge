@@ -187,6 +187,8 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 		category: 'admin',
 		label: 'Revoked every API token (password reset)'
 	},
+	{ kind: 'backup.created', category: 'admin', label: 'Made a backup' },
+	{ kind: 'backup.restored', category: 'admin', label: 'Restored from a backup' },
 	{ kind: 'tunnel.drift_corrected', category: 'system', label: 'Corrected drift' }
 ];
 

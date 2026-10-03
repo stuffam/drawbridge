@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -108,6 +110,55 @@ func clientPath(name string, suffix string) string {
 func (c *Client) Settings(ctx context.Context) (views.SettingsView, error) {
 	var v views.SettingsView
 	return v, c.do(ctx, http.MethodGet, "/v1/settings", nil, &v)
+}
+
+// BackupInfo describes a backup the daemon sent.
+type BackupInfo struct {
+	// Name is the file name the daemon suggests, with the time in it.
+	Name string
+	Size int64
+}
+
+// Backup asks the daemon for an encrypted backup, and copies it to w. The file isn't in the
+// daemon's hands after it's sent. It has no overall timeout, because a big database takes as long
+// as it takes; ctx ends it.
+func (c *Client) Backup(ctx context.Context, passphrase string, w io.Writer) (BackupInfo, error) {
+	b, err := json.Marshal(views.BackupRequest{Passphrase: passphrase})
+	if err != nil {
+		return BackupInfo{}, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://drawbridge/v1/backup", bytes.NewReader(b))
+	if err != nil {
+		return BackupInfo{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	hc := *c.http
+	hc.Timeout = 0
+	resp, err := hc.Do(req)
+	if err != nil {
+		return BackupInfo{}, c.dialError(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		var e views.Error
+		if json.Unmarshal(data, &e) != nil || e.Error == "" {
+			e.Error = fmt.Sprintf("the daemon returned %s", resp.Status)
+		}
+		return BackupInfo{}, &Error{Status: resp.StatusCode, Message: e.Error}
+	}
+	n, err := io.Copy(w, resp.Body)
+	if err != nil {
+		return BackupInfo{}, err
+	}
+	if resp.ContentLength >= 0 && n != resp.ContentLength {
+		return BackupInfo{}, fmt.Errorf("the backup was cut short: %d of %d bytes", n, resp.ContentLength)
+	}
+	info := BackupInfo{Size: n}
+	if _, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition")); err == nil {
+		info.Name = filepath.Base(params["filename"])
+	}
+	return info, nil
 }
 
 // Diagnostics runs the daemon's host checks (`drawbridge doctor`).

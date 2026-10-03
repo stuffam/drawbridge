@@ -75,6 +75,7 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 	mux.HandleFunc("POST /v1/clients/{name}/pause", h.setEnabled(false))
 	mux.HandleFunc("POST /v1/clients/{name}/resume", h.setEnabled(true))
 	mux.HandleFunc("GET /v1/clients/{name}/config", h.clientConfig)
+	mux.HandleFunc("POST /v1/backup", h.createBackup)
 	mux.HandleFunc("GET /v1/events", h.events)
 	mux.HandleFunc("GET /v1/admin/setup-token", h.setupToken)
 	mux.HandleFunc("POST /v1/admin/create", h.createAdmin)
@@ -139,6 +140,27 @@ func (h *handler) diagnostics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, views.NewDiagnostics(checks))
+}
+
+// createBackup makes a backup and sends it. The passphrase comes in the body, which is only
+// ever read here, and never logged.
+func (h *handler) createBackup(w http.ResponseWriter, r *http.Request) {
+	var req views.BackupRequest
+	if err := decode(r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	b, err := h.svc.CreateBackup(r.Context(), req.Passphrase)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	defer b.Close()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+b.Name+`"`)
+	w.Header().Set("Content-Length", strconv.FormatInt(b.Size, 10))
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, b)
 }
 
 func (h *handler) patchSettings(w http.ResponseWriter, r *http.Request) {

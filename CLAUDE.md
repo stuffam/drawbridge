@@ -56,6 +56,12 @@ setups.** What exists:
   `GET /api/system/health`) shows the same checks, and the dashboard doesn't summarize them yet.
   The comparison of the endpoint's A record with the current public IPv4 address isn't built
   (docs/PLAN.md §16).
+- `drawbridge backup create|restore` (2026-10-03), the second slice of M5: one file with a
+  consistent snapshot of the database and the secret key, encrypted with a required passphrase
+  (`internal/backup`, docs/backup-restore.md). `create` goes through the daemon; `restore` is
+  root-only with the daemon stopped, checks everything before it changes anything, and keeps
+  what it replaces. The web download, the nightly snapshots, and the snapshot before a migration
+  aren't built.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -141,7 +147,9 @@ a step describes.
 
   "WireGuard" is a registered trademark. It appears only descriptively ("a web manager for
   WireGuard"), never in the product name.
-- **Dependencies are deliberate.** The plan names the core libraries: `wgctrl`,
+- **Dependencies are deliberate.** (`golang.org/x/term` was added for the backup passphrase's
+  no-echo prompt, on the argument that reading a passphrase with the echo on is not an option and
+  hand-rolling termios for each platform is worse.) The plan names the core libraries: `wgctrl`,
   `vishvananda/netlink`, and `modernc.org/sqlite` in §3, Tailwind, uPlot, and `qrcode` in §9, and
   Playwright in §12.
   Anything else needs an explicit argument in its PR, and the default answer is no. Everything is
@@ -233,7 +241,9 @@ These are the rules most likely to get silently broken.
   - Only `drawbridge tunnel up` creates the interface. The daemon's reconcile (`Sync`) leaves
     a missing interface alone, so it never restarts a tunnel the admin stopped (ADR 0008).
   - The CLI changes state only through the daemon's control socket. It never opens the
-    database, which belongs to the `drawbridge` user.
+    live database, which belongs to the `drawbridge` user. The one exception is
+    `backup restore`, which runs as root with the daemon stopped, opens only a temporary copy
+    of the restored database, and then replaces the live one.
   - The reconciler is idempotent and serialized by a lock. It also runs every 30 s to correct
     drift.
 - **Live changes never disrupt other clients.** Peers are diffed and updated in place
@@ -328,6 +338,15 @@ These are the rules most likely to get silently broken.
   a write). It adds clients with the global settings on, and changes a client by reading it back
   and changing only its name and addresses. The tests for each of these are in
   `adguardsync_test.go`; a change to the sync that breaks one is breaking something real.
+- **A backup holds the key, so it's always encrypted, and restore is never in the web UI.** The
+  file carries `secret.key` beside the database it unlocks, so `backup.Write` refuses a
+  passphrase under 12 characters, and nothing writes one unencrypted. Restore replaces the
+  database, which includes the admin's password hash: only a root CLI command with the daemon
+  stopped does it, because a web version would let a hijacked session take everything. Restore
+  decrypts into a temporary file and checks it (the file is intact, the schema isn't newer, SQLite's
+  integrity check, and the key opens the database) before it moves anything, keeps what it
+  replaces with a time in the name, and undoes its moves on a failure. The tests for each of those
+  are in `internal/backup/restore_test.go`. Each is a mutation check.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -510,6 +529,8 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
 - `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
+- `docs/backup-restore.md` is the admin's guide to backups: making one, keeping it, and restoring
+  onto a fresh host.
 - `cmd/drawbridge/` is the binary: `serve` (serve.go), `tunnel`, `server`, `client`,
   `events` and `admin` (admin_cmd.go), `doctor` (doctor_cmd.go), `version`, and `help`.
 - The core engine, in `internal/`:
@@ -536,6 +557,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
     `adguard/adguardtest` an in-memory AdGuard Home that answers the way the real one was
     observed to ("Verified facts"). Tests use it, never a hand-written stub, so they fail the way
     the real one would.
+  - `backup/` is the encrypted backup file (a chunked XChaCha20-Poly1305 stream under an Argon2id
+    key, holding a gzipped tar of the manifest, the key, and the database) and `Restore`, which
+    swaps it in. `store.Snapshot` is the `VACUUM INTO` copy it's made from.
   - `auth/` has password hashing, tokens, and the login rate limiter; `lan/` detects the LAN
     and builds the admin allowlist; `tlscert/` makes the self-signed certificate.
 - `internal/api/` serves the JSON API (documented in `openapi.json`, with the security

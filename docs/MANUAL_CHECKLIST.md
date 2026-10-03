@@ -521,3 +521,32 @@ hardware. Every step below has since passed on the reference platform, with a re
   notices.
 - `[VERIFIED 2026-10-03]` `sudo drawbridge admin reset-password` revokes every token (the Account
   page shows none afterward), and the log lists "Revoked every API token (password reset)".
+
+## 12. Backup and restore (the second M5 slice)
+
+`drawbridge backup create` makes one encrypted file with the database and the secret key, and
+`sudo drawbridge backup restore FILE` puts it back (docs/PLAN.md §6.6, docs/backup-restore.md). The
+tests run both against a real SQLite database, a real key, and the real command line. None of it
+has run on the reference platform, so nothing here is `[VERIFIED]` yet.
+
+- `[UNVERIFIED]` `sudo drawbridge backup create` against the installed daemon asks for the
+  passphrase twice with nothing echoed, and writes a file that only root can read. The daemon
+  makes it inside its sandbox (a private `/tmp`, and the key read through the `drawbridge`
+  group), so check that it doesn't fail on the key or on the temporary files. Note how long it
+  takes, and how big the file is, with a few days of traffic history.
+- `[UNVERIFIED]` The event log has `Made a backup`, from the CLI's account.
+- `[UNVERIFIED]` **The exit criterion:** on a freshly flashed card with Drawbridge installed and
+  not set up, `sudo systemctl stop drawbridge.service`, `sudo drawbridge backup restore FILE`,
+  and `sudo systemctl restart drawbridge-tunnel.service drawbridge.service` bring the old
+  server back: log in with the old account, see every client, and a client that was connected
+  before reconnects with the config it already has, without being re-added. `ls -l` shows the
+  database as `drawbridge:drawbridge` 0600 and `secret.key` as `root:drawbridge` 0640.
+- `[UNVERIFIED]` The same on the host the backup came from, after adding a client: the new
+  client is gone, the others work, and the `*.before-restore-*` files are there.
+- `[UNVERIFIED]` A wrong passphrase, a file with one byte changed, and a file cut short are each
+  refused, and the host's database and key are as they were.
+- `[UNVERIFIED]` With the daemon running, `restore` refuses and says to stop it.
+- `[UNVERIFIED]` A backup made by the previous release restores onto this one, and the database is
+  migrated (the upgrade half of the matrix, until that has its own tests).
+- `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
+  and an API token made before the backup still works.

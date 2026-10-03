@@ -90,6 +90,7 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	svc.TrafficRawRetention = *trafficRawRetention
 	svc.TrackInterval = *sessionInterval
 	svc.TrafficHourlyRetention = *trafficHourlyRetention
+	svc.SecretKeyPath = *secret
 
 	if *tlsDir == "" {
 		*tlsDir = filepath.Join(filepath.Dir(*dbPath), "tls")

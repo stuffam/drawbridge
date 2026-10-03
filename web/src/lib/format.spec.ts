@@ -107,6 +107,9 @@ describe('events', () => {
 			'Corrected drift'
 		]);
 		expect(labels('admin')).toContain('Failed login');
+		// The backup's two events: one made by the daemon, and one by the CLI in the restored log.
+		expect(labels('admin')).toContain('Made a backup');
+		expect(labels('admin')).toContain('Restored from a backup');
 		expect(labels('admin')).not.toContain('Connected');
 		// With no category, every kind, each with a label of its own.
 		expect(labels()).toHaveLength(
