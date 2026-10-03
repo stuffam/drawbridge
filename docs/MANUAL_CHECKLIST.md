@@ -496,20 +496,23 @@ A token lets a dashboard such as Homepage read the status without logging in (do
 docs/api-tokens.md). In a container, a Node process (as Homepage is) with the daemon's
 certificate trusted through `NODE_EXTRA_CA_CERTS` read the status with a token, and was refused
 (`ERR_TLS_CERT_ALTNAME_INVALID`) for a name the certificate doesn't have. That isn't real
-hardware, so nothing here is `[VERIFIED]` yet.
+hardware. Every step below has since passed on the reference platform, with a real Homepage.
 
-- `[UNVERIFIED]` The Account page's **API Tokens** section makes a token (after the password
-  again), shows it once with a Homepage widget that has the real address, and lists it by name and
-  its first 8 characters. After a reload the token isn't on the page.
-- `[UNVERIFIED]` From a laptop on the home network, `curl -k -H 'Authorization: Bearer dbt_…'
-  https://<host>:51821/api/server/status` answers with the tunnel's numbers, and the same token
-  gets `403` from `/api/clients/<id>/config` and from `/api/events`.
-- `[UNVERIFIED]` A real Homepage shows the numbers. If it runs in Docker on the Pi, it needs the
-  Docker network added with `sudo drawbridge server set --admin-allow …` and the certificate
-  trusted as docs/api-tokens.md says; each of those two has its own message when it's missing.
-  Note which of the three problems in that document you hit, and whether the document told you what
-  to do.
-- `[UNVERIFIED]` The token's "last used" updates, to the hour, while the widget polls. Revoking it
-  makes the widget show an error within its next refresh, and nothing else on the Pi notices.
-- `[UNVERIFIED]` `sudo drawbridge admin reset-password` revokes every token (the Account page
-  shows none afterward), and the log lists "Revoked every API token (password reset)".
+- `[VERIFIED 2026-10-03]` The Account page's **API Tokens** section makes a token (after the
+  password again), shows it once with a Homepage widget that has the real address, and lists it by
+  name and its first 8 characters. After a reload the token isn't on the page.
+- `[VERIFIED 2026-10-03]` From a laptop on the home network, `curl -k -H 'Authorization: Bearer
+  dbt_…' https://<host>:51821/api/server/status` answers with the tunnel's numbers, and the same
+  token gets `403` from `/api/clients/<id>/config` and from `/api/events`.
+- `[VERIFIED 2026-10-03]` A real Homepage shows the numbers, set up from docs/api-tokens.md with
+  no trouble. If it runs in Docker on the Pi, it needs the Docker network added with `sudo
+  drawbridge server set --admin-allow …` and the certificate trusted as that document says; each
+  of those two has its own message when it's missing. This Homepage reached Drawbridge by a name
+  whose certificate it already trusted (a reverse proxy's, from a public CA), so the certificate
+  steps weren't needed, and the document's advice for the certificate problems is still observed
+  only in a container. Whether the Docker network step was needed wasn't noted.
+- `[VERIFIED 2026-10-03]` The token's "last used" updates, to the hour, while the widget polls.
+  Revoking it makes the widget show an error within its next refresh, and nothing else on the Pi
+  notices.
+- `[VERIFIED 2026-10-03]` `sudo drawbridge admin reset-password` revokes every token (the Account
+  page shows none afterward), and the log lists "Revoked every API token (password reset)".
