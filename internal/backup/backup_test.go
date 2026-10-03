@@ -413,36 +413,52 @@ func TestChunksCannotBeCutOrExtended(t *testing.T) {
 	}
 }
 
-// When the payload's last bytes (gzip's trailer) fall in a chunk of their own, the tar is
-// done before that chunk is read. Reading on to it is what notices what comes after.
+// The tar is done long before the file is: when what follows it spans whole chunks, the tar
+// reader never reads the last one. Reading on to it is what notices what comes after. The padding
+// is random, so it stays several chunks long however gzip lays it out, on any Go version.
 func TestDataAfterTheLastChunkIsCaught(t *testing.T) {
-	full := chunkSize + overhead
-	// A database's size sets where the payload ends. Random bytes grow it by one byte per byte,
-	// so a few tries land the end just past a chunk boundary.
-	n := chunkSize + 1000
-	for try := 0; try < 12; try++ {
-		file, _, _ := makeBackup(t, n)
-		last := (len(file)-headerSize)%full - overhead
-		if last < 1 || last > 8 {
-			// Move by the shortest way round to a last chunk of 4 bytes.
-			delta := ((4-last)%full + full) % full
-			if delta > full/2 {
-				delta -= full
-			}
-			n += delta
-			continue
-		}
-		if _, _, _, err := read(file, passphrase); err != nil {
-			t.Fatalf("the backup that ends in a %d-byte chunk: %v", last, err)
-		}
-		for _, extra := range [][]byte{{1}, randomBytes(t, 40), randomBytes(t, full)} {
-			if _, _, _, err := read(append(bytes.Clone(file), extra...), passphrase); err == nil {
-				t.Errorf("a %d-byte last chunk with %d bytes added was accepted", last, len(extra))
-			}
-		}
-		return
+	cheapKDF(t)
+	var tarball bytes.Buffer
+	tw := tar.NewWriter(&tarball)
+	for _, e := range []struct {
+		n string
+		b []byte
+	}{{"manifest.json", []byte(`{"format":1}`)}, {"secret.key", make([]byte, 32)}, {"drawbridge.db", []byte("db")}} {
+		_ = tw.WriteHeader(&tar.Header{Name: e.n, Mode: 0o600, Size: int64(len(e.b)), Typeflag: tar.TypeReg})
+		_, _ = tw.Write(e.b)
 	}
-	t.Fatal("no database size made a backup with a tiny last chunk")
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	padding := randomBytes(t, 3*chunkSize+123)
+	var buf bytes.Buffer
+	if err := encryptStream(&buf, passphrase, func(w io.Writer) error {
+		if _, err := w.Write(tarball.Bytes()); err != nil {
+			return err
+		}
+		_, err := w.Write(padding)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	file := buf.Bytes()
+	full := chunkSize + overhead
+	if len(file)-headerSize < 3*full {
+		t.Fatalf("the file has %d bytes of chunks: too few for the tar to end before the last one", len(file)-headerSize)
+	}
+
+	if _, _, db, err := read(file, passphrase); err != nil || string(db) != "db" {
+		t.Fatalf("the control: %v, %q", err, db)
+	}
+	for _, extra := range [][]byte{{1}, randomBytes(t, 40), randomBytes(t, full)} {
+		if _, _, _, err := read(append(bytes.Clone(file), extra...), passphrase); err == nil {
+			t.Errorf("a file with %d bytes added after the last chunk was accepted", len(extra))
+		}
+	}
+	// And cut at a chunk boundary, the last chunk gone: the tar is whole, and the file isn't.
+	if _, _, _, err := read(file[:headerSize+(len(file)-headerSize)/full*full], passphrase); err == nil {
+		t.Error("a file with its last chunk cut off was accepted")
+	}
 }
 
 // What follows the tar is a few bytes of gzip's trailer. A payload that goes on past that is
