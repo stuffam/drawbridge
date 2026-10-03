@@ -52,8 +52,10 @@ setups.** What exists:
   `admin setup-token|create|reset-password`.
 - `drawbridge doctor`, the first slice of M5 (2026-09-29): 13 host and network checks, each with
   a fix hint, run by the daemon (`internal/diag`) and printed by the CLI. Exit status 1 when any
-  check fails, 0 otherwise. The web diagnostics page isn't built yet, and neither is the
-  comparison of the endpoint's A record with the current public IPv4 address (docs/PLAN.md §16).
+  check fails, 0 otherwise. The System page (the pulse icon in the header,
+  `GET /api/system/health`) shows the same checks, and the dashboard doesn't summarize them yet.
+  The comparison of the endpoint's A record with the current public IPv4 address isn't built
+  (docs/PLAN.md §16).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,

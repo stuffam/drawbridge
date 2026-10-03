@@ -15,7 +15,7 @@ test('the Charts icon sits between Clients and Server Settings and opens the Cha
 	const links = page.getByRole('navigation', { name: 'Main' }).getByRole('link');
 	await expect(
 		links.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
-	).resolves.toEqual(['Clients', 'Charts', 'Server Settings', 'Logs']);
+	).resolves.toEqual(['Clients', 'Charts', 'Server Settings', 'Logs', 'System']);
 
 	await navigate(page, 'Charts');
 	await expect(page).toHaveURL(/\/charts$/);

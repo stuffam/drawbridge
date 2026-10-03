@@ -177,6 +177,18 @@ func (h *handler) dnsCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, views.NewDNSCheck(probes))
 }
 
+// health runs the host diagnostics (docs/PLAN.md §6.6), the same checks as
+// `drawbridge doctor`. A run asks DNS, so it takes a moment; it changes nothing and records
+// no event.
+func (h *handler) health(w http.ResponseWriter, r *http.Request) {
+	checks, err := h.svc.Diagnose(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewDiagnostics(checks))
+}
+
 func (h *handler) serverStatus(w http.ResponseWriter, r *http.Request) {
 	st, err := h.svc.Status(r.Context())
 	if err != nil {
