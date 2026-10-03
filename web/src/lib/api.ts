@@ -79,6 +79,26 @@ export interface DNSProbe {
 	detail: string;
 }
 
+/** A host diagnostic's outcome: warn is something that may be wrong, fail is clients affected now. */
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip';
+
+/** One host check, the same as a line of `drawbridge doctor`. */
+export interface DiagnosticCheck {
+	/** A stable slug, such as "forwarding". */
+	id: string;
+	name: string;
+	status: CheckStatus;
+	/** What was found. */
+	detail: string;
+	/** How to fix a warning or a failure. */
+	hint?: string;
+}
+
+export interface Diagnostics {
+	/** In the order to read them: the tunnel first, then the host, then what's around it. */
+	checks: DiagnosticCheck[];
+}
+
 export interface DNSCheck {
 	results: DNSProbe[];
 	/** The addresses that answered; empty when no resolver runs on the host. */
@@ -412,6 +432,7 @@ export const api = {
 	updateServer: (patch: SettingsPatch) => request<SettingsResult>('PATCH', '/api/server', patch),
 	status: () => request<ServerStatus>('GET', '/api/server/status'),
 	dnsCheck: () => request<DNSCheck>('GET', '/api/server/dns-check'),
+	diagnostics: () => request<Diagnostics>('GET', '/api/system/health'),
 
 	adguard: () => request<AdGuardConnection>('GET', '/api/integrations/adguard'),
 	saveAdGuard: (r: AdGuardRequest) =>

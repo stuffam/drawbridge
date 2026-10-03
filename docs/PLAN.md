@@ -12,7 +12,7 @@ in the product name.
 > Status: **M0–M4 are built** (the tunnel, the CLI, the authenticated API, the web UI, and
 > monitoring and logging, which ends with the AdGuard Home integration). The kernel tests pass in
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
-> `drawbridge doctor`, the first slice of M5, is built too; the diagnostics page isn't.
+> `drawbridge doctor` and the diagnostics page, the first slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -904,10 +904,13 @@ stateDiagram-v2
   - Free disk space.
   - The TLS certificate hasn't expired.
 
-  *`drawbridge doctor` is built (`internal/diag`); the web page is not. The daemon runs the
-  checks, because `nft -j list ruleset` needs `CAP_NET_ADMIN`, and the CLI prints them over the
-  control socket (`GET /v1/diagnostics`). It changes nothing, so it records no events. Its
-  exit status is 1 when a check failed, and 0 otherwise. Known limits:*
+  *`drawbridge doctor` and the web page are built (`internal/diag`). The daemon runs the
+  checks, because `nft -j list ruleset` needs `CAP_NET_ADMIN`; the CLI prints them over the
+  control socket (`GET /v1/diagnostics`), and the System page shows them from
+  `GET /api/system/health` (a session is needed; an API token can't read it, because it says
+  where the host's weak points are). Both run a fresh set of checks each time, with nothing
+  cached, so a fix shows on the next run. The checks change nothing, so they record no events.
+  The doctor's exit status is 1 when a check failed, and 0 otherwise. Known limits:*
   - *Comparing the A record with the current public IPv4 address (§5.6) isn't built (§16).*
   - *The host firewall check is a best guess from `nft -j list ruleset`: it doesn't model rule
     order, can't see iptables-legacy, and doesn't check input-chain drops of UDP 51820.*
@@ -1033,7 +1036,7 @@ POST   /api/server/rotate-key                                              (M5)
 POST   /api/server/apply/confirm         confirm a safe-apply change       (M5)
 POST   /api/clients/{id}/rotate-keys                                       (M5)
 GET    /api/dns                          PUT /api/dns                      (M4)
-GET    /api/system/health                diagnostics                       (M5)
+GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                POST /api/system/restore          (M5)
 ```
 
@@ -1056,7 +1059,7 @@ can be added later (i18n).
 | **Server settings** | The sections from §6.2, each marked with its impact. Below them, the AdGuard Home connection (address, username, password, and Test, Save, and Remove buttons), a form of its own because it's a different part of the API (§6.3) |
 | **DNS** | Presets and custom resolvers, search domains, AdGuard Home connection (address, account, test button, sync status) |
 | **Logs** | Events table with filters (category, event, client, time) and CSV export, plus an audit tab |
-| **System** | Diagnostics, backup/restore, admin account and 2FA, sessions, TLS, retention, about |
+| **System** | Diagnostics (built: the checks, run on opening and on request, each failure with its fix), backup/restore, admin account and 2FA, sessions, TLS, retention, about |
 
 Libraries: Tailwind CSS, uPlot for charts (small and fast), and `qrcode` for rendering QR codes
 in the browser.
@@ -1292,8 +1295,8 @@ Each milestone ends in a usable, tested state.
   tracking, and encrypted backup/restore.
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
-  growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` is built (§6.6); the diagnostics
-  page is not.*
+  growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
+  built (§6.6). The dashboard doesn't show the warnings yet.*
 - **Exit:**
   - The security checklist passes.
   - Upgrading from v0.x keeps all data and keeps the tunnel up.

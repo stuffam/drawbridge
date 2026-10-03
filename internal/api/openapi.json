@@ -1588,6 +1588,43 @@
           }
         ]
       }
+    },
+    "/api/system/health": {
+      "get": {
+        "summary": "Host diagnostics",
+        "description": "Runs the checks behind `drawbridge doctor` and returns each one's result: the tunnel, IP forwarding, the uplink, the firewall, DNS on the VPN addresses, the endpoint, the clock, disk space, and the web UI's certificate. Each check is pass, warn, fail, or skip, and a warning or failure says how to fix it. Read-only: it changes nothing, so it records no event. A run can take a few seconds, because it asks DNS. Not readable with an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "501": {
+            "description": "This daemon can't run the diagnostics.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The checks, in the order to read them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Diagnostics"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "system"
+        ]
+      }
     }
   },
   "components": {
@@ -2765,6 +2802,57 @@
           "secret": {
             "type": "string",
             "description": "The token itself, `dbt_` and 43 characters. Shown only in this response: copy it now."
+          }
+        }
+      },
+      "Diagnostics": {
+        "type": "object",
+        "required": [
+          "checks"
+        ],
+        "properties": {
+          "checks": {
+            "type": "array",
+            "description": "In the order the admin should read them.",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticCheck"
+            }
+          }
+        }
+      },
+      "DiagnosticCheck": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A stable slug, such as `forwarding`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skip"
+            ],
+            "description": "`warn` means something may be wrong, or is about to be; `fail` means clients or the admin are affected now; `skip` means the check couldn't run, or doesn't apply."
+          },
+          "detail": {
+            "type": "string",
+            "description": "What was found."
+          },
+          "hint": {
+            "type": "string",
+            "description": "How to fix a warning or a failure; absent otherwise."
           }
         }
       }

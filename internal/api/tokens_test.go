@@ -166,6 +166,7 @@ func TestTokenReadableIsShortAndHasNoSecrets(t *testing.T) {
 		"GET /api/stream",               // the events, live
 		"GET /api/server",               // the admin's settings
 		"GET /api/server/dns-check",     // sends DNS queries
+		"GET /api/system/health",        // the host's addresses, firewall, and weak points
 		"GET /api/integrations/adguard", // the account used for AdGuard Home
 		"GET /api/auth/me",              // the account
 		"GET /api/auth/sessions",        // the admin's logins

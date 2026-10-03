@@ -367,6 +367,11 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   `tunnel down` fails the tunnel check.
 - `[UNVERIFIED]` `sudo drawbridge doctor` against the installed daemon on the reference platform
   (the sandboxed run above used the fake backend, so it didn't see the real `wg0`).
+- `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
+  same order, with the same results as `sudo drawbridge doctor`, and **Run again** gives a fresh
+  set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
+  Forwarding sysctls as Failed, with the command that turns it back on; running that command
+  clears it on the run after.
 - `[UNVERIFIED]` On a host with ufw (default forward policy `DROP`), firewalld, or rootful Docker,
   the host firewall check warns, and the printed command (`ufw route allow`, the trusted zone,
   `DOCKER-USER`) clears it. The parser is tested on nft output shaped like each tool's, not on a
