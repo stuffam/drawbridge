@@ -208,6 +208,17 @@ func (c *Client) UpdateSettingsSafely(ctx context.Context, p views.SettingsPatch
 	return v, c.do(ctx, http.MethodPatch, "/v1/settings?safe=1", p, &v)
 }
 
+// RotateServerKey gives the server a new key pair, which cuts off every client until it has its
+// new config. With safe, the rotation is undone unless ConfirmChange keeps it in time.
+func (c *Client) RotateServerKey(ctx context.Context, safe bool) (views.SettingsResult, error) {
+	path := "/v1/server/rotate-key"
+	if safe {
+		path += "?safe=1"
+	}
+	var v views.SettingsResult
+	return v, c.do(ctx, http.MethodPost, path, nil, &v)
+}
+
 // UpdateSettings applies a patch.
 func (c *Client) UpdateSettings(ctx context.Context, p views.SettingsPatch) (views.SettingsResult, error) {
 	var v views.SettingsResult

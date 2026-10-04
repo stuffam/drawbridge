@@ -127,6 +127,7 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 	{ kind: 'client.config_viewed', category: 'admin', label: 'Viewed the config' },
 	{ kind: 'client.keys_rotated', category: 'admin', label: "Rotated a client's keys" },
 	{ kind: 'server.settings_changed', category: 'admin', label: 'Changed server settings' },
+	{ kind: 'server.key_rotated', category: 'admin', label: "Rotated the server's key" },
 	{ kind: 'server.settings_kept', category: 'admin', label: 'Kept a settings change' },
 	{ kind: 'server.settings_undone', category: 'admin', label: 'Undid a settings change' },
 	{ kind: 'tunnel.applied', category: 'admin', label: 'Applied the settings to the tunnel' },

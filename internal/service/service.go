@@ -15,6 +15,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/auth"
 	"github.com/stuffam/drawbridge/internal/clientconf"
 	"github.com/stuffam/drawbridge/internal/diag"
+	"github.com/stuffam/drawbridge/internal/keys"
 	"github.com/stuffam/drawbridge/internal/model"
 	"github.com/stuffam/drawbridge/internal/reconcile"
 	"github.com/stuffam/drawbridge/internal/store"
@@ -153,9 +154,7 @@ type SettingsPatch struct {
 
 // UpdateSettings applies a patch.
 func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Settings, Applied, error) {
-	var before model.Settings
-	edit := func(st *model.Settings) error {
-		before = *st
+	return s.changeSettings(ctx, "server.settings_changed", "server settings", p.SafeApply, func(st *model.Settings) error {
 		if p.EndpointHost != nil {
 			st.EndpointHost = model.NormalizeHost(*p.EndpointHost)
 		}
@@ -190,9 +189,34 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 			st.AdminAllowed = model.NormalizePrefixes(*p.AdminAllowed)
 		}
 		return nil
+	})
+}
+
+// RotateServerKey gives the server a new key pair. Every client's config holds the old public
+// key, so every one of them stops working until it imports the new config (they show up as
+// outdated, and the admin hands the new configs out). With safe, the rotation waits to be kept
+// like any change that could lock the admin out (docs/PLAN.md §4.3): an admin connected through
+// the VPN is cut off by it, so it's undone unless it's kept in time.
+func (s *Service) RotateServerKey(ctx context.Context, safe bool) (model.Settings, Applied, error) {
+	key, err := keys.NewPrivateKey()
+	if err != nil {
+		return model.Settings{}, Applied{}, err
 	}
+	return s.changeSettings(ctx, "server.key_rotated", "the server's new key", safe, func(st *model.Settings) error {
+		st.PrivateKey = key
+		return nil
+	})
+}
+
+// changeSettings is the path every settings change takes: edit the settings, save them (on
+// probation when safe is set and needsConfirmation says the change could lock the admin out),
+// record the event of that kind, and apply them to the tunnel. what names the change for the
+// warning when applying fails.
+func (s *Service) changeSettings(ctx context.Context, kind, what string, safe bool,
+	edit func(*model.Settings) error) (model.Settings, Applied, error) {
+	var before model.Settings
 	var decide func(before, after model.Settings) *store.Probation
-	if p.SafeApply {
+	if safe {
 		decide = func(before, after model.Settings) *store.Probation {
 			if !needsConfirmation(before, after) {
 				return nil
@@ -202,7 +226,10 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 				Actor: a.Name, Via: a.Via, SourceIP: a.SourceIP, Changes: settingsChanges(before, after)}
 		}
 	}
-	updated, probation, err := s.Store.UpdateSettingsWith(ctx, edit, decide)
+	updated, probation, err := s.Store.UpdateSettingsWith(ctx, func(st *model.Settings) error {
+		before = *st
+		return edit(st)
+	}, decide)
 	if err != nil {
 		return model.Settings{}, Applied{}, err
 	}
@@ -216,8 +243,8 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 		s.setCachedPending(pending)
 		changes["waiting_to_be_kept"] = s.safeApplyWindow().String()
 	}
-	s.record(ctx, Event{Kind: "server.settings_changed", Data: changes})
-	applied := s.apply(ctx, "server settings")
+	s.record(ctx, Event{Kind: kind, Data: changes})
+	applied := s.apply(ctx, what)
 	applied.Pending = pending
 	return updated, applied, nil
 }
@@ -245,6 +272,8 @@ func settingsChanges(a, b model.Settings) map[string]string {
 	diff("keepalive", a.Keepalive, b.Keepalive)
 	diff("client_isolation", a.ClientIsolation, b.ClientIsolation)
 	diff("admin_allowed", a.AdminAllowed, b.AdminAllowed)
+	// Only the public keys: the private key never leaves the settings.
+	diff("server_public_key", a.PublicKey(), b.PublicKey())
 	return out
 }
 

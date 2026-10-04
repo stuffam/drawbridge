@@ -35,6 +35,8 @@ Commands:
   server show          Show the server's settings.
   server set FLAGS     Change the server's settings (--safe undoes a change that could lock
                        you out unless you keep it with: server confirm).
+  server rotate-key    Give the server a new key (--safe undoes it unless you keep it).
+                       Every client needs its new config afterward.
   server confirm       Keep a change that is waiting to be kept.
   server revert        Undo that change now.
   apply [--dry-run]    Make the tunnel and the firewall match the settings, and say what
@@ -83,7 +85,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	case "tunnel":
 		return tunnelCmd(ctx, args[1:], stderr)
 	case "server":
-		return serverCmd(ctx, args[1:], stdout, stderr)
+		return serverCmd(ctx, args[1:], stdin, stdout, stderr)
 	case "client":
 		return clientCmd(ctx, args[1:], stdin, stdout, stderr)
 	case "events":

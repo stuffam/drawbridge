@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type Settings, type SettingsPatch } from '$lib/api';
+	import { api, type Settings, type SettingsPatch, type SettingsResult } from '$lib/api';
 	import { errorMessage } from '$lib/errors';
 	import { onLiveEvent } from '$lib/live.svelte';
 	import { setPending } from '$lib/pending.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import AdGuardSettings from '$lib/components/AdGuardSettings.svelte';
 	import DNSFields from '$lib/components/DNSFields.svelte';
+	import RotateServerKeyModal from '$lib/components/RotateServerKeyModal.svelte';
 	import Result from '$lib/components/Result.svelte';
 	import { dnsFor, dnsModeOf, type DNSMode } from '$lib/dns';
 
@@ -24,6 +25,9 @@
 	let warning = $state('');
 	let success = $state('');
 	let busy = $state(false);
+	let showRotate = $state(false);
+	let keyNote = $state('');
+	let keyWarning = $state('');
 
 	function fill(s: Settings) {
 		saved = s;
@@ -47,10 +51,23 @@
 	$effect(() =>
 		onLiveEvent((e) => {
 			if (e.kind === 'server.settings_undone' || e.kind === 'server.settings_expired') {
+				keyNote = keyWarning = '';
 				api.server().then(fill, (err) => (error = errorMessage(err)));
 			}
 		})
 	);
+
+	/**
+	 * The server has a new key. Only the key differs, so the form (which may hold edits that
+	 * aren't saved) is left alone.
+	 */
+	function rotated(res: SettingsResult) {
+		saved = res.settings;
+		keyWarning = res.warning ?? '';
+		keyNote = res.pending_change
+			? `The server has a new key, and every client needs its new config. This could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
+			: 'The server has a new key, and every client needs its new config.';
+	}
 
 	/** Only the settings that changed, so the server's event log says what happened. */
 	function patch(s: Settings): SettingsPatch {
@@ -225,14 +242,32 @@
 			<dd>{saved.ipv6_subnet ? `${saved.ipv6_subnet} (server ${saved.ipv6_address})` : 'Off'}</dd>
 			<dt class="text-neutral-500 dark:text-neutral-400">Clients route</dt>
 			<dd>{saved.client_allowed_ips.join(', ')} (everything, over the tunnel)</dd>
-			<dt class="text-neutral-500 dark:text-neutral-400">Public key</dt>
-			<dd class="flex items-start gap-2">
-				<span class="mono">{saved.public_key}</span>
-				<CopyButton text={saved.public_key} />
-			</dd>
 		</dl>
 		<p class="hint">Changing the subnets isn't supported yet while clients exist.</p>
 	</section>
+
+	<section class="card flex flex-col gap-3" aria-labelledby="server-key-heading">
+		<div>
+			<h2 id="server-key-heading" class="font-semibold">Server key</h2>
+			<p class="hint">
+				Every client's config holds the server's public key. Rotating the key cuts every client off
+				until it imports its new config, so do it only if the key may have leaked.
+			</p>
+		</div>
+		<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+			<dt class="text-neutral-500 dark:text-neutral-400">Public key</dt>
+			<dd class="flex items-start gap-2">
+				<span class="mono" data-testid="server-public-key">{saved.public_key}</span>
+				<CopyButton text={saved.public_key} />
+			</dd>
+		</dl>
+		<Result warning={keyWarning} success={keyNote} />
+		<button type="button" class="btn btn-danger self-start" onclick={() => (showRotate = true)}>
+			Rotate the key…
+		</button>
+	</section>
+
+	<RotateServerKeyModal bind:open={showRotate} onrotated={rotated} />
 {:else if error}
 	<p class="alert-error" role="alert">{error}</p>
 {:else}

@@ -172,6 +172,7 @@ func TestTokenReadableIsShortAndHasNoSecrets(t *testing.T) {
 		"GET /api/server/apply",              // the settings being changed
 		"POST /api/server/apply/confirm",     // a token can't change anything
 		"POST /api/server/apply/revert",
+		"POST /api/server/rotate-key",   // a token can't change anything
 		"GET /api/system/snapshots",     // where the host keeps copies of its database
 		"GET /api/integrations/adguard", // the account used for AdGuard Home
 		"GET /api/auth/me",              // the account

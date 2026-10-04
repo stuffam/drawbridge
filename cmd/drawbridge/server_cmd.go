@@ -17,21 +17,24 @@ import (
 	"github.com/stuffam/drawbridge/internal/views"
 )
 
-const serverUsage = `Usage: drawbridge server show|set|confirm|revert [flags]
+const serverUsage = `Usage: drawbridge server show|set|rotate-key|confirm|revert [flags]
 
   show     Show the server's settings, and a change that's waiting to be kept.
   set      Change settings. Changes apply to the tunnel right away; client configs pick
            up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded
            again.
-  confirm  Keep a change that is waiting: one made with set --safe, or from the web UI
+  rotate-key
+           Give the server a new key. Every client's config stops working until the
+           client imports the new one, so hand each one out again afterward.
+  confirm  Keep a change that is waiting: one made with --safe, or from the web UI
            (which always waits for a change that could lock you out).
   revert   Undo that change now, without waiting for its time to run out.
 
-Flags for set:
+Flags for set and rotate-key:
 `
 
-func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || !slices.Contains([]string{"show", "set", "confirm", "revert"}, args[0]) {
+func serverCmd(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if len(args) == 0 || !slices.Contains([]string{"show", "set", "rotate-key", "confirm", "revert"}, args[0]) {
 		fmt.Fprint(stderr, serverUsage)
 		return 2
 	}
@@ -45,7 +48,8 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	force := flags.Bool("force", false, "with --dns server, use the server's VPN addresses even when nothing answers on them")
 	keepalive := flags.Int("keepalive", -1, "clients' PersistentKeepalive in `seconds` (0 turns it off)")
 	isolation := flags.Bool("client-isolation", true, "block traffic between clients")
-	safe := flags.Bool("safe", false, "undo a change that could lock you out (the listen port, removing an admin source) unless `drawbridge server confirm` keeps it within a minute")
+	safe := flags.Bool("safe", false, "undo a change that could lock you out (the listen port, removing an admin source, rotating the key) unless `drawbridge server confirm` keeps it within a minute")
+	yes := flags.Bool("yes", false, "with rotate-key: don't ask for confirmation")
 	adminAllow := flags.String("admin-allow", "", "extra sources that may reach the web UI, besides the home network and the VPN: comma-separated `prefixes` inside 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 (Tailscale), or fc00::/7, or \"none\"")
 	flags.Usage = func() { fmt.Fprint(stderr, serverUsage); flags.PrintDefaults() }
 	pos, err := parseArgs(flags, args[1:])
@@ -91,6 +95,8 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 			fmt.Fprintln(stdout, "Undid the change. The settings are back as they were.")
 		}
 		return warn(stderr, res.Warning, res.ApplyFailed)
+	case "rotate-key":
+		return rotateServerKey(ctx, c, *safe, *yes, stdin, stdout, stderr)
 	}
 
 	var p views.SettingsPatch
@@ -99,6 +105,7 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	delete(set, "control")
 	delete(set, "force")
 	delete(set, "safe")
+	delete(set, "yes")
 	if len(set) == 0 {
 		fmt.Fprint(stderr, "drawbridge server set: nothing to change\n\n")
 		flags.Usage()
@@ -186,12 +193,7 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	res, err := update(ctx, p)
 	if err != nil {
-		fmt.Fprintln(stderr, "drawbridge:", err)
-		var ce *control.Error
-		if errors.As(err, &ce) && strings.Contains(ce.Message, "waiting to be kept") {
-			fmt.Fprintln(stderr, "Keep it with `drawbridge server confirm`, or undo it with `drawbridge server revert`.")
-		}
-		return 1
+		return failSettings(stderr, err)
 	}
 	printSettings(stdout, res.Settings)
 	if res.PendingChange != nil {
@@ -199,6 +201,62 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		printPending(stdout, res.PendingChange)
 	} else if *safe {
 		fmt.Fprintln(stdout, "\nNothing here could lock you out, so there is nothing to confirm.")
+	}
+	return warn(stderr, res.Warning, res.ApplyFailed)
+}
+
+// failSettings reports a refused settings change, and says what to do about a change that's
+// waiting to be kept.
+func failSettings(stderr io.Writer, err error) int {
+	fmt.Fprintln(stderr, "drawbridge:", err)
+	var ce *control.Error
+	if errors.As(err, &ce) && strings.Contains(ce.Message, "waiting to be kept") {
+		fmt.Fprintln(stderr, "Keep it with `drawbridge server confirm`, or undo it with `drawbridge server revert`.")
+	}
+	return 1
+}
+
+// rotateServerKey is `server rotate-key`: it asks first, because every client stops working.
+func rotateServerKey(ctx context.Context, c *control.Client, safe, yes bool, stdin io.Reader, stdout, stderr io.Writer) int {
+	if !yes {
+		ok, err := confirm(stdin, stdout,
+			"Give the server a new key? Every client's config stops working until it imports the new one. [y/N] ")
+		if err != nil {
+			fmt.Fprintln(stderr, "drawbridge:", err)
+			return 1
+		}
+		if !ok {
+			fmt.Fprintln(stdout, "The key was not rotated.")
+			return 1
+		}
+	}
+	res, err := c.RotateServerKey(ctx, safe)
+	if err != nil {
+		return failSettings(stderr, err)
+	}
+	fmt.Fprintf(stdout, "The server has a new key.\nPublic key: %s\n\n", res.Settings.PublicKey)
+	// Say how many configs are stale now, if it can be told: it's what the admin does next.
+	outdated := -1
+	if clients, err := c.Clients(ctx); err == nil {
+		outdated = 0
+		for _, cl := range clients {
+			if cl.ConfigOutdated {
+				outdated++
+			}
+		}
+	}
+	switch {
+	case outdated == 0:
+		fmt.Fprintln(stdout, "No client has been handed a config, so none is out of date.")
+	case outdated > 0:
+		fmt.Fprintf(stdout, "%d of the clients hold a config with the old key. Hand each one its new config\n"+
+			"(`drawbridge client config NAME` or `client qr NAME`); `client list` shows who is out of date.\n", outdated)
+	default:
+		fmt.Fprintln(stdout, "Hand each client its new config: `drawbridge client config NAME` or `client qr NAME`.")
+	}
+	if res.PendingChange != nil {
+		fmt.Fprintln(stdout)
+		printPending(stdout, res.PendingChange)
 	}
 	return warn(stderr, res.Warning, res.ApplyFailed)
 }

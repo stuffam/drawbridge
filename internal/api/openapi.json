@@ -457,7 +457,7 @@
             "$ref": "#/components/responses/Conflict"
           }
         },
-        "description": "Changes apply to the tunnel at once. Client configs pick up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded again.\n\nA change that could cut the admin off (the listen port, or removing a source from `admin_allowed`) is applied on probation: the response carries `pending_change`, and the change is undone after `expires_in` seconds unless `POST /api/server/apply/confirm` keeps it. Until then every other settings change is refused with 409. See `GET /api/server/apply`.",
+        "description": "Changes apply to the tunnel at once. Client configs pick up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded again.\n\nA change that could cut the admin off (the listen port, or removing a source from `admin_allowed`; rotating the server's key is `POST /api/server/rotate-key`) is applied on probation: the response carries `pending_change`, and the change is undone after `expires_in` seconds unless `POST /api/server/apply/confirm` keeps it. Until then every other settings change is refused with 409. See `GET /api/server/apply`.",
         "tags": [
           "server"
         ],
@@ -511,6 +511,48 @@
           }
         ],
         "description": "Also readable with a read-only API token."
+      }
+    },
+    "/api/server/rotate-key": {
+      "post": {
+        "summary": "Give the server a new key pair",
+        "description": "Replaces the server's private key and public key and applies them to the tunnel at once. Every client's config holds the old public key, so none of them can connect until it imports the new config; the clients that had been handed a config show `config_outdated`. The rotation is applied on probation, like any change that could cut the admin off: the response carries `pending_change`, and the old key is restored after `expires_in` seconds unless `POST /api/server/apply/confirm` keeps it. Until then every other settings change is refused with 409. The event is `server.key_rotated`.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "Rotated, and waiting to be kept. The settings as they are now, with the new `public_key`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another settings change is waiting to be kept or undone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "server"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ]
       }
     },
     "/api/server/apply": {

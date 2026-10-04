@@ -667,3 +667,41 @@ now, and not-kept paths against the daemon with the fake backend and a 10-second
   drawbridge apply` puts it back. With the tunnel stopped, both say so and start nothing.
 - `[UNVERIFIED]` An upgrade from the previous release (schema 9) takes `pre-migration-v9-*.db`
   and adds the `pending_apply` table; nothing is waiting afterward.
+
+## 15. Rotating the server's key (the fifth M5 slice)
+
+`drawbridge server rotate-key`, the **Rotate the key…** button in Settings, and
+`POST /api/server/rotate-key` give the server a new key pair (docs/PLAN.md §6.2). Every client's
+config holds the old public key, so every client stops until it imports its new config. The web UI
+always puts the rotation on safe apply (§14 above). Nothing here has run on the reference
+platform, so nothing is `[VERIFIED]` yet. What has run, away from it: `TestEndToEnd`'s two new steps
+pass in network namespaces on a 7.0 aarch64 kernel (Docker Desktop's VM). With real kernel
+WireGuard, after `server rotate-key` the kernel had the new private key and the same peer, a
+connected client's fetches through the tunnel failed at once (WireGuard drops the current sessions
+when the interface's key changes), and the new config connected over IPv4 and IPv6. After
+`rotate-key --safe` with nothing kept, the daemon put the old key back when the window (4 seconds
+there) ran out, and the client reconnected with the config it already had. And the browser tests
+drive the dialog, Undo now, and Keep against the daemon with the fake backend.
+
+- `[UNVERIFIED]` **From the LAN, with a phone on the VPN:** in Settings, **Rotate the key…** asks
+  first (Cancel changes nothing), and **Rotate the key** shows the bar with both public keys. The
+  phone's tunnel stops carrying traffic at once. Keep it, and `sudo wg show` has the new public
+  key; the phone stays off until it imports its new config (the client's page shows **Config
+  outdated**, and its QR code is the new one).
+- `[UNVERIFIED]` **The case it is for:** with the web UI open through the VPN on a phone, rotate the
+  key. The UI stops answering (the phone's tunnel is dead). Within a minute the daemon puts the old
+  key back, the tunnel comes back by itself within about 15 seconds, and the phone's old config
+  works again without being touched. The log has `Rotated the server's key` and then `Undid a
+  settings change (not kept in time)`, from Drawbridge.
+- `[UNVERIFIED]` After a kept rotation, the dashboard's Outdated count is the number of clients
+  that had been handed a config, and `sudo drawbridge client list` shows the same. A client that
+  was never handed a config isn't flagged. Importing each new config clears its flag.
+- `[UNVERIFIED]` `sudo drawbridge server rotate-key` asks `[y/N]` on a terminal and refuses without
+  one unless given `--yes`; without `--safe` it applies at once and waits for nothing, and with it
+  `server confirm` and `server revert` work. While a rotation waits, another settings change is
+  refused.
+- `[UNVERIFIED]` A read-only API token gets 403 from `POST /api/server/rotate-key`.
+- `[UNVERIFIED]` A restart or a reboot inside the window undoes a rotation like any other
+  change on probation: the old key is back afterward, and `sudo wg show` agrees.
+- `[UNVERIFIED]` A backup made before a rotation holds the old key. Restoring it onto a fresh host
+  brings the old key back, and the clients' configs from before the rotation work again.
