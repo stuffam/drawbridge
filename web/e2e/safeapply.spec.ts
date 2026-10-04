@@ -99,7 +99,8 @@ test('a change made with the CLI waits for the web UI too', async ({ page }) => 
 
 	expect(cli('server', 'set', '--port', String(next), '--safe')).toContain('Waiting to be kept');
 	await expect(bar(page)).toBeVisible({ timeout: 10_000 });
-	await expect(bar(page)).toContainText('Made by root (cli)');
+	// Whoever runs the tests is the CLI's account: root in a container, another user on CI.
+	await expect(bar(page)).toContainText(/Made by \S+ \(cli\)/);
 	await bar(page).getByRole('button', { name: 'Keep changes' }).click();
 	await expect(bar(page)).toBeHidden();
 	expect(listenPort()).toBe(next);
