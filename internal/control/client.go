@@ -173,6 +173,41 @@ func (c *Client) DNSCheck(ctx context.Context) (views.DNSCheck, error) {
 	return v, c.do(ctx, http.MethodGet, "/v1/dns-check", nil, &v)
 }
 
+// Pending returns the settings change waiting to be kept; its PendingChange is nil when none is.
+func (c *Client) Pending(ctx context.Context) (views.ApplyState, error) {
+	var v views.ApplyState
+	return v, c.do(ctx, http.MethodGet, "/v1/pending", nil, &v)
+}
+
+// ConfirmChange keeps the settings change that's waiting.
+func (c *Client) ConfirmChange(ctx context.Context) (views.SettingsResult, error) {
+	var v views.SettingsResult
+	return v, c.do(ctx, http.MethodPost, "/v1/pending/confirm", nil, &v)
+}
+
+// RevertChange undoes the settings change that's waiting, now.
+func (c *Client) RevertChange(ctx context.Context) (views.SettingsResult, error) {
+	var v views.SettingsResult
+	return v, c.do(ctx, http.MethodPost, "/v1/pending/revert", nil, &v)
+}
+
+// Apply reconciles once, or with dryRun says what it would change.
+func (c *Client) Apply(ctx context.Context, dryRun bool) (views.ApplyResult, error) {
+	path := "/v1/apply"
+	if dryRun {
+		path += "?dry_run=1"
+	}
+	var v views.ApplyResult
+	return v, c.do(ctx, http.MethodPost, path, nil, &v)
+}
+
+// UpdateSettingsSafely is UpdateSettings that puts a change that could lock the admin out on
+// probation: it's undone unless ConfirmChange keeps it in time.
+func (c *Client) UpdateSettingsSafely(ctx context.Context, p views.SettingsPatch) (views.SettingsResult, error) {
+	var v views.SettingsResult
+	return v, c.do(ctx, http.MethodPatch, "/v1/settings?safe=1", p, &v)
+}
+
 // UpdateSettings applies a patch.
 func (c *Client) UpdateSettings(ctx context.Context, p views.SettingsPatch) (views.SettingsResult, error) {
 	var v views.SettingsResult

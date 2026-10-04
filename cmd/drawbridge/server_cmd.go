@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"net"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -15,18 +17,21 @@ import (
 	"github.com/stuffam/drawbridge/internal/views"
 )
 
-const serverUsage = `Usage: drawbridge server show|set [flags]
+const serverUsage = `Usage: drawbridge server show|set|confirm|revert [flags]
 
-  show   Show the server's settings.
-  set    Change settings. Changes apply to the tunnel right away; client configs pick
-         up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded
-         again.
+  show     Show the server's settings, and a change that's waiting to be kept.
+  set      Change settings. Changes apply to the tunnel right away; client configs pick
+           up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded
+           again.
+  confirm  Keep a change that is waiting: one made with set --safe, or from the web UI
+           (which always waits for a change that could lock you out).
+  revert   Undo that change now, without waiting for its time to run out.
 
 Flags for set:
 `
 
 func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 || (args[0] != "show" && args[0] != "set") {
+	if len(args) == 0 || !slices.Contains([]string{"show", "set", "confirm", "revert"}, args[0]) {
 		fmt.Fprint(stderr, serverUsage)
 		return 2
 	}
@@ -40,6 +45,7 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	force := flags.Bool("force", false, "with --dns server, use the server's VPN addresses even when nothing answers on them")
 	keepalive := flags.Int("keepalive", -1, "clients' PersistentKeepalive in `seconds` (0 turns it off)")
 	isolation := flags.Bool("client-isolation", true, "block traffic between clients")
+	safe := flags.Bool("safe", false, "undo a change that could lock you out (the listen port, removing an admin source) unless `drawbridge server confirm` keeps it within a minute")
 	adminAllow := flags.String("admin-allow", "", "extra sources that may reach the web UI, besides the home network and the VPN: comma-separated `prefixes` inside 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 (Tailscale), or fc00::/7, or \"none\"")
 	flags.Usage = func() { fmt.Fprint(stderr, serverUsage); flags.PrintDefaults() }
 	pos, err := parseArgs(flags, args[1:])
@@ -52,14 +58,39 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	c := control.NewClient(*socket)
 
-	if sub == "show" {
+	switch sub {
+	case "show":
 		s, err := c.Settings(ctx)
 		if err != nil {
 			fmt.Fprintln(stderr, "drawbridge:", err)
 			return 1
 		}
 		printSettings(stdout, s)
+		pending, err := c.Pending(ctx)
+		if err != nil {
+			fmt.Fprintln(stderr, "drawbridge:", err)
+			return 1
+		}
+		printPending(stdout, pending.PendingChange)
 		return 0
+	case "confirm", "revert":
+		var res views.SettingsResult
+		var err error
+		if sub == "confirm" {
+			res, err = c.ConfirmChange(ctx)
+		} else {
+			res, err = c.RevertChange(ctx)
+		}
+		if err != nil {
+			fmt.Fprintln(stderr, "drawbridge:", err)
+			return 1
+		}
+		if sub == "confirm" {
+			fmt.Fprintln(stdout, "Kept the change.")
+		} else {
+			fmt.Fprintln(stdout, "Undid the change. The settings are back as they were.")
+		}
+		return warn(stderr, res.Warning, res.ApplyFailed)
 	}
 
 	var p views.SettingsPatch
@@ -67,6 +98,7 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	flags.Visit(func(f *flag.Flag) { set[f.Name] = true })
 	delete(set, "control")
 	delete(set, "force")
+	delete(set, "safe")
 	if len(set) == 0 {
 		fmt.Fprint(stderr, "drawbridge server set: nothing to change\n\n")
 		flags.Usage()
@@ -148,13 +180,46 @@ func serverCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		p.AdminAllowed = &prefixes
 	}
 
-	res, err := c.UpdateSettings(ctx, p)
+	update := c.UpdateSettings
+	if *safe {
+		update = c.UpdateSettingsSafely
+	}
+	res, err := update(ctx, p)
 	if err != nil {
 		fmt.Fprintln(stderr, "drawbridge:", err)
+		var ce *control.Error
+		if errors.As(err, &ce) && strings.Contains(ce.Message, "waiting to be kept") {
+			fmt.Fprintln(stderr, "Keep it with `drawbridge server confirm`, or undo it with `drawbridge server revert`.")
+		}
 		return 1
 	}
 	printSettings(stdout, res.Settings)
+	if res.PendingChange != nil {
+		fmt.Fprintln(stdout)
+		printPending(stdout, res.PendingChange)
+	} else if *safe {
+		fmt.Fprintln(stdout, "\nNothing here could lock you out, so there is nothing to confirm.")
+	}
 	return warn(stderr, res.Warning, res.ApplyFailed)
+}
+
+// printPending says that a change is waiting to be kept, what it is, and what to do about it.
+func printPending(w io.Writer, p *views.PendingChangeView) {
+	if p == nil {
+		return
+	}
+	keys := make([]string, 0, len(p.Changes))
+	for k := range p.Changes {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	fmt.Fprintf(w, "\nWaiting to be kept (made by %s via %s):\n", p.Actor, p.Via)
+	for _, k := range keys {
+		fmt.Fprintf(w, "  %s: %s\n", strings.ReplaceAll(k, "_", " "), p.Changes[k])
+	}
+	fmt.Fprintf(w, "It is undone in %d s unless you keep it.\n", p.ExpiresIn)
+	fmt.Fprintln(w, "Keep it:  drawbridge server confirm")
+	fmt.Fprintln(w, "Undo it:  drawbridge server revert")
 }
 
 // parseEndpoint splits "host", "host:port", "IPv6", or "[IPv6]:port". A port of 0 means

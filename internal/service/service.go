@@ -81,6 +81,11 @@ type Service struct {
 	adguardRefused refusedLogin
 	// adguardSync is the name sync's state (adguardsync.go).
 	adguardSync adguardSyncState
+	// SafeApplyWindow is how long a settings change on probation waits to be kept; zero means
+	// DefaultSafeApplyWindow (safeapply.go).
+	SafeApplyWindow time.Duration
+	// safe is the state of the change on probation.
+	safe safeApply
 }
 
 func (s *Service) now() time.Time {
@@ -98,6 +103,9 @@ type Applied struct {
 	// Err is set when applying failed. The change is saved, and the daemon retries
 	// every 30 seconds.
 	Err error
+	// Pending is set when the change is on probation: it's applied, and undone unless it's kept
+	// in time (safeapply.go).
+	Pending *PendingChange
 }
 
 // Warning returns a message for people, or "" when the change applied cleanly.
@@ -138,12 +146,15 @@ type SettingsPatch struct {
 	Keepalive       *int
 	ClientIsolation *bool
 	AdminAllowed    *[]netip.Prefix
+	// SafeApply puts a change that could cut the admin off (needsConfirmation) on probation:
+	// it's undone unless it's kept in time. A change that can't isn't affected.
+	SafeApply bool
 }
 
 // UpdateSettings applies a patch.
 func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Settings, Applied, error) {
 	var before model.Settings
-	updated, err := s.Store.UpdateSettings(ctx, func(st *model.Settings) error {
+	edit := func(st *model.Settings) error {
 		before = *st
 		if p.EndpointHost != nil {
 			st.EndpointHost = model.NormalizeHost(*p.EndpointHost)
@@ -179,7 +190,19 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 			st.AdminAllowed = model.NormalizePrefixes(*p.AdminAllowed)
 		}
 		return nil
-	})
+	}
+	var decide func(before, after model.Settings) *store.Probation
+	if p.SafeApply {
+		decide = func(before, after model.Settings) *store.Probation {
+			if !needsConfirmation(before, after) {
+				return nil
+			}
+			a, now := ActorFrom(ctx), s.now()
+			return &store.Probation{CreatedAt: now, Deadline: now.Add(s.safeApplyWindow()),
+				Actor: a.Name, Via: a.Via, SourceIP: a.SourceIP, Changes: settingsChanges(before, after)}
+		}
+	}
+	updated, probation, err := s.Store.UpdateSettingsWith(ctx, edit, decide)
 	if err != nil {
 		return model.Settings{}, Applied{}, err
 	}
@@ -187,8 +210,16 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 	if len(changes) == 0 {
 		return updated, Applied{}, nil
 	}
+	var pending *PendingChange
+	if probation != nil {
+		pending = pendingFrom(*probation)
+		s.setCachedPending(pending)
+		changes["waiting_to_be_kept"] = s.safeApplyWindow().String()
+	}
 	s.record(ctx, Event{Kind: "server.settings_changed", Data: changes})
-	return updated, s.apply(ctx, "server settings"), nil
+	applied := s.apply(ctx, "server settings")
+	applied.Pending = pending
+	return updated, applied, nil
 }
 
 // settingsChanges describes what changed, for the event log: "old → new" for each
@@ -241,6 +272,8 @@ type Status struct {
 	// AdGuardWarning is a line for the admin when the AdGuard Home name sync needs them, or ""
 	// (adguardsync.go).
 	AdGuardWarning string
+	// Pending is the settings change waiting to be kept, if there is one (safeapply.go).
+	Pending *PendingChange
 }
 
 // Status returns the tunnel's state and client counts.
@@ -256,7 +289,7 @@ func (s *Service) Snapshot(ctx context.Context) (Status, []ClientStatus, error) 
 	if err != nil {
 		return Status{}, nil, err
 	}
-	out := Status{AdGuardWarning: s.adguardSync.warning()}
+	out := Status{AdGuardWarning: s.adguardSync.warning(), Pending: s.cachedPending()}
 	if _, err := s.WG.Device(st.Interface); err == nil {
 		out.TunnelUp = true
 	} else if !errors.Is(err, wg.ErrNoDevice) {

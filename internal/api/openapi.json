@@ -457,7 +457,7 @@
             "$ref": "#/components/responses/Conflict"
           }
         },
-        "description": "Changes apply to the tunnel at once. Client configs pick up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded again.",
+        "description": "Changes apply to the tunnel at once. Client configs pick up endpoint, port, MTU, DNS, and keepalive changes when they're downloaded again.\n\nA change that could cut the admin off (the listen port, or removing a source from `admin_allowed`) is applied on probation: the response carries `pending_change`, and the change is undone after `expires_in` seconds unless `POST /api/server/apply/confirm` keeps it. Until then every other settings change is refused with 409. See `GET /api/server/apply`.",
         "tags": [
           "server"
         ],
@@ -511,6 +511,117 @@
           }
         ],
         "description": "Also readable with a read-only API token."
+      }
+    },
+    "/api/server/apply": {
+      "get": {
+        "summary": "Is a settings change waiting to be kept?",
+        "description": "A settings change that could cut the admin off is applied on probation and undone unless it's kept in time (docs/PLAN.md §4.3). This says whether one is waiting. The same is pushed in the `status` message of `GET /api/stream`. Not readable with an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "The change waiting, or an empty object.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyState"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "server"
+        ]
+      }
+    },
+    "/api/server/apply/confirm": {
+      "post": {
+        "summary": "Keep the settings change that is waiting",
+        "description": "Keeps the change, so it isn't undone. A request that arrives after the deadline doesn't keep it: the change is undone and the answer is 409.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "Kept. The settings as they are now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No change is waiting (it was already kept or undone), or its time was up and it was undone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "server"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ]
+      }
+    },
+    "/api/server/apply/revert": {
+      "post": {
+        "summary": "Undo the settings change that is waiting, now",
+        "description": "Restores the settings as they were before the change and applies them, without waiting for the time to run out.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "Undone. The settings as they are now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No change is waiting.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "server"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ]
       }
     },
     "/api/server/dns-check": {
@@ -2174,8 +2285,63 @@
           "apply_failed": {
             "type": "boolean",
             "description": "The change is saved, but applying it failed; the daemon retries every 30 seconds."
+          },
+          "pending_change": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PendingChange"
+              }
+            ],
+            "description": "Set when the change is on probation: it's applied, and undone unless it's kept in time."
           }
         }
+      },
+      "PendingChange": {
+        "type": "object",
+        "required": [
+          "changes",
+          "expires_at",
+          "expires_in",
+          "actor",
+          "via"
+        ],
+        "properties": {
+          "changes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What changed, as `{\"listen_port\": \"51820 → 51999\"}`."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_in": {
+            "type": "integer",
+            "description": "Seconds left when the response was made, rounded up. Count down from this rather than from `expires_at`, in case the browser's clock and the server's disagree."
+          },
+          "actor": {
+            "type": "string",
+            "description": "Who made the change: the admin's username, or the CLI user's account."
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "web",
+              "cli"
+            ]
+          }
+        }
+      },
+      "ApplyState": {
+        "type": "object",
+        "properties": {
+          "pending_change": {
+            "$ref": "#/components/schemas/PendingChange"
+          }
+        },
+        "description": "Empty when nothing is waiting."
       },
       "ServerStatus": {
         "type": "object",
@@ -2479,6 +2645,14 @@
             "items": {
               "$ref": "#/components/schemas/Client"
             }
+          },
+          "pending_change": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PendingChange"
+              }
+            ],
+            "description": "A settings change waiting to be kept, if there is one. It's here and not in `server` because a read-only API token can read the server's status."
           }
         },
         "description": "The data of a status message of the stream."

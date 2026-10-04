@@ -4,12 +4,14 @@ package views
 
 import (
 	"encoding/json"
+	"math"
 	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/stuffam/drawbridge/internal/diag"
 	"github.com/stuffam/drawbridge/internal/model"
+	"github.com/stuffam/drawbridge/internal/reconcile"
 	"github.com/stuffam/drawbridge/internal/service"
 	"github.com/stuffam/drawbridge/internal/store"
 )
@@ -282,11 +284,60 @@ type SettingsResult struct {
 	Warning  string       `json:"warning,omitempty"`
 	// ApplyFailed means the change is saved but applying it to the tunnel failed.
 	ApplyFailed bool `json:"apply_failed,omitempty"`
+	// PendingChange is set when the change is on probation: it's applied, and undone unless it's
+	// kept in time (docs/PLAN.md §4.3).
+	PendingChange *PendingChangeView `json:"pending_change,omitempty"`
 }
 
 // NewSettingsResult is the response to a settings change that was applied.
 func NewSettingsResult(s model.Settings, a service.Applied) SettingsResult {
-	return SettingsResult{Settings: Settings(s), Warning: a.Warning(), ApplyFailed: a.Err != nil}
+	return SettingsResult{Settings: Settings(s), Warning: a.Warning(), ApplyFailed: a.Err != nil,
+		PendingChange: NewPendingChange(a.Pending)}
+}
+
+// PendingChangeView is a settings change on probation. ExpiresIn is the seconds left when the
+// response was made, so a browser whose clock disagrees with the server's can still count down;
+// ExpiresAt is the same moment as a time.
+type PendingChangeView struct {
+	// Changes is what changed, as {"setting": "old → new"}.
+	Changes   map[string]string `json:"changes"`
+	ExpiresAt time.Time         `json:"expires_at"`
+	ExpiresIn int               `json:"expires_in"`
+	// Actor and Via say who made the change: "admin" via "web", or "root" via "cli".
+	Actor string `json:"actor"`
+	Via   string `json:"via"`
+}
+
+// NewPendingChange converts a change on probation; nil for none.
+func NewPendingChange(p *service.PendingChange) *PendingChangeView {
+	if p == nil {
+		return nil
+	}
+	left := int(math.Ceil(time.Until(p.Deadline).Seconds()))
+	return &PendingChangeView{Changes: p.Changes, ExpiresAt: p.Deadline.UTC(), ExpiresIn: max(left, 0), Actor: p.Actor, Via: p.Via}
+}
+
+// ApplyState is whether a settings change is waiting to be kept (GET /api/server/apply).
+type ApplyState struct {
+	PendingChange *PendingChangeView `json:"pending_change,omitempty"`
+}
+
+// ApplyResult is what `drawbridge apply` found: the changes the kernel needed to match the
+// settings, and whether they were made. TunnelDown means the interface doesn't exist, so
+// nothing could be compared.
+type ApplyResult struct {
+	DryRun     bool     `json:"dry_run"`
+	TunnelDown bool     `json:"tunnel_down"`
+	Changes    []string `json:"changes"`
+}
+
+// NewApplyResult converts a reconcile result; Changes is never nil.
+func NewApplyResult(r reconcile.Result, dryRun bool) ApplyResult {
+	changes := r.Changes
+	if changes == nil {
+		changes = []string{}
+	}
+	return ApplyResult{DryRun: dryRun, TunnelDown: r.TunnelDown, Changes: changes}
 }
 
 // NewClientRequest creates a client.
@@ -472,11 +523,15 @@ func NewServerStatus(s service.Status) ServerStatus {
 type StreamStatus struct {
 	Server  ServerStatus `json:"server"`
 	Clients []ClientView `json:"clients"`
+	// PendingChange is a settings change waiting to be kept. It's here and not in Server because
+	// a read-only API token can read the server's status, and a setting being changed is the
+	// admin's business.
+	PendingChange *PendingChangeView `json:"pending_change,omitempty"`
 }
 
 // NewStreamStatus converts the service's snapshot.
 func NewStreamStatus(st service.Status, clients []service.ClientStatus) StreamStatus {
-	return StreamStatus{Server: NewServerStatus(st), Clients: Statuses(clients)}
+	return StreamStatus{Server: NewServerStatus(st), Clients: Statuses(clients), PendingChange: NewPendingChange(st.Pending)}
 }
 
 // TrafficSampleView is one bucket of a client's, or every client's, traffic history

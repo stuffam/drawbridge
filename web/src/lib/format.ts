@@ -127,6 +127,9 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 	{ kind: 'client.config_viewed', category: 'admin', label: 'Viewed the config' },
 	{ kind: 'client.keys_rotated', category: 'admin', label: "Rotated a client's keys" },
 	{ kind: 'server.settings_changed', category: 'admin', label: 'Changed server settings' },
+	{ kind: 'server.settings_kept', category: 'admin', label: 'Kept a settings change' },
+	{ kind: 'server.settings_undone', category: 'admin', label: 'Undid a settings change' },
+	{ kind: 'tunnel.applied', category: 'admin', label: 'Applied the settings to the tunnel' },
 	{
 		kind: 'integration.adguard_changed',
 		category: 'admin',
@@ -195,6 +198,11 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 	},
 	{ kind: 'backup.created', category: 'admin', label: 'Made a backup' },
 	{ kind: 'backup.restored', category: 'admin', label: 'Restored from a backup' },
+	{
+		kind: 'server.settings_expired',
+		category: 'system',
+		label: 'Undid a settings change (not kept in time)'
+	},
 	{ kind: 'tunnel.drift_corrected', category: 'system', label: 'Corrected drift' }
 ];
 

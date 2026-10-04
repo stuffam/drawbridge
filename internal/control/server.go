@@ -66,6 +66,10 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 	mux.HandleFunc("GET /v1/settings", h.getSettings)
 	mux.HandleFunc("PATCH /v1/settings", h.patchSettings)
 	mux.HandleFunc("GET /v1/dns-check", h.dnsCheck)
+	mux.HandleFunc("GET /v1/pending", h.pendingChange)
+	mux.HandleFunc("POST /v1/pending/confirm", h.confirmChange)
+	mux.HandleFunc("POST /v1/pending/revert", h.revertChange)
+	mux.HandleFunc("POST /v1/apply", h.apply)
 	mux.HandleFunc("GET /v1/diagnostics", h.diagnostics)
 	mux.HandleFunc("GET /v1/clients", h.listClients)
 	mux.HandleFunc("POST /v1/clients", h.addClient)
@@ -170,12 +174,63 @@ func (h *handler) patchSettings(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, err)
 		return
 	}
-	s, applied, err := h.svc.UpdateSettings(r.Context(), p.Service())
+	// The CLI applies at once, as the root user at the host can't be cut off by the change, unless
+	// it asks for the change to wait to be kept (--safe), as the web UI always does.
+	patch := p.Service()
+	patch.SafeApply = r.URL.Query().Get("safe") == "1"
+	s, applied, err := h.svc.UpdateSettings(r.Context(), patch)
 	if err != nil {
 		h.fail(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
+}
+
+// pendingChange says whether a settings change is waiting to be kept.
+func (h *handler) pendingChange(w http.ResponseWriter, r *http.Request) {
+	p, err := h.svc.PendingChange(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.ApplyState{PendingChange: views.NewPendingChange(p)})
+}
+
+func (h *handler) confirmChange(w http.ResponseWriter, r *http.Request) {
+	if _, err := h.svc.ConfirmChange(r.Context()); err != nil {
+		h.fail(w, err)
+		return
+	}
+	h.settingsResult(w, r, service.Applied{})
+}
+
+func (h *handler) revertChange(w http.ResponseWriter, r *http.Request) {
+	_, applied, err := h.svc.RevertChange(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	h.settingsResult(w, r, applied)
+}
+
+func (h *handler) settingsResult(w http.ResponseWriter, r *http.Request, applied service.Applied) {
+	s, err := h.svc.Settings(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
+}
+
+// apply reconciles once (`drawbridge apply`), or with dry_run=1 says what it would change.
+func (h *handler) apply(w http.ResponseWriter, r *http.Request) {
+	dryRun := r.URL.Query().Get("dry_run") == "1"
+	res, err := h.svc.Apply(r.Context(), dryRun)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewApplyResult(res, dryRun))
 }
 
 func (h *handler) listClients(w http.ResponseWriter, r *http.Request) {

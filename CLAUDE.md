@@ -70,8 +70,15 @@ setups.** What exists:
   flagged `config_outdated` in the list, on its page, in the dashboard's Outdated count, and in
   `client list`. `client rotate-keys` (and `POST /api/clients/{id}/rotate-keys`, and a button on
   the client's page) gives a client new keys, which cuts the old config off at once. Left in M5:
-  TOTP 2FA, safe apply (with `drawbridge apply` and rotating the server's key), uploading a
-  certificate, the dashboard's diagnostics warnings, the upgrade matrix, and the docs.
+  TOTP 2FA, rotating the server's key, uploading a certificate, the dashboard's diagnostics
+  warnings, the upgrade matrix, and the docs.
+- Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
+  cut the admin off (the listen port, removing an admin-UI source) is applied at once from the web
+  UI and undone after 60 s unless it's kept, by a bar on every page (**Keep changes** / **Undo
+  now**). The held change is in the database (`pending_apply`), so a restart or a reboot undoes it
+  too. `drawbridge server set --safe`, `server confirm`, and `server revert` do the same from the
+  CLI, which otherwise applies at once; `drawbridge apply [--dry-run]` reconciles once and lists
+  what changed (or would).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -271,6 +278,15 @@ These are the rules most likely to get silently broken.
   without a write. Changing how a config is rendered changes every fingerprint and flags every
   client that was handed one, so `TestFingerprintIsTheHashOfAKnownText` pins it: update it on
   purpose, and say so in the release notes.
+- **A web settings change that could lock the admin out is on probation, in the database.**
+  `needsConfirmation` (`internal/service/safeapply.go`) decides what waits, and the change and the
+  settings it replaced are written in one transaction (`store.UpdateSettingsWith`), so there is
+  never a change waiting without a way back. While one waits, every other settings change is
+  refused, because undoing restores the whole snapshot. A keep that arrives after the deadline
+  undoes the change instead. `settingsSnapshot` lists the settings' fields by hand (the server's
+  key is sealed apart, never in the JSON): a field added to `model.Settings` must be added there,
+  and `TestSnapshotCarriesEveryField` fails until it is. Something that can lock the admin out and
+  isn't on that list applies at once and can't be undone, so a new setting like that goes on it.
 - **Free text never reaches a rendered file.**
   - Client names and notes stay out of nftables rulesets and WireGuard configs.
   - Keys, CIDRs, ports, and MTUs are parsed and validated (`net/netip` and range checks) before

@@ -241,33 +241,7 @@ func (s *Store) Settings(ctx context.Context) (model.Settings, error) {
 
 // UpdateSettings applies fn to the settings and saves the result if it's valid.
 func (s *Store) UpdateSettings(ctx context.Context, fn func(*model.Settings) error) (model.Settings, error) {
-	var updated model.Settings
-	err := s.tx(ctx, func(tx *sql.Tx) error {
-		current, err := s.readSettings(ctx, tx)
-		if err != nil {
-			return err
-		}
-		next := current
-		next.DNS = append([]netip.Addr(nil), current.DNS...)
-		next.ClientAllowedIPs = append([]netip.Prefix(nil), current.ClientAllowedIPs...)
-		if err := fn(&next); err != nil {
-			return err
-		}
-		if err := next.Validate(); err != nil {
-			return err
-		}
-		if next.IPv4 != current.IPv4 || next.IPv6 != current.IPv6 {
-			var n int
-			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM clients`).Scan(&n); err != nil {
-				return err
-			}
-			if n > 0 {
-				return ErrHasClients
-			}
-		}
-		updated = next
-		return s.writeSettings(ctx, tx, next, false)
-	})
+	updated, _, err := s.UpdateSettingsWith(ctx, fn, nil)
 	return updated, err
 }
 

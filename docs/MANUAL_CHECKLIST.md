@@ -623,3 +623,47 @@ was viewed.
 - `[UNVERIFIED]` A read-only API token gets 403 from `POST /api/clients/{id}/rotate-keys`, and
   sees `config_outdated` and the `outdated` count in the client list and the status (they hold no
   secret).
+
+## 14. Safe apply and `drawbridge apply` (the fourth M5 slice)
+
+A settings change that could cut the admin off (the listen port, removing a source from the admin
+UI's allowlist) is applied on probation: undone after 60 seconds unless it's kept (docs/PLAN.md
+§4.3). Nothing here has run on the reference platform, so nothing is `[VERIFIED]` yet. What has run,
+away from it: `TestEndToEnd`'s two new steps pass in network namespaces on a 7.0 aarch64 kernel
+(Docker Desktop's VM). With real kernel WireGuard, a `server set --port 51999 --safe` cut the
+client off (its fetches through the tunnel failed), the daemon put the port back when the window
+(4 seconds there) ran out, and the client was back without being touched. `apply --dry-run` listed
+a drifted MTU and left it alone, and `apply` fixed it. And the browser tests drive the Keep, Undo
+now, and not-kept paths against the daemon with the fake backend and a 10-second window.
+
+- `[UNVERIFIED]` **From a phone on the VPN, the case it is for:** connect the phone to the VPN,
+  open the web UI through it, and change the listen port in Settings. The UI answers once and then
+  stops (the phone's tunnel is dead: it still sends to the old port), and the router forwards only
+  the old port. Within a minute the daemon puts the port back, the tunnel comes back by itself
+  (WireGuard retries within about 15 seconds), and the Settings page shows the old port. The event
+  log has `Changed server settings` (with `waiting to be kept: 1m0s`) and then `Undid a settings
+  change (not kept in time)`, from Drawbridge.
+- `[UNVERIFIED]` **From the LAN:** the same change shows a bar on every page with a countdown.
+  **Keep changes** leaves the new port in place past the minute (check `sudo wg show`), and the log
+  has `Kept a settings change` from the admin. **Undo now** puts the old port back at once.
+- `[UNVERIFIED]` The bar is readable on a phone and in dark mode, and its countdown is right when
+  the browser's clock is wrong by a few minutes (set one wrong to try).
+- `[UNVERIFIED]` **A reboot inside the window:** change the port from the LAN, don't keep it, and
+  `sudo reboot` straight away. After the boot the tunnel has the new port for a moment
+  (`drawbridge-tunnel.service` applies what the database says), and then the daemon undoes it: the
+  port is back to the old one, and `server show` has nothing waiting.
+- `[UNVERIFIED]` **Restarting the daemon:** `sudo systemctl restart drawbridge.service` inside the
+  window leaves the change waiting, with the countdown carrying on from where it was.
+- `[UNVERIFIED]` Removing the source the browser is on from the admin UI's allowlist
+  (`sudo drawbridge server set --admin-allow none --safe`, then reload from that source) locks the
+  browser out; a minute later the source works again, with nothing done.
+- `[UNVERIFIED]` While a change waits, another settings change from the web UI or `server set` is
+  refused and says to keep or undo the first, and adding, pausing, and deleting clients still work.
+- `[UNVERIFIED]` `sudo drawbridge server show` lists a waiting change, with who made it and the
+  seconds left; `sudo drawbridge server confirm` and `revert` work from a terminal, and from the
+  web UI's bar when the change was made with `--safe`.
+- `[UNVERIFIED]` `sudo drawbridge apply --dry-run` after `sudo ip link set wg0 mtu 1500` (and
+  before the daemon's 30-second check notices) lists the MTU and changes nothing; `sudo
+  drawbridge apply` puts it back. With the tunnel stopped, both say so and start nothing.
+- `[UNVERIFIED]` An upgrade from the previous release (schema 9) takes `pre-migration-v9-*.db`
+  and adds the `pending_apply` table; nothing is waiting afterward.

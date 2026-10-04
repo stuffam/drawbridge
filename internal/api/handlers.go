@@ -160,7 +160,50 @@ func (h *handler) patchServer(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, err)
 		return
 	}
-	s, applied, err := h.svc.UpdateSettings(r.Context(), p.Service())
+	// A change that could cut the admin off waits to be kept: the browser may be on the very
+	// connection it breaks (docs/PLAN.md §4.3).
+	patch := p.Service()
+	patch.SafeApply = true
+	s, applied, err := h.svc.UpdateSettings(r.Context(), patch)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
+}
+
+// applyState says whether a settings change is waiting to be kept.
+func (h *handler) applyState(w http.ResponseWriter, r *http.Request) {
+	p, err := h.svc.PendingChange(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.ApplyState{PendingChange: views.NewPendingChange(p)})
+}
+
+// confirmChange keeps the change on probation.
+func (h *handler) confirmChange(w http.ResponseWriter, r *http.Request) {
+	if _, err := h.svc.ConfirmChange(r.Context()); err != nil {
+		h.fail(w, err)
+		return
+	}
+	s, err := h.svc.Settings(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, service.Applied{}))
+}
+
+// revertChange undoes the change on probation now.
+func (h *handler) revertChange(w http.ResponseWriter, r *http.Request) {
+	_, applied, err := h.svc.RevertChange(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	s, err := h.svc.Settings(r.Context())
 	if err != nil {
 		h.fail(w, err)
 		return

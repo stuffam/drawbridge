@@ -104,7 +104,42 @@ func (r *Reconciler) lock() (func(), error) {
 	return func() { unlock(); r.mu.Unlock() }, nil
 }
 
+// target is what a run changes: the WireGuard interface and the firewall. A dry run
+// (Plan) swaps in versions that change nothing, so it takes the same steps and reports what
+// each would have done.
+type target struct {
+	wg wg.Backend
+	fw Firewall
+}
+
 func (r *Reconciler) run(ctx context.Context, create bool) (Result, error) {
+	return r.runOn(ctx, create, target{wg: r.WG, fw: r.Firewall})
+}
+
+// Plan reports what Sync would change, and changes nothing: the changes are the lines Sync
+// would log, and an interface that doesn't exist reports TunnelDown, as Sync does.
+func (r *Reconciler) Plan(ctx context.Context) (Result, error) {
+	return r.runOn(ctx, false, target{wg: dryWG{r.WG}, fw: dryFirewall{r.Firewall}})
+}
+
+// dryWG reads the real interface and changes nothing.
+type dryWG struct{ wg.Backend }
+
+func (dryWG) Create(string) error                    { return nil }
+func (dryWG) Delete(string) error                    { return nil }
+func (dryWG) Configure(string, wgtypes.Config) error { return nil }
+func (dryWG) SetMTU(string, int) error               { return nil }
+func (dryWG) AddAddr(string, netip.Prefix) error     { return nil }
+func (dryWG) DelAddr(string, netip.Prefix) error     { return nil }
+func (dryWG) SetUp(string) error                     { return nil }
+
+// dryFirewall reads the real table's revision and applies nothing.
+type dryFirewall struct{ Firewall }
+
+func (dryFirewall) Apply(context.Context, firewall.Ruleset) error { return nil }
+func (dryFirewall) Remove(context.Context) error                  { return nil }
+
+func (r *Reconciler) runOn(ctx context.Context, create bool, t target) (Result, error) {
 	unlock, err := r.lock()
 	if err != nil {
 		return Result{}, err
@@ -121,16 +156,16 @@ func (r *Reconciler) run(ctx context.Context, create bool) (Result, error) {
 	}
 
 	var res Result
-	dev, err := r.WG.Device(s.Interface)
+	dev, err := t.wg.Device(s.Interface)
 	if errors.Is(err, wg.ErrNoDevice) {
 		if !create {
 			return Result{TunnelDown: true}, nil
 		}
-		if err := r.WG.Create(s.Interface); err != nil {
+		if err := t.wg.Create(s.Interface); err != nil {
 			return res, err
 		}
 		res.Changes = append(res.Changes, "created "+s.Interface)
-		dev, err = r.WG.Device(s.Interface)
+		dev, err = t.wg.Device(s.Interface)
 	}
 	if err != nil {
 		return res, err
@@ -138,12 +173,12 @@ func (r *Reconciler) run(ctx context.Context, create bool) (Result, error) {
 
 	// The firewall goes first, so its rules exist before the interface comes up. A
 	// firewall failure doesn't stop the tunnel from being configured.
-	fwErr := r.syncFirewall(ctx, s, &res)
-	wgErr := r.syncDevice(s, clients, dev, &res)
+	fwErr := r.syncFirewall(ctx, t, s, &res)
+	wgErr := r.syncDevice(t, s, clients, dev, &res)
 	return res, errors.Join(fwErr, wgErr)
 }
 
-func (r *Reconciler) syncFirewall(ctx context.Context, s model.Settings, res *Result) error {
+func (r *Reconciler) syncFirewall(ctx context.Context, t target, s model.Settings, res *Result) error {
 	rules := firewall.Rules{
 		Interface:       s.Interface,
 		IPv4:            s.IPv4,
@@ -159,21 +194,21 @@ func (r *Reconciler) syncFirewall(ctx context.Context, s model.Settings, res *Re
 		rules.AdminAllowed = lan.Allowlist(s.AdminSources(), lanPrefixes)
 	}
 	rs := firewall.Render(rules)
-	current, exists, err := r.Firewall.Revision(ctx)
+	current, exists, err := t.fw.Revision(ctx)
 	if err != nil {
 		return err
 	}
 	if exists && current == rs.Revision {
 		return nil
 	}
-	if err := r.Firewall.Apply(ctx, rs); err != nil {
+	if err := t.fw.Apply(ctx, rs); err != nil {
 		return err
 	}
 	res.Changes = append(res.Changes, "applied nftables revision "+rs.Revision)
 	return nil
 }
 
-func (r *Reconciler) syncDevice(s model.Settings, clients []model.Client, dev wg.Device, res *Result) error {
+func (r *Reconciler) syncDevice(t target, s model.Settings, clients []model.Client, dev wg.Device, res *Result) error {
 	name := s.Interface
 	cfg := wgtypes.Config{}
 	changed := false
@@ -197,24 +232,24 @@ func (r *Reconciler) syncDevice(s model.Settings, clients []model.Client, dev wg
 		res.Changes = append(res.Changes, peerLog...)
 	}
 	if changed {
-		if err := r.WG.Configure(name, cfg); err != nil {
+		if err := t.wg.Configure(name, cfg); err != nil {
 			return fmt.Errorf("configuring %s: %w", name, err)
 		}
 	}
 
 	if dev.MTU != s.MTU {
-		if err := r.WG.SetMTU(name, s.MTU); err != nil {
+		if err := t.wg.SetMTU(name, s.MTU); err != nil {
 			return fmt.Errorf("setting the MTU of %s: %w", name, err)
 		}
 		res.Changes = append(res.Changes, fmt.Sprintf("set the MTU to %d", s.MTU))
 	}
 
-	if err := r.syncAddrs(s, dev, res); err != nil {
+	if err := r.syncAddrs(t, s, dev, res); err != nil {
 		return err
 	}
 
 	if !dev.Up {
-		if err := r.WG.SetUp(name); err != nil {
+		if err := t.wg.SetUp(name); err != nil {
 			return fmt.Errorf("bringing %s up: %w", name, err)
 		}
 		res.Changes = append(res.Changes, "brought "+name+" up")
@@ -222,7 +257,7 @@ func (r *Reconciler) syncDevice(s model.Settings, clients []model.Client, dev wg
 	return nil
 }
 
-func (r *Reconciler) syncAddrs(s model.Settings, dev wg.Device, res *Result) error {
+func (r *Reconciler) syncAddrs(t target, s model.Settings, dev wg.Device, res *Result) error {
 	srv, err := s.ServerAddrs()
 	if err != nil {
 		return err
@@ -233,7 +268,7 @@ func (r *Reconciler) syncAddrs(s model.Settings, dev wg.Device, res *Result) err
 	}
 	for _, a := range dev.Addrs {
 		if !slices.Contains(want, a) {
-			if err := r.WG.DelAddr(s.Interface, a); err != nil {
+			if err := t.wg.DelAddr(s.Interface, a); err != nil {
 				return fmt.Errorf("removing address %s: %w", a, err)
 			}
 			res.Changes = append(res.Changes, "removed address "+a.String())
@@ -241,7 +276,7 @@ func (r *Reconciler) syncAddrs(s model.Settings, dev wg.Device, res *Result) err
 	}
 	for _, a := range want {
 		if !slices.Contains(dev.Addrs, a) {
-			if err := r.WG.AddAddr(s.Interface, a); err != nil {
+			if err := t.wg.AddAddr(s.Interface, a); err != nil {
 				return fmt.Errorf("adding address %s: %w", a, err)
 			}
 			res.Changes = append(res.Changes, "added address "+a.String())
