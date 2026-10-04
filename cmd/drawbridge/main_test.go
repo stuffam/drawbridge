@@ -981,3 +981,75 @@ SKIP  Three
 		t.Errorf("output:\n%s\nwant:\n%s", out.String(), want)
 	}
 }
+
+// Stopping the daemon doesn't wait on a connection that never asked for anything. net/http's
+// Shutdown does, for five seconds, and a browser opens spare connections that it may never use:
+// `systemctl stop` shouldn't take that long because of one.
+func TestDaemonStopsWithAnUnusedConnectionOpen(t *testing.T) {
+	for name, open := range map[string]func(t *testing.T, addr string, pool *x509.CertPool) net.Conn{
+		// The handshake is done, and no request follows: what a client's spare connection is.
+		"after the handshake": func(t *testing.T, addr string, pool *x509.CertPool) net.Conn {
+			c, err := tls.Dial("tcp", addr, &tls.Config{RootCAs: pool, ServerName: "localhost", MinVersion: tls.VersionTLS12})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return c
+		},
+		// Connected, and nothing sent at all: what a scanner leaves behind.
+		"before the handshake": func(t *testing.T, addr string, _ *x509.CertPool) net.Conn {
+			c, err := net.Dial("tcp", addr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return c
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := newFakeEnv(t)
+			cert, _, err := tlscert.Ensure(filepath.Join(t.TempDir(), "tls"), tlscert.DefaultNames("server"), time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			web, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			done := make(chan error, 1)
+			go func() {
+				done <- daemon{web: web, svc: env.svc, drift: time.Hour, log: discard, tls: tlscert.Config(cert),
+					fingerprint: tlscert.Fingerprint(cert)}.run(ctx)
+			}()
+			pool := x509.NewCertPool()
+			pool.AddCert(cert.Leaf)
+			waitFor(t, func() bool {
+				c, err := net.Dial("tcp", web.Addr().String())
+				if err != nil {
+					return false
+				}
+				_ = c.Close()
+				return true
+			})
+
+			conn := open(t, web.Addr().String(), pool)
+			defer conn.Close()
+			// Let the server see the connection before it's asked to stop.
+			time.Sleep(200 * time.Millisecond)
+
+			start := time.Now()
+			cancel()
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatalf("the daemon stopped with %v", err)
+				}
+			case <-time.After(3 * time.Second):
+				t.Fatal("the daemon didn't stop with an unused connection open")
+			}
+			if took := time.Since(start); took > 2*time.Second {
+				t.Errorf("stopping took %v", took)
+			}
+		})
+	}
+}

@@ -272,7 +272,42 @@ type daemon struct {
 	allowed     func(context.Context) []netip.Prefix
 }
 
+// freshConns tracks the connections the web server has accepted and that haven't sent a request
+// yet. http.Server.Shutdown treats such a connection as busy for its first five seconds, so a
+// browser's spare connection (opened ahead of need, and often never used) made the daemon take
+// that long to stop. Closing them at shutdown is harmless: nothing was asked of them.
+type freshConns struct {
+	mu sync.Mutex
+	m  map[net.Conn]struct{}
+}
+
+// track is the server's ConnState hook.
+func (f *freshConns) track(c net.Conn, s http.ConnState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if s == http.StateNew {
+		if f.m == nil {
+			f.m = map[net.Conn]struct{}{}
+		}
+		f.m[c] = struct{}{}
+		return
+	}
+	delete(f.m, c)
+}
+
+// closeAll closes every connection that hasn't asked for anything. It runs as the server starts
+// to shut down, when its listeners are already closed, so no new ones arrive.
+func (f *freshConns) closeAll() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for c := range f.m {
+		_ = c.Close()
+	}
+	clear(f.m)
+}
+
 func (d daemon) run(ctx context.Context) error {
+	var fresh freshConns
 	webSrv := &http.Server{
 		Handler: api.New(api.Options{UI: webui.FS(), Service: d.svc, Log: d.log, Allowed: d.allowed,
 			Shutdown: ctx.Done()}),
@@ -281,8 +316,10 @@ func (d daemon) run(ctx context.Context) error {
 		IdleTimeout:       2 * time.Minute,
 		// Browsers that haven't accepted the self-signed certificate fail every
 		// handshake; those errors are debug noise, not news.
-		ErrorLog: slog.NewLogLogger(d.log.Handler(), slog.LevelDebug),
+		ErrorLog:  slog.NewLogLogger(d.log.Handler(), slog.LevelDebug),
+		ConnState: fresh.track,
 	}
+	webSrv.RegisterOnShutdown(fresh.closeAll)
 	servers := []*http.Server{webSrv}
 	errc := make(chan error, 2)
 	web := d.web

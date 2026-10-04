@@ -307,7 +307,10 @@ These are the rules most likely to get silently broken.
   §7), not hard-coded.
 - **The HTTP server has no write timeout**, because one would cut the event stream (ADR 0009). A
   handler that stays open sets a deadline on each write (`http.ResponseController`) and ends when
-  `Options.Shutdown` closes, or the daemon's graceful shutdown would wait on it.
+  `Options.Shutdown` closes, or the daemon's graceful shutdown would wait on it. A connection that
+  has sent no request is closed at shutdown too (`freshConns`, `cmd/drawbridge/serve.go`): net/http's
+  `Shutdown` counts it as busy for its first five seconds, and a browser's spare connection would
+  make `systemctl stop` take that long.
 - **Protect the SD card.** Monitoring samples, and the bytes of open sessions, are buffered in
   memory and flushed once per raw interval (a minute by default) in one transaction. Nothing
   writes to the DB on every poll (§6.4). `TestWriteBudget` simulates a day against a real
