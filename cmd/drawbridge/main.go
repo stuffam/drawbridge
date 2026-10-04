@@ -33,7 +33,12 @@ Commands:
   tunnel up|down       Bring the WireGuard tunnel up or down
                        (drawbridge-tunnel.service runs these).
   server show          Show the server's settings.
-  server set FLAGS     Change the server's settings.
+  server set FLAGS     Change the server's settings (--safe undoes a change that could lock
+                       you out unless you keep it with: server confirm).
+  server confirm       Keep a change that is waiting to be kept.
+  server revert        Undo that change now.
+  apply [--dry-run]    Make the tunnel and the firewall match the settings, and say what
+                       changed; with --dry-run, say what would.
   client list          List clients and their status.
   client add NAME      Add a client.
   client show NAME     Show one client.
@@ -55,7 +60,7 @@ Commands:
   version              Print the version.
   help                 Show this help.
 
-The server, client, events, doctor, backup create, and admin commands talk to the daemon, so run
+The server, apply, client, events, doctor, backup create, and admin commands talk to the daemon, so run
 them as root (sudo) or as a member of the drawbridge group. Run "drawbridge <command> -h" for a
 command's flags.
 `
@@ -85,6 +90,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		return eventsCmd(ctx, args[1:], stdout, stderr)
 	case "doctor":
 		return doctorCmd(ctx, args[1:], stdout, stderr)
+	case "apply":
+		return applyCmd(ctx, args[1:], stdout, stderr)
 	case "backup":
 		return backupCmd(ctx, args[1:], stdin, stdout, stderr)
 	case "admin":

@@ -237,7 +237,7 @@ func (s *server) startDaemon() {
 	s.t.Helper()
 	// The default listen address: every address in the namespace, port 51821.
 	s.daemon = exec.Command("ip", "netns", "exec", s.tp.srv, s.bin, "serve",
-		"--db", s.db, "--secret-key", s.secret, "--control", s.socket, "--drift-interval", "1s")
+		"--db", s.db, "--secret-key", s.secret, "--control", s.socket, "--drift-interval", "1s", "--safe-apply-window", "4s")
 	s.daemon.Stdout, s.daemon.Stderr = s, s
 	if err := s.daemon.Start(); err != nil {
 		s.t.Fatal(err)
@@ -694,6 +694,99 @@ func TestEndToEnd(t *testing.T) {
 		wantSource(t, cl, web6, srvAddr6)
 		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
 			t.Fatalf("handing out the new config left the client flagged:\n%s", show)
+		}
+	})
+
+	t.Run("a listen port change that is not kept is undone, and the client that it cut off is back", func(t *testing.T) {
+		before, err := srv.device()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := srv.cli("server", "set", "--port", "51999", "--safe")
+		if !strings.Contains(out, "Waiting to be kept") || !strings.Contains(out, "drawbridge server confirm") {
+			t.Fatalf("server set --safe:\n%s", out)
+		}
+		during, err := srv.device()
+		if err != nil || during.ListenPort != 51999 {
+			t.Fatalf("the kernel's listen port is %d (err %v), want the new 51999 at once", during.ListenPort, err)
+		}
+		// The client still sends to the old port, so it is cut off: the admin on the VPN
+		// couldn't confirm, which is the case safe apply is for.
+		if got, err := cl.get(web4); err == nil {
+			t.Fatalf("the client fetched through the tunnel after the port changed (source %s)", got)
+		}
+
+		// Nobody keeps it. The daemon undoes it within the window, and the client is back.
+		eventually(t, 20*time.Second, "the daemon to undo the change", func() error {
+			dev, err := srv.device()
+			if err != nil {
+				return err
+			}
+			if dev.ListenPort != before.ListenPort {
+				return fmt.Errorf("the listen port is still %d", dev.ListenPort)
+			}
+			return nil
+		})
+		if show := srv.cli("server", "show"); strings.Contains(show, "Waiting to be kept") || !strings.Contains(show, "Listen port:        51820") {
+			t.Fatalf("server show after the undo:\n%s", show)
+		}
+		wantSource(t, cl, web4, srvAddr4)
+		wantSource(t, cl, web6, srvAddr6)
+		if events := srv.cli("events", "--limit", "10"); !strings.Contains(events, "server.settings_expired") {
+			t.Fatalf("the undo isn't in the event log:\n%s", events)
+		}
+
+		// A change that is kept stays.
+		srv.cli("server", "set", "--port", "51999", "--safe")
+		srv.cli("server", "confirm")
+		time.Sleep(6 * time.Second) // longer than the window
+		if dev, err := srv.device(); err != nil || dev.ListenPort != 51999 {
+			t.Fatalf("a kept change was undone: port %d, err %v", dev.ListenPort, err)
+		}
+		// Put the port back, at once, as the person at the host can.
+		srv.cli("server", "set", "--port", "51820")
+		wantSource(t, cl, web4, srvAddr4)
+	})
+
+	t.Run("apply says what it would change, and changes it", func(t *testing.T) {
+		// The daemon corrects drift every second too, so it may get there first: try again.
+		mtu := func() int {
+			dev, err := srv.device()
+			if err != nil {
+				t.Fatal(err)
+			}
+			return dev.MTU
+		}
+		drift := func() { run(t, "ip", "-n", tp.srv, "link", "set", "wg0", "mtu", "1500") }
+		var dry string
+		eventually(t, 20*time.Second, "a dry run to see the drifted MTU before the daemon fixes it", func() error {
+			drift()
+			dry = srv.cli("apply", "--dry-run")
+			if !strings.Contains(dry, "Would change") {
+				return fmt.Errorf("the daemon was first: %s", dry)
+			}
+			if mtu() != 1500 {
+				return fmt.Errorf("the daemon fixed it before it was checked")
+			}
+			return nil
+		})
+		if !strings.Contains(dry, "MTU") {
+			t.Fatalf("apply --dry-run:\n%s", dry)
+		}
+		var done string
+		eventually(t, 20*time.Second, "apply to fix the drifted MTU before the daemon does", func() error {
+			drift()
+			done = srv.cli("apply")
+			if !strings.Contains(done, "Changed:") {
+				return fmt.Errorf("the daemon was first: %s", done)
+			}
+			return nil
+		})
+		if !strings.Contains(done, "MTU") || mtu() != cfg.mtu {
+			t.Fatalf("apply:\n%s\nMTU %d, want %d", done, mtu(), cfg.mtu)
+		}
+		if out := srv.cli("apply", "--dry-run"); !strings.Contains(out, "Nothing to change") {
+			t.Fatalf("a dry run after the apply:\n%s", out)
 		}
 	})
 

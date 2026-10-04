@@ -1116,3 +1116,100 @@ func TestDaemonStopsWithAnUnusedConnectionOpen(t *testing.T) {
 		})
 	}
 }
+
+func TestServerSafeCommands(t *testing.T) {
+	env := newFakeEnv(t)
+	startDaemon(t, env)
+	sock := "--control=" + env.socket
+	port := func() string {
+		m := regexp.MustCompile(`Listen port:\s+(\d+)`).FindStringSubmatch(runCLI("", "server", "show", sock).stdout)
+		if m == nil {
+			t.Fatal("no listen port in server show")
+		}
+		return m[1]
+	}
+
+	// Without --safe the CLI applies at once and nothing waits: the person at the host can't be
+	// cut off by it.
+	if r := runCLI("", "server", "set", "--port", "51900", sock); r.code != 0 || strings.Contains(r.stdout, "Waiting to be kept") {
+		t.Fatalf("set --port: %+v", r)
+	}
+	if got := port(); got != "51900" {
+		t.Fatalf("port %s", got)
+	}
+	if r := runCLI("", "server", "show", sock); strings.Contains(r.stdout, "Waiting to be kept") {
+		t.Fatalf("show with nothing waiting:\n%s", r.stdout)
+	}
+	if r := runCLI("", "server", "confirm", sock); r.code != 1 || !strings.Contains(r.stderr, "no settings change is waiting") {
+		t.Fatalf("confirm with nothing waiting: %+v", r)
+	}
+
+	// With --safe it does, and says how to keep it.
+	r := runCLI("", "server", "set", "--port", "51999", "--safe", sock)
+	if r.code != 0 {
+		t.Fatalf("set --safe: %+v", r)
+	}
+	for _, want := range []string{"Waiting to be kept", "listen port: 51900 → 51999", "undone in", "drawbridge server confirm", "drawbridge server revert"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("set --safe output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if got := port(); got != "51999" {
+		t.Fatalf("the change wasn't applied: %s", got)
+	}
+	if r := runCLI("", "server", "show", sock); !strings.Contains(r.stdout, "Waiting to be kept") || !strings.Contains(r.stdout, "51900 → 51999") {
+		t.Fatalf("show with a change waiting:\n%s", r.stdout)
+	}
+
+	// Nothing else changes meanwhile, and the error says what to do.
+	r = runCLI("", "server", "set", "--mtu", "1380", sock)
+	if r.code != 1 || !strings.Contains(r.stderr, "waiting to be kept") || !strings.Contains(r.stderr, "drawbridge server confirm") {
+		t.Fatalf("set while a change waits: %+v", r)
+	}
+
+	if r := runCLI("", "server", "confirm", sock); r.code != 0 || !strings.Contains(r.stdout, "Kept the change.") {
+		t.Fatalf("confirm: %+v", r)
+	}
+	if got := port(); got != "51999" {
+		t.Fatalf("keeping the change undid it: %s", got)
+	}
+
+	// Undoing one brings the old settings back.
+	if r := runCLI("", "server", "set", "--port", "52000", "--safe", sock); r.code != 0 {
+		t.Fatalf("set --safe: %+v", r)
+	}
+	if r := runCLI("", "server", "revert", sock); r.code != 0 || !strings.Contains(r.stdout, "Undid the change") {
+		t.Fatalf("revert: %+v", r)
+	}
+	if got := port(); got != "51999" {
+		t.Fatalf("after revert the port is %s, want 51999", got)
+	}
+
+	// A change that can't lock anyone out has nothing to wait for.
+	r = runCLI("", "server", "set", "--mtu", "1380", "--safe", sock)
+	if r.code != 0 || !strings.Contains(r.stdout, "nothing to confirm") || strings.Contains(r.stdout, "Waiting to be kept") {
+		t.Fatalf("set --mtu --safe: %+v", r)
+	}
+	// --safe alone is not a change.
+	if r := runCLI("", "server", "set", "--safe", sock); r.code != 2 || !strings.Contains(r.stderr, "nothing to change") {
+		t.Fatalf("set --safe alone: %+v", r)
+	}
+}
+
+func TestApplyCommand(t *testing.T) {
+	env := newFakeEnv(t)
+	startDaemon(t, env)
+	sock := "--control=" + env.socket
+	for _, args := range [][]string{{"apply", sock}, {"apply", "--dry-run", sock}} {
+		r := runCLI("", args...)
+		if r.code != 0 || !strings.Contains(r.stdout, "Nothing to change") {
+			t.Fatalf("%v: %+v", args, r)
+		}
+	}
+	if r := runCLI("", "apply", "extra", sock); r.code != 2 || !strings.Contains(r.stderr, `unexpected argument "extra"`) {
+		t.Fatalf("apply extra: %+v", r)
+	}
+	if r := runCLI("", "apply", "--control="+filepath.Join(t.TempDir(), "nope.sock")); r.code != 1 || !strings.Contains(r.stderr, "can't reach the Drawbridge daemon") {
+		t.Fatalf("apply without a daemon: %+v", r)
+	}
+}

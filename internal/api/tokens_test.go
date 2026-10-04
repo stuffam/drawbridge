@@ -169,13 +169,16 @@ func TestTokenReadableIsShortAndHasNoSecrets(t *testing.T) {
 		"GET /api/system/health",             // the host's addresses, firewall, and weak points
 		"POST /api/system/backup",            // every secret the server has, in one file
 		"POST /api/clients/{id}/rotate-keys", // a token can't change anything
-		"GET /api/system/snapshots",          // where the host keeps copies of its database
-		"GET /api/integrations/adguard",      // the account used for AdGuard Home
-		"GET /api/auth/me",                   // the account
-		"GET /api/auth/sessions",             // the admin's logins
-		"GET /api/auth/tokens",               // the tokens
-		"POST /api/auth/tokens",              // a token can't make a token
-		"DELETE /api/auth/tokens/{id}",       // or revoke one
+		"GET /api/server/apply",              // the settings being changed
+		"POST /api/server/apply/confirm",     // a token can't change anything
+		"POST /api/server/apply/revert",
+		"GET /api/system/snapshots",     // where the host keeps copies of its database
+		"GET /api/integrations/adguard", // the account used for AdGuard Home
+		"GET /api/auth/me",              // the account
+		"GET /api/auth/sessions",        // the admin's logins
+		"GET /api/auth/tokens",          // the tokens
+		"POST /api/auth/tokens",         // a token can't make a token
+		"DELETE /api/auth/tokens/{id}",  // or revoke one
 		"POST /api/integrations/adguard/test",
 	} {
 		if !served[key] {

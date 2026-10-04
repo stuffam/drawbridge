@@ -3,8 +3,12 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, onUnauthorized } from '$lib/api';
+	import { live, useLive } from '$lib/live.svelte';
+	import { setPending } from '$lib/pending.svelte';
+	import { poll } from '$lib/poll';
 	import { cycleMode, modeLabels, theme } from '$lib/theme.svelte';
 	import AddClientModal from '$lib/components/AddClientModal.svelte';
+	import PendingChangeBar from '$lib/components/PendingChangeBar.svelte';
 
 	let { data, children } = $props();
 
@@ -30,6 +34,18 @@
 			await goto(resolve('/login'));
 		}
 	}
+
+	// A settings change waiting to be kept shows on every page, so the live feed stays open on
+	// every page; when it can't be had, this asks every few seconds instead.
+	$effect(() => useLive());
+	$effect(() => {
+		const s = live.status;
+		if (live.open && s) setPending(s.pending_change);
+	});
+	$effect(() => {
+		if (!live.open)
+			return poll(async () => setPending((await api.applyState()).pending_change), 5000);
+	});
 
 	let modeLabel = $derived(`Switch Mode (${modeLabels[theme.mode]})`);
 
@@ -355,6 +371,8 @@
 		</nav>
 	</div>
 </header>
+
+<PendingChangeBar />
 
 <AddClientModal bind:open={showAddClient} />
 

@@ -13,8 +13,8 @@ in the product name.
 > monitoring and logging, which ends with the AdGuard Home integration). The kernel tests pass in
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
 > `drawbridge doctor`, the diagnostics page, `drawbridge backup create|restore`, the local
-> snapshots, the backup download on the System page, outdated-config tracking, and client key
-> rotation, slices of M5, are built too.
+> snapshots, the backup download on the System page, outdated-config tracking, client key
+> rotation, and safe apply, slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -132,10 +132,10 @@ All roles are subcommands of a single binary, `drawbridge`:
 |---|---|
 | `drawbridge serve` | The long-running daemon: HTTP API, SSE, embedded SPA, reconciler, and monitor. |
 | `drawbridge tunnel up\|down` | Used by `drawbridge-tunnel.service` to bring the VPN up or down from DB state (M1). |
-| `drawbridge server show\|set` | Shows or changes the server's settings: endpoint, port, MTU, DNS, keepalive, client isolation (M1). |
+| `drawbridge server show\|set\|confirm\|revert` | Shows or changes the server's settings: endpoint, port, MTU, DNS, keepalive, client isolation (M1). `set --safe` undoes a change that could lock the admin out unless `confirm` keeps it in time; `revert` undoes it now (M5). |
 | `drawbridge client list\|add\|show\|pause\|resume\|rename\|delete\|config\|qr\|rotate-keys` | Headless client management. `qr` prints the QR code in the terminal (M1; `rename` M2; `rotate-keys` M5). |
 | `drawbridge events [--client NAME]` | The event log: changes from the web and the CLI, logins, and corrected drift (M2). |
-| `drawbridge apply [--dry-run]` | Reconciles once and prints the diff (M5). |
+| `drawbridge apply [--dry-run]` | Reconciles once and prints the diff; `--dry-run` prints what it would change and changes nothing (M5). |
 | `drawbridge admin create\|reset-password\|disable-2fa\|setup-token` | Recovery when locked out of the UI (M2; `disable-2fa` M5). |
 | `drawbridge backup create\|restore` | `create` makes a passphrase-encrypted file with a consistent DB snapshot and the key, through the daemon. `restore` (root, daemon stopped) puts one back (§6.6, M5). |
 | `drawbridge export --format wg-quick` | Prints an equivalent `wg-quick` config, for transparency or migrating away (M6). |
@@ -238,10 +238,49 @@ startup, after every change, every 30 s to detect drift, and from `drawbridge tu
 6. **Record** the applied revision. If step 1 corrected drift (for example, after someone ran
    `wg set` by hand, or `nftables.service` ran `flush ruleset`), log a warning event.
 
-**Safe apply (commit-confirm).** Some changes can cut off an admin who is connected through the
-VPN: listen port, subnets, server key, and firewall or NAT changes. The UI warns first. After it
-applies the change, the admin has 60 s to click "Keep changes". If they don't (for example,
-because the change disconnected them), the previous settings are restored automatically.
+**Safe apply (commit-confirm; built 2026-10-04).** Some changes can cut off an admin who is
+connected through the VPN: listen port, subnets, server key, and firewall or NAT changes. The UI
+warns first. After it applies the change, the admin has 60 s to click "Keep changes". If they
+don't (for example, because the change disconnected them), the previous settings are restored
+automatically.
+
+- **What waits.** `needsConfirmation` (`internal/service/safeapply.go`) lists it, and today it's
+  a change to the listen port and the removal of a source from the admin UI's allowlist (which
+  can be the one the admin is on). The endpoint, DNS, keepalive, MTU, client isolation, and adding
+  a source can't lock anyone out, so they apply as before. Rotating the server's key and changing
+  the subnets will join the list when they exist.
+- **Who waits.** Every change from the web UI. The CLI applies at once, because the person at the
+  host can't be cut off by it, unless it's told to (`server set --safe`): an admin on SSH over the
+  VPN can ask for the same protection.
+- **The mechanics.** The change and the settings it replaced are written in one transaction
+  (`pending_apply`, schema 10; `store.UpdateSettingsWith`), with the server's key sealed apart so
+  it's never stored unencrypted. The deadline is in the database, not in the daemon's memory, so a
+  restart or a reboot inside the window still undoes the change: the daemon looks when it starts
+  and then every second (`Service.RunSafeApply`), and `drawbridge-tunnel.service`, which applies
+  whatever the database says at boot, is corrected by the daemon right after. Undoing writes the
+  old settings back and reconciles.
+- **Keeping and undoing.** `POST /api/server/apply/confirm` keeps it, and `.../revert` undoes it
+  at once; `drawbridge server confirm|revert` do the same. A keep that arrives at or after the
+  deadline doesn't count: the change is undone and the answer is 409, so there's no race with the
+  daemon's next look.
+- **One at a time.** While a change waits, every other settings change is refused (409, "keep it
+  or undo it first"), because undoing restores a snapshot of the whole settings and would take a
+  change made meanwhile with it. Clients can still be added, paused, and so on.
+- **What the window can't do.** The daemon can't tell whether the admin got cut off: a click on Keep
+  from a browser that can still reach the UI is the proof. It also leaves the other consequences
+  of the change alone: a new listen port still means every client needs its new config.
+- **Events:** `server.settings_changed` (with `waiting_to_be_kept` and the window),
+  `server.settings_kept` and `server.settings_undone` (the admin's), and `server.settings_expired`
+  (a system event: the daemon undid it because nobody kept it, with the reason).
+- **The web UI** shows the change on every page in a bar with a countdown, **Keep changes**, and
+  **Undo now**. It gets the change from the live feed (`pending_change` in the stream's status, and
+  not in `ServerStatus`, which a read-only token can read), or by asking `GET /api/server/apply`
+  every few seconds when the feed can't be had. The countdown starts from `expires_in`, the seconds
+  left when the server sent it, so a browser whose clock is wrong still counts correctly.
+- **The window** is 60 s (`--safe-apply-window`, at least 1 s).
+- **`drawbridge apply [--dry-run]`** reconciles once and lists what it changed; `--dry-run` lists
+  what it would (`Reconciler.Plan` runs the same steps against a backend that changes nothing). It
+  never starts a tunnel that is stopped (ADR 0008).
 
 ### 4.4 Filesystem layout
 
@@ -1116,6 +1155,9 @@ GET    /api/auth/tokens                  POST /api/auth/tokens   DELETE /api/aut
 
 GET    /api/server                       PATCH /api/server    (settings)
 GET    /api/server/status                tunnel up or down, client counts (M3)
+GET    /api/server/apply                 is a settings change waiting to be kept? (M5; built)
+POST   /api/server/apply/confirm         keep it                           (M5; built)
+POST   /api/server/apply/revert          undo it now                       (M5; built)
 GET    /api/server/dns-check             asks the VPN addresses for DNS; which ones answer
 
 GET    /api/clients                      POST /api/clients
@@ -1150,7 +1192,6 @@ GET    /api/clients/{id}/dns-log?limit=  a client's recent queries from AdGuard 
 Later:
 POST   /api/auth/totp/enroll | /verify                                    (M5)
 POST   /api/server/rotate-key                                              (M5)
-POST   /api/server/apply/confirm         confirm a safe-apply change       (M5)
 GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                download a backup: password + passphrase (M5; built)
@@ -1412,8 +1453,9 @@ Each milestone ends in a usable, tested state.
 
 - Full systemd sandboxing, TOTP 2FA, safe apply with automatic rollback, outdated-config
   tracking, and encrypted backup/restore. *Built: the sandboxing (the units), outdated-config
-  tracking with client key rotation (§6.1), and the backups. Left: TOTP 2FA, safe apply (with
-  `drawbridge apply` and rotating the server's key), and uploading a certificate.*
+  tracking with client key rotation (§6.1), safe apply with `drawbridge apply` (§4.3), and the
+  backups. Left: TOTP 2FA, rotating the server's key (which goes through safe apply), and
+  uploading a certificate.*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
@@ -1446,7 +1488,7 @@ Each milestone ends in a usable, tested state.
 | Add / remove clients | M1 (CLI), M3 (GUI) |
 | Pause clients | M1 (CLI), M3 (GUI); timed pause in M6 |
 | Client logging (connections, traffic, admin audit, DNS queries) | Basic in M3, full in M4 (including DNS queries from AdGuard Home), flow logs in M6 |
-| Server settings: FQDN, IPs/subnets, port, MTU | M3; safe apply in M5 |
+| Server settings: FQDN, IPs/subnets, port, MTU | M3; safe apply in M5 (built) |
 | DNS settings (global and per client) | M3 (AdGuard Home as the default); name sync in M4 |
 | IPv4 + IPv6 (endpoint and tunnel) | M1 (NAT66); routed IPv6 in M6 |
 | Native install (no Docker) | M3 (`.deb`), polished in M5 |
@@ -1490,6 +1532,7 @@ Each milestone ends in a usable, tested state.
 | DNS | Public resolvers by default; a resolver on the host (such as AdGuard Home) at the server's VPN addresses when a check finds one answering | D12: the wizard offers the host's resolver only when it works, and there's optional AdGuard Home name sync and per-client DNS logs (§6.3) |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
+| Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |

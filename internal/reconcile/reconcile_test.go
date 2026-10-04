@@ -430,3 +430,80 @@ func TestExtraAdminSourcesReachTheRuleset(t *testing.T) {
 		t.Fatalf("the ruleset still admits the removed sources:\n%s", e.fw.text)
 	}
 }
+
+func (e *env) plan(t *testing.T) Result {
+	t.Helper()
+	res, err := e.rec.Plan(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res
+}
+
+// A plan says what a sync would do, and does none of it.
+func TestPlanReportsWhatSyncWouldDoAndChangesNothing(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	e.up(t)
+	phone, _ := e.store.AddClient(ctx, "phone")
+	e.sync(t)
+	s, _ := e.store.Settings(ctx)
+	srv, _ := s.ServerAddrs()
+	v6 := netip.PrefixFrom(srv.IPv6, 64)
+
+	// Nothing has drifted, so there's nothing to do.
+	if res := e.plan(t); len(res.Changes) != 0 || res.TunnelDown {
+		t.Fatalf("a plan for a tunnel in step: %+v", res)
+	}
+
+	// Drift every kind of thing the reconciler corrects: a peer, the MTU, the listen port, an
+	// address, and the ruleset.
+	stray, _ := wgtypes.GeneratePrivateKey()
+	port := 51999
+	_ = e.wg.Configure("wg0", wgtypes.Config{ListenPort: &port, Peers: []wgtypes.PeerConfig{
+		{PublicKey: phone.PublicKey, Remove: true},
+		{PublicKey: stray.PublicKey()},
+	}})
+	_ = e.wg.SetMTU("wg0", 1500)
+	_ = e.wg.DelAddr("wg0", v6)
+	e.fw.exists = false
+	e.wg.Calls = nil
+	appliedBefore := e.fw.applied
+
+	planned := e.plan(t)
+	if len(planned.Changes) < 5 {
+		t.Fatalf("the plan lists %d changes, want one for each kind of drift: %v", len(planned.Changes), planned.Changes)
+	}
+	// It touched nothing: no changing call reached the backend, and the table is still gone.
+	if len(e.wg.Calls) != 0 || e.fw.applied != appliedBefore || e.fw.exists {
+		t.Fatalf("a plan changed something: calls %v, firewall %+v", e.wg.Calls, e.fw)
+	}
+	d := e.device(t)
+	if d.MTU != 1500 || d.ListenPort != 51999 || slices.Contains(d.Addrs, v6) {
+		t.Fatalf("a plan changed the device: %+v", d)
+	}
+	// Asking twice gives the same answer.
+	if again := e.plan(t); !slices.Equal(again.Changes, planned.Changes) {
+		t.Fatalf("a second plan differs:\n%v\n%v", again.Changes, planned.Changes)
+	}
+
+	// And a sync then does exactly what the plan said.
+	done := e.sync(t)
+	if !slices.Equal(done.Changes, planned.Changes) {
+		t.Fatalf("sync did not do what the plan said:\n plan: %v\n sync: %v", planned.Changes, done.Changes)
+	}
+	if res := e.plan(t); len(res.Changes) != 0 {
+		t.Fatalf("a plan after the sync still has changes: %v", res.Changes)
+	}
+}
+
+func TestPlanOfAStoppedTunnelSaysSo(t *testing.T) {
+	e := newEnv(t)
+	res := e.plan(t)
+	if !res.TunnelDown || len(res.Changes) != 0 {
+		t.Fatalf("plan of a tunnel that isn't up: %+v", res)
+	}
+	if len(e.wg.Calls) != 0 || e.fw.applied != 0 {
+		t.Fatalf("a plan created something: %v, %+v", e.wg.Calls, e.fw)
+	}
+}

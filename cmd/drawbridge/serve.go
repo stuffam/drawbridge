@@ -58,6 +58,8 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	snapshotInterval := flags.Duration("snapshot-interval", snapshot.DefaultInterval,
 		"how old the newest nightly database snapshot may get before the next is made; 0 turns the nightly snapshots off")
 	snapshotKeep := flags.Int("snapshot-keep", snapshot.DefaultKeep, "how many nightly database snapshots to keep")
+	safeApplyWindow := flags.Duration("safe-apply-window", service.DefaultSafeApplyWindow,
+		"how long a settings change that could lock the admin out (the listen port, removing an admin source) waits to be kept before it's undone")
 	tlsDir := flags.String("tls-dir", "", "`directory` of the web UI's TLS certificate (default: tls/ next to the database)")
 	backend := flags.String("backend", "kernel", "WireGuard `backend`: kernel, or fake to develop the web UI without root or WireGuard (nothing reaches the kernel)")
 	pos, err := parseArgs(flags, args)
@@ -66,6 +68,10 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	}
 	if len(pos) > 0 {
 		fmt.Fprintf(stderr, "drawbridge serve: unexpected argument %q\n", pos[0])
+		return 2
+	}
+	if *safeApplyWindow < time.Second {
+		fmt.Fprintln(stderr, "drawbridge serve: --safe-apply-window must be at least 1s")
 		return 2
 	}
 	if *backend != "kernel" && *backend != "fake" {
@@ -95,6 +101,7 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	svc.TrackInterval = *sessionInterval
 	svc.TrafficHourlyRetention = *trafficHourlyRetention
 	svc.SecretKeyPath = *secret
+	svc.SafeApplyWindow = *safeApplyWindow
 	svc.SnapshotDir = snapshot.Dir(*dbPath)
 	svc.SnapshotKeep = *snapshotKeep
 	// The service reads zero as "a day", so that a bare one has the default; off is negative.
@@ -365,6 +372,11 @@ func (d daemon) run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			d.svc.RunSnapshots(loopCtx)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			d.svc.RunSafeApply(loopCtx)
 		}()
 	}
 

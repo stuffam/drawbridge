@@ -105,6 +105,7 @@ describe('events', () => {
 			"Couldn't name a client in AdGuard Home",
 			'AdGuard Home sync failed',
 			'AdGuard Home sync recovered',
+			'Undid a settings change (not kept in time)',
 			'Corrected drift'
 		]);
 		expect(labels('admin')).toContain('Failed login');

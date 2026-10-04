@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { api, type Settings, type SettingsPatch } from '$lib/api';
 	import { errorMessage } from '$lib/errors';
+	import { onLiveEvent } from '$lib/live.svelte';
+	import { setPending } from '$lib/pending.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import AdGuardSettings from '$lib/components/AdGuardSettings.svelte';
 	import DNSFields from '$lib/components/DNSFields.svelte';
@@ -40,6 +42,16 @@
 		api.server().then(fill, (err) => (error = errorMessage(err)));
 	});
 
+	// A change that was undone (by the admin, or because nobody kept it) puts the old settings
+	// back, so the form shows them.
+	$effect(() =>
+		onLiveEvent((e) => {
+			if (e.kind === 'server.settings_undone' || e.kind === 'server.settings_expired') {
+				api.server().then(fill, (err) => (error = errorMessage(err)));
+			}
+		})
+	);
+
 	/** Only the settings that changed, so the server's event log says what happened. */
 	function patch(s: Settings): SettingsPatch {
 		const p: SettingsPatch = {};
@@ -68,8 +80,10 @@
 			const res = await api.updateServer(p);
 			fill(res.settings);
 			warning = res.warning ?? '';
-			success =
-				'Saved and applied. Clients get the new endpoint, port, MTU, DNS, and keepalive when they download their config again.';
+			setPending(res.pending_change);
+			success = res.pending_change
+				? `Saved and applied. This change could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
+				: 'Saved and applied. Clients get the new endpoint, port, MTU, DNS, and keepalive when they download their config again.';
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {
@@ -134,7 +148,10 @@
 						required
 						bind:value={listenPort}
 					/>
-					<p class="hint">Changing it disconnects every client until it has the new config.</p>
+					<p class="hint">
+						Changing it disconnects every client until it has the new config. The change is undone
+						after a minute unless you keep it, in case it locks you out.
+					</p>
 				</div>
 				<div>
 					<label class="label" for="mtu">MTU</label>

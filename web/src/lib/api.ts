@@ -57,6 +57,25 @@ export interface SettingsResult {
 	settings: Settings;
 	warning?: string;
 	apply_failed?: boolean;
+	/**
+	 * Set when the change could have cut the admin off: it's applied, and undone unless it's kept
+	 * in time.
+	 */
+	pending_change?: PendingChange;
+}
+
+/** A settings change on probation (safe apply): undone unless it's kept before it expires. */
+export interface PendingChange {
+	/** What changed, as `{ listen_port: '51820 → 51999' }`. */
+	changes: Record<string, string>;
+	expires_at: string;
+	/**
+	 * Seconds left when the server sent this. Count down from it, from when it arrived, and not
+	 * from `expires_at`, in case this browser's clock and the server's disagree.
+	 */
+	expires_in: number;
+	actor: string;
+	via: 'web' | 'cli';
 }
 
 export interface ServerStatus {
@@ -81,6 +100,8 @@ export interface ServerStatus {
 export interface StreamStatus {
 	server: ServerStatus;
 	clients: Client[];
+	/** A settings change waiting to be kept, if there is one. */
+	pending_change?: PendingChange;
 }
 
 /** What asking one of the server's VPN addresses for DNS found. */
@@ -490,6 +511,12 @@ export const api = {
 
 	server: () => request<Settings>('GET', '/api/server'),
 	updateServer: (patch: SettingsPatch) => request<SettingsResult>('PATCH', '/api/server', patch),
+	/** The settings change waiting to be kept, if there is one. */
+	applyState: () => request<{ pending_change?: PendingChange }>('GET', '/api/server/apply'),
+	/** Keeps the settings change that's waiting. */
+	confirmChange: () => request<SettingsResult>('POST', '/api/server/apply/confirm'),
+	/** Undoes the settings change that's waiting, now. */
+	revertChange: () => request<SettingsResult>('POST', '/api/server/apply/revert'),
 	status: () => request<ServerStatus>('GET', '/api/server/status'),
 	dnsCheck: () => request<DNSCheck>('GET', '/api/server/dns-check'),
 	diagnostics: () => request<Diagnostics>('GET', '/api/system/health'),
