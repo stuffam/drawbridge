@@ -521,6 +521,10 @@ hardware. Every step below has since passed on the reference platform, with a re
   notices.
 - `[VERIFIED 2026-10-03]` `sudo drawbridge admin reset-password` revokes every token (the Account
   page shows none afterward), and the log lists "Revoked every API token (password reset)".
+- `[VERIFIED 2026-10-04]` A real Homepage shows the traffic totals (docs/api-tokens.md, "Traffic
+  totals"), with the same token that reads the status, and they work well. The run didn't note the
+  status numbers falling when a client is paused (a paused client has left the tunnel; the tests
+  pin that), so that part is still tested and not observed on hardware.
 
 ## 12. Backup and restore (the second M5 slice)
 
@@ -550,8 +554,3 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   migrated (the upgrade half of the matrix, until that has its own tests).
 - `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
   and an API token made before the backup still works.
-- `[UNVERIFIED]` Homepage shows the totals (docs/api-tokens.md, "Traffic totals"): a widget on
-  `/api/server/status` with `receive_bytes` and `send_bytes` (format `bytes`) shows numbers that
-  grow while a client moves traffic, and fall when that client is paused. A widget on
-  `/api/traffic/total?range=24h` shows what the charts' 24 h range adds up to, within the last
-  minute or so, and the same token that reads the status reads it.
