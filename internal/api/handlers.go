@@ -274,6 +274,17 @@ func (h *handler) setEnabled(w http.ResponseWriter, r *http.Request, enabled boo
 	writeJSON(w, http.StatusOK, views.NewClientResult(c, applied))
 }
 
+// rotateClientKeys gives a client new keys. The old ones stop working at once, so the client is
+// cut off until it imports the new config.
+func (h *handler) rotateClientKeys(w http.ResponseWriter, r *http.Request) {
+	c, applied, err := h.svc.RotateClientKeys(r.Context(), clientRef(r))
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewClientResult(c, applied))
+}
+
 // clientConfig downloads a client's config. It holds the client's private key, so it's
 // never cached, and it's always a download, never shown by the browser.
 func (h *handler) clientConfig(w http.ResponseWriter, r *http.Request) {

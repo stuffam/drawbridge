@@ -2,6 +2,8 @@ package clientconf
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/netip"
 	"strings"
@@ -141,5 +143,134 @@ func TestWriteQR(t *testing.T) {
 	// The top quiet zone is light on both halves of every cell.
 	if strings.Contains(lines[0], fgDark) || strings.Contains(lines[0], bgDark) {
 		t.Fatal("the quiet zone contains dark modules")
+	}
+}
+
+// Everything that's in the config a client holds is in its fingerprint: a change to any of it
+// is a change the client has to import.
+func TestFingerprintChangesWithTheConfig(t *testing.T) {
+	base, c := fixture(t)
+	want, err := Fingerprint(base, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := mustKey(t, "6Cn0pZ9yCk4vVQ6pPzm3j4mT5b8D2e3fW1sH7gJ0xUg=")
+
+	for name, change := range map[string]func(*model.Settings, *model.Client){
+		"endpoint host": func(s *model.Settings, _ *model.Client) { s.EndpointHost = "vpn2.example.com" },
+		"endpoint port": func(s *model.Settings, _ *model.Client) { s.EndpointPort = 443 },
+		"listen port":   func(s *model.Settings, _ *model.Client) { s.ListenPort = 51999 },
+		"DNS":           func(s *model.Settings, _ *model.Client) { s.DNS = []netip.Addr{netip.MustParseAddr("9.9.9.9")} },
+		"MTU":           func(s *model.Settings, _ *model.Client) { s.MTU = 1380 },
+		"keepalive":     func(s *model.Settings, _ *model.Client) { s.Keepalive = 0 },
+		"allowed IPs": func(s *model.Settings, _ *model.Client) {
+			s.ClientAllowedIPs = []netip.Prefix{netip.MustParsePrefix("10.8.0.0/24")}
+		},
+		"server key":         func(s *model.Settings, _ *model.Client) { s.PrivateKey = other },
+		"client IPv4":        func(_ *model.Settings, c *model.Client) { c.IPv4 = netip.MustParseAddr("10.8.0.24") },
+		"client IPv6":        func(_ *model.Settings, c *model.Client) { c.IPv6 = netip.Addr{} },
+		"client key":         func(_ *model.Settings, c *model.Client) { c.PublicKey = other },
+		"preshared key gone": func(_ *model.Settings, c *model.Client) { c.PresharedKey = wgtypes.Key{} },
+	} {
+		s, cl := base, c
+		change(&s, &cl)
+		got, err := Fingerprint(s, cl)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got == want {
+			t.Errorf("changing the %s left the fingerprint as it was", name)
+		}
+	}
+}
+
+// What isn't in the config a client holds doesn't make it outdated.
+func TestFingerprintIgnoresWhatIsntInTheConfig(t *testing.T) {
+	base, c := fixture(t)
+	base.EndpointPort = 443 // so the listen port isn't advertised
+	want, err := Fingerprint(base, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, change := range map[string]func(*model.Settings, *model.Client){
+		"client name":      func(_ *model.Settings, c *model.Client) { c.Name = "Alex's tablet" },
+		"paused":           func(_ *model.Settings, c *model.Client) { c.Enabled = false },
+		"listen port":      func(s *model.Settings, _ *model.Client) { s.ListenPort = 51999 },
+		"client isolation": func(s *model.Settings, _ *model.Client) { s.ClientIsolation = !s.ClientIsolation },
+		"admin sources": func(s *model.Settings, _ *model.Client) {
+			s.AdminAllowed = []netip.Prefix{netip.MustParsePrefix("100.64.10.0/24")}
+		},
+		"client created at": func(_ *model.Settings, c *model.Client) { c.ID = "another" },
+	} {
+		s, cl := base, c
+		change(&s, &cl)
+		got, err := Fingerprint(s, cl)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got != want {
+			t.Errorf("changing the %s changed the fingerprint", name)
+		}
+	}
+}
+
+// The fingerprint is computed without any secret, so it's the same for a client whose private
+// key the server doesn't keep, and a different private key (with the same public key, which
+// can't happen for real) can't change it.
+func TestFingerprintHoldsNoSecret(t *testing.T) {
+	s, c := fixture(t)
+	want, err := Fingerprint(s, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.PrivateKey = nil
+	if got, err := Fingerprint(s, c); err != nil || got != want {
+		t.Fatalf("without the private key: %q, %v; want %q", got, err, want)
+	}
+	flipped := mustKey(t, "6Cn0pZ9yCk4vVQ6pPzm3j4mT5b8D2e3fW1sH7gJ0xUg=")
+	c.PrivateKey = &flipped
+	if got, err := Fingerprint(s, c); err != nil || got != want {
+		t.Fatalf("with another private key: %q, %v; want %q", got, err, want)
+	}
+	c.PresharedKey = mustKey(t, "6Cn0pZ9yCk4vVQ6pPzm3j4mT5b8D2e3fW1sH7gJ0xUg=")
+	if got, err := Fingerprint(s, c); err != nil || got != want {
+		t.Fatalf("with another preshared key: %q, %v; want %q", got, err, want)
+	}
+}
+
+func TestFingerprintNeedsAnEndpoint(t *testing.T) {
+	s, c := fixture(t)
+	s.EndpointHost = ""
+	if _, err := Fingerprint(s, c); !errors.Is(err, model.ErrNoEndpoint) {
+		t.Fatalf("err %v, want ErrNoEndpoint", err)
+	}
+}
+
+// The fingerprint is the hash of one fixed text, written out here. Changing how a config is
+// rendered changes it for every client, which flags every client that was handed a config as
+// outdated the moment a server is upgraded. That can be right (a client really does need the
+// new line), but it's a decision: change the text here, and say so in the release notes.
+func TestFingerprintIsTheHashOfAKnownText(t *testing.T) {
+	s, c := fixture(t)
+	got, err := Fingerprint(s, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := `[Interface]
+PrivateKey = ` + c.PublicKey.String() + `
+Address = 10.8.0.23/32, fd3a:5c1e:92b0:1::23/128
+DNS = 10.8.0.1, fd3a:5c1e:92b0:1::1
+MTU = 1420
+
+[Peer]
+PublicKey = ` + s.PublicKey().String() + `
+PresharedKey = present
+Endpoint = vpn.example.com:51820
+AllowedIPs = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+`
+	sum := sha256.Sum256([]byte(text))
+	if want := hex.EncodeToString(sum[:]); got != want {
+		t.Fatalf("the fingerprint is %s, not the hash of the known text, %s", got, want)
 	}
 }

@@ -661,6 +661,42 @@ func TestEndToEnd(t *testing.T) {
 		wantSource(t, cl, web4, srvAddr4)
 	})
 
+	t.Run("rotating the keys cuts the old config off, and the new one connects", func(t *testing.T) {
+		// The IPv6 endpoint's config was handed out, and nothing has changed since.
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
+			t.Fatalf("before the rotation:\n%s", show)
+		}
+		oldKey := cfg.privateKey.PublicKey()
+		srv.cli("client", "rotate-keys", "--yes", "phone")
+
+		// The kernel has the new peer and not the old one: the old key can't handshake at all.
+		dev, err := srv.device()
+		if err != nil || len(dev.Peers) != 1 {
+			t.Fatalf("peers after the rotation: %+v, %v", dev.Peers, err)
+		}
+		if dev.Peers[0].PublicKey == oldKey {
+			t.Fatal("the old public key is still a peer")
+		}
+		if got, err := cl.get(web4); err == nil {
+			t.Fatalf("the old config still fetched through the tunnel (source %s)", got)
+		}
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "outdated (last handed out") {
+			t.Fatalf("the client isn't flagged after the rotation:\n%s", show)
+		}
+
+		// The device imports the new config, and is back, over both families.
+		fresh := parseConfig(t, srv.cli("client", "config", "phone"))
+		if fresh.privateKey == cfg.privateKey || fresh.psk == cfg.psk || fresh.privateKey.PublicKey() != dev.Peers[0].PublicKey {
+			t.Fatalf("the new config doesn't carry the rotated keys")
+		}
+		cl.setPeer(fresh)
+		wantSource(t, cl, web4, srvAddr4)
+		wantSource(t, cl, web6, srvAddr6)
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
+			t.Fatalf("handing out the new config left the client flagged:\n%s", show)
+		}
+	})
+
 	t.Run("tunnel down stays down", func(t *testing.T) {
 		srv.tunnel("down")
 		// Several drift checks later, the daemon still hasn't brought it back.

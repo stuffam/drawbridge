@@ -340,6 +340,11 @@ type Client struct {
 	PresharedKey wgtypes.Key
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	// ConfigHash is the fingerprint (clientconf.Fingerprint) of the config the admin last
+	// handed out for this client, and ConfigDeliveredAt is when. Both are empty when no config
+	// was handed out, or the client predates the tracking.
+	ConfigHash        string
+	ConfigDeliveredAt time.Time
 }
 
 // AllowedIPs returns the server-side AllowedIPs for the client: its own addresses.

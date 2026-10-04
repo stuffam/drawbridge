@@ -64,6 +64,8 @@ export interface ServerStatus {
 	clients: number;
 	paused: number;
 	online: number;
+	/** Clients whose config changed since it was last handed out (`config_outdated`). */
+	outdated: number;
 	/**
 	 * Bytes the server has received from, and sent to, the clients in the tunnel now: the sum of
 	 * their counters. A client's counters start over when it's resumed, so these fall when one is
@@ -272,6 +274,17 @@ export interface Client {
 	ipv6: string;
 	public_key: string;
 	created_at: string;
+	/**
+	 * When the config was last downloaded or shown as a QR code. Absent when it never was, and for
+	 * a client that predates the tracking, until its config is next viewed.
+	 */
+	config_delivered_at?: string;
+	/**
+	 * The server's settings or the client's keys changed since then, so the config the client holds
+	 * no longer matches and it must import the new one. Absent when false, and in the response to
+	 * a change (only the list, a single client, and the live feed carry it).
+	 */
+	config_outdated?: boolean;
 	/** Absent when the client isn't in the tunnel: it's paused, or the tunnel is down. */
 	peer?: Peer;
 }
@@ -525,6 +538,11 @@ export const api = {
 		request<ClientResult>('PATCH', clientPath(id), { name }),
 	pauseClient: (id: string) => request<ClientResult>('POST', clientPath(id, '/pause')),
 	resumeClient: (id: string) => request<ClientResult>('POST', clientPath(id, '/resume')),
+	/**
+	 * Gives the client new keys. The old ones stop working at once, so the client is cut off until
+	 * it imports the new config.
+	 */
+	rotateClientKeys: (id: string) => request<ClientResult>('POST', clientPath(id, '/rotate-keys')),
 	deleteClient: (id: string) => request<ClientResult>('DELETE', clientPath(id)),
 	/** The client's WireGuard config. Every download is recorded in the event log. */
 	clientConfig: (id: string) => request<string>('GET', clientPath(id, '/config')),

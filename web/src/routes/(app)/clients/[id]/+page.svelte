@@ -32,9 +32,11 @@
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import DeleteClientModal from '$lib/components/DeleteClientModal.svelte';
 	import NetworkChart from '$lib/components/NetworkChart.svelte';
+	import OutdatedBadge from '$lib/components/OutdatedBadge.svelte';
 	import RangeSelect from '$lib/components/RangeSelect.svelte';
 	import RenameClientModal from '$lib/components/RenameClientModal.svelte';
 	import Result from '$lib/components/Result.svelte';
+	import RotateKeysModal from '$lib/components/RotateKeysModal.svelte';
 	import StateBadge from '$lib/components/StateBadge.svelte';
 
 	let id = $derived(page.params.id ?? '');
@@ -53,7 +55,12 @@
 	let busy = $state(false);
 	let qr = $state('');
 	let configError = $state('');
+	// " (4 Oct 17:13:29)" for the outdated notice, or nothing when there's no time to show.
+	let handedOutAt = $derived(
+		client?.config_delivered_at ? ` (${formatTime(client.config_delivered_at)})` : ''
+	);
 	let showRename = $state(false);
+	let showRotate = $state(false);
 	let showDelete = $state(false);
 
 	async function load() {
@@ -188,6 +195,17 @@
 		success = 'Renamed.';
 		await load();
 	}
+
+	// The rotate dialog gave the client new keys. Its device can't connect until it has the new
+	// config, so the QR code is shown at once, as it is for a client that was just added.
+	async function rotated(applyWarning: string) {
+		reset();
+		warning = applyWarning;
+		success =
+			"New keys are in place. The device can't connect until it imports the new config: scan the QR code below, or download it.";
+		await load();
+		await showQR();
+	}
 </script>
 
 <svelte:head><title>{client?.name ?? 'Client'} · Drawbridge</title></svelte:head>
@@ -204,6 +222,7 @@
 		<div class="flex items-center gap-4">
 			<h1 class="text-2xl font-semibold tracking-tight">{client.name}</h1>
 			<StateBadge {state} />
+			{#if client.config_outdated}<OutdatedBadge />{/if}
 		</div>
 		<div class="flex flex-wrap gap-2">
 			{#if client.enabled}
@@ -227,6 +246,7 @@
 				>
 			{/if}
 			<button type="button" class="btn" onclick={() => (showRename = true)}>Rename</button>
+			<button type="button" class="btn" onclick={() => (showRotate = true)}>Rotate keys</button>
 			<button
 				type="button"
 				class="btn text-red-700 dark:text-red-400"
@@ -244,6 +264,13 @@
 				In the WireGuard app, tap + and scan the QR code, or import the file. The config holds the
 				client's private key, so every view is recorded in the log.
 			</p>
+			{#if client.config_outdated}
+				<p class="alert-warning" role="status" data-testid="config-outdated">
+					This client's config is out of date: the server's settings or the client's keys changed
+					since its config was last handed out{handedOutAt}. Show the QR code or download the config
+					again, and import it on the device.
+				</p>
+			{/if}
 			<div class="flex flex-wrap gap-2">
 				<button type="button" class="btn btn-primary" onclick={showQR}>Show QR code</button>
 				<button type="button" class="btn" onclick={download}>Download .conf</button>
@@ -289,6 +316,8 @@
 				</dd>
 				<dt class="text-neutral-500 dark:text-neutral-400">Added</dt>
 				<dd>{formatTime(client.created_at)}</dd>
+				<dt class="text-neutral-500 dark:text-neutral-400">Config handed out</dt>
+				<dd>{client.config_delivered_at ? formatTime(client.config_delivered_at) : 'No record'}</dd>
 				<dt class="text-neutral-500 dark:text-neutral-400">Public key</dt>
 				<dd class="flex items-start gap-2">
 					<span class="mono">{client.public_key}</span>
@@ -396,6 +425,7 @@
 	</section>
 
 	<RenameClientModal bind:open={showRename} {id} current={client.name} onrenamed={renamed} />
+	<RotateKeysModal bind:open={showRotate} {id} name={client.name} onrotated={rotated} />
 	<DeleteClientModal bind:open={showDelete} {id} name={client.name} />
 {:else if error}
 	<p class="alert-error" role="alert">{error}</p>

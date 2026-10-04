@@ -409,6 +409,93 @@ func TestClientAndServerLifecycle(t *testing.T) {
 	b.expect(http.StatusBadRequest, "GET", "/api/events?limit=9999", nil)
 }
 
+// A config handed out goes stale when the server changes, the client list says so, and
+// rotating a client's keys does the same and cuts the old keys off.
+func TestOutdatedConfigAndKeyRotation(t *testing.T) {
+	svc := newService(t)
+	srv := newServer(t, svc)
+	b, _ := loggedIn(t, svc, srv)
+
+	host := "vpn.example.com"
+	b.expect(http.StatusOK, "PATCH", "/api/server", views.SettingsPatch{EndpointHost: &host})
+	var phone, laptop views.ClientResult
+	b.expect(http.StatusCreated, "POST", "/api/clients", views.NewClientRequest{Name: "phone"}).decode(t, &phone)
+	b.expect(http.StatusCreated, "POST", "/api/clients", views.NewClientRequest{Name: "laptop"}).decode(t, &laptop)
+	path := "/api/clients/" + phone.Client.ID
+
+	// A field that's false is left out of the JSON, so each read decodes into a fresh value.
+	fetch := func() views.ClientView {
+		var v views.ClientView
+		b.expect(http.StatusOK, "GET", path, nil).decode(t, &v)
+		return v
+	}
+	var status views.ServerStatus
+	got := fetch()
+	if got.ConfigOutdated || !got.ConfigDeliveredAt.IsZero() {
+		t.Fatalf("before any config is handed out: %+v", got)
+	}
+
+	b.expect(http.StatusOK, "GET", path+"/config", nil)
+	got = fetch()
+	if got.ConfigOutdated || got.ConfigDeliveredAt.IsZero() {
+		t.Fatalf("after downloading it: %+v", got)
+	}
+
+	mtu := 1380
+	b.expect(http.StatusOK, "PATCH", "/api/server", views.SettingsPatch{MTU: &mtu})
+	got = fetch()
+	if !got.ConfigOutdated {
+		t.Fatalf("after the MTU changed: %+v", got)
+	}
+	var list []views.ClientView
+	b.expect(http.StatusOK, "GET", "/api/clients", nil).decode(t, &list)
+	for _, c := range list {
+		if want := c.ID == phone.Client.ID; c.ConfigOutdated != want {
+			t.Errorf("the list has %s outdated = %v, want %v", c.Name, c.ConfigOutdated, want)
+		}
+	}
+	b.expect(http.StatusOK, "GET", "/api/server/status", nil).decode(t, &status)
+	if status.Outdated != 1 {
+		t.Errorf("status.outdated = %d, want 1", status.Outdated)
+	}
+
+	// Handing out the new config clears it, and rotating the keys sets it again.
+	b.expect(http.StatusOK, "GET", path+"/config", nil)
+	var rotated views.ClientResult
+	r := b.expect(http.StatusOK, "POST", path+"/rotate-keys", nil)
+	r.decode(t, &rotated)
+	if rotated.Client.PublicKey == got.PublicKey || rotated.Client.ID != got.ID {
+		t.Fatalf("rotated %+v, was %+v", rotated.Client, got)
+	}
+	if strings.Contains(strings.ToLower(string(r.body)), "private") || strings.Contains(string(r.body), "preshared") {
+		t.Fatalf("the response shows a key: %s", r.body)
+	}
+	got = fetch()
+	if !got.ConfigOutdated || got.PublicKey != rotated.Client.PublicKey || got.Peer == nil {
+		t.Fatalf("after rotating: %+v", got)
+	}
+	b.expect(http.StatusOK, "GET", "/api/server/status", nil).decode(t, &status)
+	if status.Outdated != 1 {
+		t.Errorf("status.outdated = %d after the rotation, want 1", status.Outdated)
+	}
+	b.expect(http.StatusOK, "GET", path+"/config", nil)
+	got = fetch()
+	if got.ConfigOutdated {
+		t.Fatal("handing out the rotated config left it outdated")
+	}
+
+	b.expect(http.StatusNotFound, "POST", "/api/clients/nobody/rotate-keys", nil)
+	// A change needs the CSRF header like every other.
+	if r := b.do("POST", path+"/rotate-keys", nil, csrfHeader, ""); r.status != http.StatusForbidden {
+		t.Errorf("rotating without the header: status %d, want 403", r.status)
+	}
+	var events []views.EventView
+	b.expect(http.StatusOK, "GET", "/api/events?kind=client.keys_rotated", nil).decode(t, &events)
+	if len(events) != 1 || events[0].ClientID != phone.Client.ID || events[0].Actor != "admin" {
+		t.Fatalf("events %+v", events)
+	}
+}
+
 func TestClientJSONCarriesTheOpenSession(t *testing.T) {
 	svc := newService(t)
 	srv := newServer(t, svc)

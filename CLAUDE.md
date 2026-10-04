@@ -48,7 +48,7 @@ setups.** What exists:
   from Settings, client name sync, `internal/service/adguardsync.go`, and a client's DNS log,
   `internal/service/dnslog.go`, are all built).
 - The CLI, which talks to the daemon over the control socket: `server show|set`,
-  `client list|add|show|pause|resume|rename|delete|config|qr`, `events`, `doctor`, and
+  `client list|add|show|pause|resume|rename|delete|config|qr|rotate-keys`, `events`, `doctor`, and
   `admin setup-token|create|reset-password`.
 - `drawbridge doctor`, the first slice of M5 (2026-09-29): 13 host and network checks, each with
   a fix hint, run by the daemon (`internal/diag`) and printed by the CLI. Exit status 1 when any
@@ -64,6 +64,14 @@ setups.** What exists:
   `backups/` beside it): a nightly one, and one before a migration, which `restore` takes too. The
   System page makes the same file (it takes the password again and the passphrase twice) and lists
   the snapshots, which it never offers for download.
+- Outdated-config tracking and client key rotation (2026-10-04), the third slice of M5. Handing
+  out a client's config (a download, a QR code, `client config`) stores its fingerprint
+  (`clientconf.Fingerprint`, docs/PLAN.md §6.1); a client whose current fingerprint differs is
+  flagged `config_outdated` in the list, on its page, in the dashboard's Outdated count, and in
+  `client list`. `client rotate-keys` (and `POST /api/clients/{id}/rotate-keys`, and a button on
+  the client's page) gives a client new keys, which cuts the old config off at once. Left in M5:
+  TOTP 2FA, safe apply (with `drawbridge apply` and rotating the server's key), uploading a
+  certificate, the dashboard's diagnostics warnings, the upgrade matrix, and the docs.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -257,6 +265,12 @@ These are the rules most likely to get silently broken.
   - The only external command is `nft -f`, called with an argv list. Never use a shell.
 - **No arbitrary command hooks** (`PostUp`/`PostDown` or anything like them). Anything a hook
   would do is a typed, validated setting instead (§10).
+- **A client's "config outdated" flag is computed, not stored, and holds no secret.** The
+  fingerprint (`clientconf.Fingerprint`) hashes the config with the client's public key where its
+  private key goes, so it can sit unsealed in the database and be recomputed on every read
+  without a write. Changing how a config is rendered changes every fingerprint and flags every
+  client that was handed one, so `TestFingerprintIsTheHashOfAKnownText` pins it: update it on
+  purpose, and say so in the release notes.
 - **Free text never reaches a rendered file.**
   - Client names and notes stay out of nftables rulesets and WireGuard configs.
   - Keys, CIDRs, ports, and MTUs are parsed and validated (`net/netip` and range checks) before

@@ -32,7 +32,7 @@ func ErrorStatus(err error) int {
 	case errors.Is(err, store.ErrNotFound), errors.Is(err, store.ErrNoUser), errors.Is(err, store.ErrNoSession),
 		errors.Is(err, store.ErrNoToken):
 		return http.StatusNotFound
-	case errors.Is(err, store.ErrNameTaken), errors.Is(err, store.ErrHasClients),
+	case errors.Is(err, store.ErrNameTaken), errors.Is(err, store.ErrHasClients), errors.Is(err, store.ErrNoClientKey),
 		errors.Is(err, store.ErrTokenNameTaken), errors.Is(err, service.ErrTooManyTokens),
 		errors.Is(err, ipam.ErrExhausted), errors.Is(err, model.ErrNoEndpoint),
 		errors.Is(err, store.ErrSetupDone), errors.Is(err, store.ErrUserExists):

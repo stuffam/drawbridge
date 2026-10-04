@@ -206,6 +206,14 @@ type ClientView struct {
 	IPv6      netip.Addr `json:"ipv6"`
 	PublicKey string     `json:"public_key"`
 	CreatedAt time.Time  `json:"created_at"`
+	// ConfigDeliveredAt is when the admin last downloaded or showed the client's config; it's
+	// absent when they never have.
+	ConfigDeliveredAt time.Time `json:"config_delivered_at,omitzero"`
+	// ConfigOutdated means the server's settings or the client's keys changed since then, so the
+	// config the client holds no longer matches and it needs to import it again. Only the
+	// responses that carry live status set it (Status); a change's own response (ClientResult)
+	// leaves it out.
+	ConfigOutdated bool `json:"config_outdated,omitempty"`
 	// Peer is nil when the client isn't in the tunnel (paused, or the tunnel is down).
 	Peer *PeerView `json:"peer,omitempty"`
 }
@@ -213,19 +221,21 @@ type ClientView struct {
 // Client converts a client to its view, without live status.
 func Client(c model.Client) ClientView {
 	return ClientView{
-		ID:        c.ID,
-		Name:      c.Name,
-		Enabled:   c.Enabled,
-		IPv4:      c.IPv4,
-		IPv6:      c.IPv6,
-		PublicKey: c.PublicKey.String(),
-		CreatedAt: c.CreatedAt,
+		ID:                c.ID,
+		Name:              c.Name,
+		Enabled:           c.Enabled,
+		IPv4:              c.IPv4,
+		IPv6:              c.IPv6,
+		PublicKey:         c.PublicKey.String(),
+		CreatedAt:         c.CreatedAt,
+		ConfigDeliveredAt: c.ConfigDeliveredAt,
 	}
 }
 
 // Status converts a client and its live status to a view.
 func Status(cs service.ClientStatus) ClientView {
 	v := Client(cs.Client)
+	v.ConfigOutdated = cs.ConfigOutdated
 	if p := cs.Peer; p != nil {
 		v.Peer = &PeerView{
 			LastHandshake: p.LastHandshake,
@@ -440,6 +450,8 @@ type ServerStatus struct {
 	Paused   int  `json:"paused"`
 	// Online counts clients with a handshake in the last three minutes.
 	Online int `json:"online"`
+	// Outdated counts clients whose config changed since the admin last handed it out.
+	Outdated int `json:"outdated"`
 	// ReceiveBytes and SendBytes add up the counters of the peers in the tunnel now, counted at
 	// the server (service.Status).
 	ReceiveBytes int64 `json:"receive_bytes"`
@@ -452,7 +464,7 @@ type ServerStatus struct {
 // NewServerStatus converts the service's status.
 func NewServerStatus(s service.Status) ServerStatus {
 	return ServerStatus{TunnelUp: s.TunnelUp, Clients: s.Clients, Paused: s.Paused, Online: s.Online,
-		ReceiveBytes: s.ReceiveBytes, SendBytes: s.SendBytes, AdGuardWarning: s.AdGuardWarning}
+		Outdated: s.Outdated, ReceiveBytes: s.ReceiveBytes, SendBytes: s.SendBytes, AdGuardWarning: s.AdGuardWarning}
 }
 
 // StreamStatus is the stream's "status" message: what the dashboard, the client list, and a

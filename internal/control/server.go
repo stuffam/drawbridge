@@ -74,6 +74,7 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 	mux.HandleFunc("DELETE /v1/clients/{name}", h.deleteClient)
 	mux.HandleFunc("POST /v1/clients/{name}/pause", h.setEnabled(false))
 	mux.HandleFunc("POST /v1/clients/{name}/resume", h.setEnabled(true))
+	mux.HandleFunc("POST /v1/clients/{name}/rotate-keys", h.rotateClientKeys)
 	mux.HandleFunc("GET /v1/clients/{name}/config", h.clientConfig)
 	mux.HandleFunc("POST /v1/backup", h.createBackup)
 	mux.HandleFunc("GET /v1/events", h.events)
@@ -238,6 +239,15 @@ func (h *handler) setEnabled(enabled bool) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusOK, views.NewClientResult(c, applied))
 	}
+}
+
+func (h *handler) rotateClientKeys(w http.ResponseWriter, r *http.Request) {
+	c, applied, err := h.svc.RotateClientKeys(r.Context(), ref(r))
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewClientResult(c, applied))
 }
 
 func (h *handler) deleteClient(w http.ResponseWriter, r *http.Request) {

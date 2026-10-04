@@ -67,7 +67,7 @@
 	}
 
 	// The Clients page has no route parameter for a state filter, only a query string.
-	function goClients(state: 'all' | 'online' | 'paused') {
+	function goClients(state: 'all' | 'online' | 'paused' | 'outdated') {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		void goto(resolve('/clients') + '?state=' + state);
 	}
@@ -144,7 +144,7 @@
 {/if}
 
 {#if status}
-	<section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Summary">
+	<section class="grid grid-cols-2 gap-3 sm:grid-cols-5" aria-label="Summary">
 		<div class="card">
 			<p class="text-sm text-neutral-500 dark:text-neutral-400">Tunnel</p>
 			<p class="text-xl font-semibold {status.tunnel_up ? 'text-emerald-600' : 'text-red-600'}">
@@ -177,6 +177,21 @@
 		>
 			<p class="text-sm text-neutral-500 dark:text-neutral-400">Paused</p>
 			<p class="text-xl font-semibold">{status.paused}</p>
+		</button>
+		<button
+			type="button"
+			class="card card-link col-span-2 text-left sm:col-span-1"
+			aria-label="View clients with an outdated config"
+			onclick={() => goClients('outdated')}
+		>
+			<p class="text-sm text-neutral-500 dark:text-neutral-400">Outdated</p>
+			<p
+				class="text-xl font-semibold {status.outdated > 0
+					? 'text-amber-600 dark:text-amber-400'
+					: ''}"
+			>
+				{status.outdated}
+			</p>
 		</button>
 	</section>
 {/if}

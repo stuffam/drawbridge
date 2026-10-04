@@ -55,6 +55,7 @@ var undo = map[int][]string{
 	7: {`DROP TABLE dns_integration_clients`, `ALTER TABLE dns_integration DROP COLUMN sync_names`,
 		`ALTER TABLE dns_integration DROP COLUMN enabled`},
 	8: {`DROP TABLE api_tokens`},
+	9: {`ALTER TABLE clients DROP COLUMN delivered_hash`, `ALTER TABLE clients DROP COLUMN delivered_at`},
 }
 
 // rollBackTo puts the database back as it was after the given migration, so a test can open it
@@ -475,5 +476,145 @@ func TestMigrationAddsAdminAllowedToAnExistingServer(t *testing.T) {
 	}
 	if sessions, err := again.CurrentClientSessions(ctx); err != nil || len(sessions) != 0 {
 		t.Fatalf("sessions %v, err %v, want none", sessions, err)
+	}
+}
+
+// A client that exists before config tracking comes through the upgrade with no baseline: it
+// isn't flagged, and the first config the admin hands out sets one.
+func TestMigrationAddsConfigTrackingToExistingClients(t *testing.T) {
+	ctx := context.Background()
+	s, path := openTest(t)
+	if _, err := s.Initialize(ctx); err != nil {
+		t.Fatal(err)
+	}
+	added, err := s.AddClient(ctx, "phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rollBackTo(t, s, 8)
+	_ = s.Close()
+
+	again, err := Open(ctx, path, testSealer(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	c, err := again.Client(ctx, ByName("phone"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ID != added.ID || c.ConfigHash != "" || !c.ConfigDeliveredAt.IsZero() {
+		t.Fatalf("after the upgrade: %+v", c)
+	}
+	if err := again.MarkConfigDelivered(ctx, c.ID, "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ = again.Client(ctx, ByID(c.ID)); c.ConfigHash != "abc" || c.ConfigDeliveredAt.IsZero() {
+		t.Fatalf("after marking: %+v", c)
+	}
+}
+
+func TestMarkConfigDelivered(t *testing.T) {
+	ctx := context.Background()
+	s := initialized(t)
+	now := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	s.now = func() time.Time { return now }
+	c, err := s.AddClient(ctx, "phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ConfigHash != "" || !c.ConfigDeliveredAt.IsZero() {
+		t.Fatalf("a new client has a config handed out: %+v", c)
+	}
+	if err := s.MarkConfigDelivered(ctx, c.ID, "first"); err != nil {
+		t.Fatal(err)
+	}
+	later := now.Add(time.Hour)
+	s.now = func() time.Time { return later }
+	if err := s.MarkConfigDelivered(ctx, c.ID, "second"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Client(ctx, ByID(c.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ConfigHash != "second" || !got.ConfigDeliveredAt.Equal(later) {
+		t.Fatalf("hash %q delivered %v, want the second at %v", got.ConfigHash, got.ConfigDeliveredAt, later)
+	}
+	if !got.UpdatedAt.Equal(c.UpdatedAt) {
+		t.Error("handing out a config counted as changing the client")
+	}
+	if err := s.MarkConfigDelivered(ctx, "no-such-id", "x"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("an unknown client: err %v, want ErrNotFound", err)
+	}
+}
+
+func TestRotateClientKeys(t *testing.T) {
+	ctx := context.Background()
+	s := initialized(t)
+	before, err := s.AddClient(ctx, "phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := s.AddClient(ctx, "laptop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkConfigDelivered(ctx, before.ID, "handed-out"); err != nil {
+		t.Fatal(err)
+	}
+
+	after, err := s.RotateClientKeys(ctx, ByName("phone"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// What comes back is what was stored, including the secrets (sealed on the way in).
+	stored, err := s.Client(ctx, ByID(before.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.PublicKey != after.PublicKey || *stored.PrivateKey != *after.PrivateKey || stored.PresharedKey != after.PresharedKey {
+		t.Fatal("the rotated keys that came back aren't the ones stored")
+	}
+	if stored.PublicKey == before.PublicKey || *stored.PrivateKey == *before.PrivateKey || stored.PresharedKey == before.PresharedKey {
+		t.Fatal("rotating left one of the old keys in place")
+	}
+	if got := stored.PrivateKey.PublicKey(); got != stored.PublicKey {
+		t.Fatalf("the new public key %v doesn't belong to the new private key (%v)", stored.PublicKey, got)
+	}
+	// Everything else about the client stays, and rotating doesn't pretend the new config was
+	// handed out.
+	if stored.IPv4 != before.IPv4 || stored.IPv6 != before.IPv6 || stored.Name != "phone" || !stored.Enabled {
+		t.Fatalf("rotating changed more than the keys: %+v", stored)
+	}
+	if stored.ConfigHash != "handed-out" {
+		t.Errorf("config hash %q, want the old one kept so the config reads as outdated", stored.ConfigHash)
+	}
+	// Another client is untouched.
+	if o, _ := s.Client(ctx, ByID(other.ID)); o.PublicKey != other.PublicKey || o.PresharedKey != other.PresharedKey {
+		t.Fatal("rotating one client's keys changed another's")
+	}
+	if _, err := s.RotateClientKeys(ctx, ByName("nobody")); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("an unknown client: err %v, want ErrNotFound", err)
+	}
+}
+
+// A client the server doesn't keep a private key for can't be handed new keys: only the client
+// could make a key pair of its own.
+func TestRotateClientKeysNeedsThePrivateKey(t *testing.T) {
+	ctx := context.Background()
+	s := initialized(t)
+	c, err := s.AddClient(ctx, "phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE clients SET private_key_enc = NULL WHERE id = ?`, c.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.RotateClientKeys(ctx, ByID(c.ID)); !errors.Is(err, ErrNoClientKey) {
+		t.Fatalf("err %v, want ErrNoClientKey", err)
+	}
+	if got, _ := s.Client(ctx, ByID(c.ID)); got.PublicKey != c.PublicKey {
+		t.Fatal("a refused rotation changed the public key")
 	}
 }
