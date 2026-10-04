@@ -10,6 +10,9 @@ only the home network and the VPN can reach, from the command line
 (`sudo drawbridge client add phone --qr`), or through the same authenticated API. See
 [docs/PLAN.md](docs/PLAN.md) for the architecture, feature spec, and roadmap.
 
+To use your own TLS certificate for the web UI instead of the self-signed one, see
+[docs/tls-certificate.md](docs/tls-certificate.md).
+
 **Before you install**, read [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): it lists what
 Drawbridge needs from the host and your network, and the setups where it needs a workaround
 (for example, a host that configures IPv6 with ifupdown, or a router that won't forward

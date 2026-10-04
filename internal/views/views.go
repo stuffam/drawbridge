@@ -129,6 +129,46 @@ func NewSnapshotList(l service.SnapshotList) SnapshotListView {
 	return v
 }
 
+// Certificate is the TLS certificate the web UI serves (GET /api/system/certificate). Source
+// is "self-signed" (made by the daemon) or "uploaded" (the admin's); Notes are warnings about an
+// uploaded one that aren't reasons to refuse it. It never carries the key.
+type Certificate struct {
+	Source      string    `json:"source"`
+	Subject     string    `json:"subject"`
+	Issuer      string    `json:"issuer"`
+	Names       []string  `json:"names"`
+	NotBefore   time.Time `json:"not_before"`
+	NotAfter    time.Time `json:"not_after"`
+	Fingerprint string    `json:"fingerprint"`
+	Chain       int       `json:"chain"`
+	SelfIssued  bool      `json:"self_issued"`
+	Notes       []string  `json:"notes"`
+}
+
+// NewCertificate converts the service's description of the certificate in use.
+func NewCertificate(c service.CertificateInfo) Certificate {
+	v := Certificate{
+		Source: c.Source, Subject: c.Subject, Issuer: c.Issuer, Names: c.Names, NotBefore: c.NotBefore,
+		NotAfter: c.NotAfter, Fingerprint: c.Fingerprint, Chain: c.Chain, SelfIssued: c.SelfIssued, Notes: c.Notes,
+	}
+	if v.Names == nil {
+		v.Names = []string{}
+	}
+	if v.Notes == nil {
+		v.Notes = []string{}
+	}
+	return v
+}
+
+// CertificateInstallRequest installs a certificate: the chain (the server's own certificate
+// first) and its private key, as PEM text. Password is the account's own, asked for again by the
+// web API and not by the control socket, which root's account is enough for.
+type CertificateInstallRequest struct {
+	Password    string `json:"password,omitempty"`
+	Certificate string `json:"certificate"`
+	PrivateKey  string `json:"private_key"`
+}
+
 // DiagnosticCheck is one host diagnostic's result (`drawbridge doctor`). Status is "pass",
 // "warn", "fail", or "skip"; Hint says how to fix a warning or a failure.
 type DiagnosticCheck struct {

@@ -141,6 +141,7 @@ All roles are subcommands of a single binary, `drawbridge`:
 | `drawbridge export --format wg-quick` | Prints an equivalent `wg-quick` config, for transparency or migrating away (M6). |
 | `drawbridge import --from wg-quick\|wg-easy <file>` | Migration from an existing setup (M6). |
 | `drawbridge doctor` | Host diagnostics in the terminal (see §6.6, M5). |
+| `drawbridge tls show\|install\|reset` | Shows the web UI's certificate, serves the admin's own (`install --cert FILE --key FILE`) instead of the self-signed one, or goes back to it (§6.6, M5). |
 
 The CLI talks to the daemon over `/run/drawbridge/control.sock` (mode 0660, owned by
 `drawbridge:drawbridge`, in a 0750 directory), so root and members of the drawbridge group can
@@ -1112,9 +1113,53 @@ stateDiagram-v2
   hostname (and `.local`), loopback, and the LAN and VPN addresses, and replaces it 30 days before
   it expires. It lasts 800 days, under the 825 days Apple's platforms accept. Its SHA-256
   fingerprint is in the journal and in `drawbridge admin setup-token`, so the admin can check the
-  browser's warning is about this certificate. Users can upload their own certificate (M5).
-  ACME DNS-01 is available in M6; HTTP-01 isn't a good fit because the UI shouldn't be exposed
-  to the internet.
+  browser's warning is about this certificate. Users can upload their own certificate (M5, built
+  2026-10-04, below). ACME DNS-01 is available in M6; HTTP-01 isn't a good fit because the UI
+  shouldn't be exposed to the internet.
+  - **Your own certificate (built 2026-10-04).** `drawbridge tls install --cert FILE --key FILE`
+    and the System page's **Web UI Certificate** card give the web UI a certificate the admin
+    brings, so browsers stop warning. `drawbridge tls show` and `GET /api/system/certificate`
+    describe the one in use (its names, issuer, dates, and SHA-256 fingerprint), `tls reset` and
+    `DELETE` go back to the self-signed one, and `PUT` installs. The routes are closed to API
+    tokens.
+  - **What's accepted.** The chain as PEM (the server's own certificate first, then the
+    intermediates) and its private key as PEM in PKCS#8, PKCS#1, or SEC1 form; one file that
+    holds both may be given for each. Everything is checked before anything changes
+    (`tlscert.Parse`), and a refusal changes nothing and records nothing: the key must belong to
+    the first certificate, which must be valid now, name at least one host or address (browsers
+    ignore the common name), allow server authentication, and not use an RSA key under 2048 bits.
+    A key protected by a passphrase is refused with how to remove it, and so is a certificate in
+    the key field or the reverse, which the error says.
+  - **Notes, not refusals.** The page and `tls show` warn when an installed certificate expires
+    within 30 days, covers none of the names the host answers to (its hostname, `.local`, its
+    addresses, and the endpoint), or comes without the intermediates its issuer needs. The admin
+    may reach the UI by a name the certificate covers, so none of these stops an install.
+  - **The web path asks for the password again** (`confirmPassword`, shared with API tokens and
+    the backup download, so a wrong one counts against the login limits and is the event
+    `auth.certificate_failed`). A hijacked session that could install a certificate could put one
+    whose key it holds in front of the admin's next login. The CLI is root's, so it asks for
+    nothing. Going back to the self-signed certificate needs no password: it gives the browser a
+    warning and gives no one a way in.
+  - **It takes effect for the next connection, with no restart.** The TLS configuration asks
+    `tlscert.Store` for the certificate on every handshake (`GetCertificate`), so a connection
+    already open, the one that made the request included, keeps the old certificate. The doctor's
+    TLS check and the setup token read the certificate in use now, not the one at startup.
+  - **On disk.** `tls/uploaded.pem` (mode 0600) holds the chain and then the key as PKCS#8, in
+    one file so that replacing it is one rename and a crash can't leave a certificate beside the
+    wrong key. The self-signed pair stays beside it as the way back, and is made again if it has
+    run out. The key is not sealed with `secret.key`: the TLS stack needs it at startup, like the
+    self-signed key beside it. It is never in a view, an event, a log line, or an API response,
+    and **it is not in a backup** (like the self-signed pair), so the admin keeps their own copy
+    and installs it again after a restore.
+  - **Nothing renews it, and nothing replaces it unasked.** An installed certificate stays in
+    use after it expires: swapping in the self-signed one without being told would hide the
+    problem, and an expired certificate is the admin's to renew. The doctor's TLS check warns 30
+    days ahead and fails at expiry, with the command to install a renewed one (an ACME client's
+    deploy hook can run it; docs/tls-certificate.md). A file that can't be loaded at startup (it
+    was damaged, say) is logged and left alone while the self-signed certificate serves, so the
+    web UI stays reachable; `drawbridge tls reset` clears it.
+  - Events: `tls.certificate_installed` and `tls.certificate_reset` carry the old and new
+    fingerprints (and the names and expiry, for an install), never a key.
 - **Retention settings, about/version, and an optional update check.**
 
 ---
@@ -1232,6 +1277,9 @@ GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                download a backup: password + passphrase (M5; built)
 GET    /api/system/snapshots             the host's database snapshots     (M5; built)
+GET    /api/system/certificate           the web UI's TLS certificate      (M5; built)
+PUT    /api/system/certificate           install your own: password + PEM  (M5; built)
+DELETE /api/system/certificate           back to the self-signed one       (M5; built)
                                          (no restore route: restore is the root CLI, §6.6)
 ```
 
@@ -1490,7 +1538,8 @@ Each milestone ends in a usable, tested state.
 - Full systemd sandboxing, TOTP 2FA, safe apply with automatic rollback, outdated-config
   tracking, and encrypted backup/restore. *Built: the sandboxing (the units), outdated-config
   tracking with client key rotation (§6.1), safe apply with `drawbridge apply` (§4.3), and the
-  backups, and rotating the server's key (§6.2). Left: TOTP 2FA and uploading a certificate.*
+  backups, rotating the server's key (§6.2), and uploading a certificate (§6.6). Left: TOTP
+  2FA.*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the
@@ -1568,6 +1617,7 @@ Each milestone ends in a usable, tested state.
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
 | Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source, rotating the server's key) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
+| TLS certificate | The admin may install their own certificate (web and CLI), served at once without a restart; it stays in use after it expires, and is never replaced unasked | A browser warning about a self-signed certificate trains people to click through, and the UI is reachable only from the LAN and the VPN, so a public CA can issue for it only by DNS-01. The web install asks for the password again because a hijacked session could otherwise present a certificate whose key it holds. The private key sits in `tls/` beside the self-signed one, because the TLS stack needs it at startup (2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |

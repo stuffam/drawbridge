@@ -33,6 +33,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/service"
 	"github.com/stuffam/drawbridge/internal/store"
 	"github.com/stuffam/drawbridge/internal/tlscert"
+	"github.com/stuffam/drawbridge/internal/tlscert/tlscerttest"
 	"github.com/stuffam/drawbridge/internal/version"
 	"github.com/stuffam/drawbridge/internal/views"
 	"github.com/stuffam/drawbridge/internal/wg"
@@ -729,10 +730,14 @@ func TestLoggerSendsFieldsToJournald(t *testing.T) {
 
 func TestDaemonServesTheAPIOverTLS(t *testing.T) {
 	env := newFakeEnv(t)
-	cert, _, err := tlscert.Ensure(filepath.Join(t.TempDir(), "tls"), tlscert.DefaultNames("server"), time.Now())
+	certs, err := tlscert.Open(filepath.Join(t.TempDir(), "tls"), tlscert.Options{
+		Names: func() tlscert.Names { return tlscert.DefaultNames("server") },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	env.svc.TLS = certs
+	cert, _ := certs.GetCertificate(nil)
 	web, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -745,7 +750,7 @@ func TestDaemonServesTheAPIOverTLS(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- daemon{web: web, control: ctl, svc: env.svc, drift: time.Hour, log: discard,
-			tls: tlscert.Config(cert), fingerprint: tlscert.Fingerprint(cert),
+			tls:     certs.Config(),
 			allowed: allowlistFor(env.svc, func() []netip.Prefix { return nil })}.run(ctx)
 	}()
 	t.Cleanup(func() {
@@ -779,7 +784,7 @@ func TestDaemonServesTheAPIOverTLS(t *testing.T) {
 
 	// The token comes from the CLI, with the certificate's fingerprint to check.
 	r := runCLI("", "admin", "setup-token", "--control="+env.socket)
-	if r.code != 0 || !strings.Contains(r.stdout, tlscert.Fingerprint(cert)) {
+	if r.code != 0 || !strings.Contains(r.stdout, tlscert.Fingerprint(*cert)) {
 		t.Fatalf("setup-token: %+v", r)
 	}
 	token := strings.TrimSpace(strings.SplitN(strings.TrimPrefix(r.stdout, "Setup token: "), "\n", 2)[0])
@@ -831,7 +836,7 @@ func TestDaemonStopsWithAStreamOpen(t *testing.T) {
 	done := make(chan error, 1)
 	go func() {
 		done <- daemon{web: web, svc: env.svc, drift: time.Hour, log: discard, tls: tlscert.Config(cert),
-			fingerprint: tlscert.Fingerprint(cert), sessionInterval: 0}.run(ctx)
+			sessionInterval: 0}.run(ctx)
 	}()
 
 	pool := x509.NewCertPool()
@@ -1081,8 +1086,7 @@ func TestDaemonStopsWithAnUnusedConnectionOpen(t *testing.T) {
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
-				done <- daemon{web: web, svc: env.svc, drift: time.Hour, log: discard, tls: tlscert.Config(cert),
-					fingerprint: tlscert.Fingerprint(cert)}.run(ctx)
+				done <- daemon{web: web, svc: env.svc, drift: time.Hour, log: discard, tls: tlscert.Config(cert)}.run(ctx)
 			}()
 			pool := x509.NewCertPool()
 			pool.AddCert(cert.Leaf)
@@ -1296,5 +1300,114 @@ func TestApplyCommand(t *testing.T) {
 	}
 	if r := runCLI("", "apply", "--control="+filepath.Join(t.TempDir(), "nope.sock")); r.code != 1 || !strings.Contains(r.stderr, "can't reach the Drawbridge daemon") {
 		t.Fatalf("apply without a daemon: %+v", r)
+	}
+}
+
+func TestTLSCommand(t *testing.T) {
+	env := newFakeEnv(t)
+	certs, err := tlscert.Open(filepath.Join(t.TempDir(), "tls"), tlscert.Options{
+		Names: func() tlscert.Names { return tlscert.DefaultNames("server") },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	env.svc.TLS = certs
+	startDaemon(t, env)
+	sock := "--control=" + env.socket
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+
+	// Out of the box: the self-signed certificate, which the setup token tells the admin to check
+	// a browser's warning against.
+	r := runCLI("", "tls", "show", sock)
+	if r.code != 0 || !strings.Contains(r.stdout, "Certificate: self-signed by Drawbridge") ||
+		!strings.Contains(r.stdout, "SHA-256:     "+certs.Fingerprint()) || strings.Contains(r.stdout, "Note:") {
+		t.Fatalf("show: %+v", r)
+	}
+	if r := runCLI("", "admin", "setup-token", sock); !strings.Contains(r.stdout, certs.Fingerprint()) {
+		t.Fatalf("the setup token doesn't show the fingerprint:\n%s", r.stdout)
+	}
+
+	mine := tlscerttest.New(t, time.Now(), "vpn.example.com", "192.168.4.10")
+	certFile, keyFile := write("fullchain.pem", mine.Cert), write("privkey.pem", mine.Key)
+
+	// Mistakes are the command's to catch: both files are needed, and a file that isn't a
+	// certificate and its key is refused with what's wrong, changing nothing.
+	if r := runCLI("", "tls", "install", "--cert", certFile, sock); r.code != 2 || !strings.Contains(r.stderr, "--cert and --key are both needed") {
+		t.Errorf("without --key: %+v", r)
+	}
+	other := tlscerttest.New(t, time.Now(), "vpn.example.com")
+	if r := runCLI("", "tls", "install", "--cert", certFile, "--key", write("other.pem", other.Key), sock); r.code != 1 ||
+		!strings.Contains(r.stderr, "doesn't belong to the first certificate") {
+		t.Errorf("a key that doesn't match: %+v", r)
+	}
+	if r := runCLI("", "tls", "install", "--cert", certFile, "--key", filepath.Join(dir, "missing.pem"), sock); r.code != 1 || !strings.Contains(r.stderr, "missing.pem") {
+		t.Errorf("a missing file: %+v", r)
+	}
+	if r := runCLI("", "tls", "install", "--cert", certFile, "--key", write("huge.pem", strings.Repeat("x", maxCertFile+1)), sock); r.code != 1 ||
+		!strings.Contains(r.stderr, "is it the right file?") {
+		t.Errorf("a huge file: %+v", r)
+	}
+	if certs.Info().Source != tlscert.SelfSigned {
+		t.Fatal("a refused install changed the certificate")
+	}
+
+	// Installed, it's what a new connection is shown, with no restart, and the command says what
+	// the certificate is, as `show` does afterward.
+	r = runCLI("", "tls", "install", "--cert", certFile, "--key", keyFile, sock)
+	if r.code != 0 {
+		t.Fatalf("install: %+v", r)
+	}
+	for _, want := range []string{"now serves your certificate", "Certificate: installed by you", "Names:       vpn.example.com, 192.168.4.10",
+		"Chain:       1 certificate", "(89 days left)", "SHA-256:     " + certs.Fingerprint()} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("install output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if !bytes.Equal(tlscerttest.Shown(t, certs.Config()), mine.DER) {
+		t.Fatal("a new connection isn't shown the installed certificate")
+	}
+	if shown := runCLI("", "tls", "show", sock); !strings.Contains(shown.stdout, "installed by you") || !strings.Contains(shown.stdout, certs.Fingerprint()) {
+		t.Errorf("show after install:\n%s", shown.stdout)
+	}
+	// A certificate the admin installed needs no fingerprint check, so the token doesn't ask for one.
+	if r := runCLI("", "admin", "setup-token", sock); strings.Contains(r.stdout, "self-signed") || strings.Contains(r.stdout, certs.Fingerprint()) {
+		t.Errorf("the setup token still asks for a fingerprint:\n%s", r.stdout)
+	}
+
+	// One file with both is fine for each flag, as some tools write them.
+	both := write("both.pem", mine.Key+mine.Cert)
+	if r := runCLI("", "tls", "install", "--cert", both, "--key", both, sock); r.code != 0 {
+		t.Errorf("one file with both: %+v", r)
+	}
+
+	// Going back, and saying so when there is nothing to go back from.
+	if r := runCLI("", "tls", "reset", sock); r.code != 0 || !strings.Contains(r.stdout, "back on its self-signed certificate") ||
+		!strings.Contains(r.stdout, "Certificate: self-signed by Drawbridge") {
+		t.Errorf("reset: %+v", r)
+	}
+	if bytes.Equal(tlscerttest.Shown(t, certs.Config()), mine.DER) {
+		t.Error("a new connection is still shown the installed certificate")
+	}
+	if r := runCLI("", "tls", "reset", sock); r.code != 1 || !strings.Contains(r.stderr, "already using its self-signed certificate") {
+		t.Errorf("a second reset: %+v", r)
+	}
+
+	// Usage.
+	if r := runCLI("", "tls"); r.code != 2 || !strings.Contains(r.stderr, "Usage: drawbridge tls") {
+		t.Errorf("tls alone: %+v", r)
+	}
+	if r := runCLI("", "tls", "renew"); r.code != 2 || !strings.Contains(r.stderr, `unknown command "renew"`) {
+		t.Errorf("an unknown command: %+v", r)
+	}
+	if r := runCLI("", "tls", "show", "extra", sock); r.code != 2 {
+		t.Errorf("an extra argument: %+v", r)
 	}
 }

@@ -712,3 +712,49 @@ drive the dialog, Undo now, and Keep against the daemon with the fake backend.
   change on probation: the old key is back afterward, and `sudo wg show` agrees.
 - `[UNVERIFIED]` A backup made before a rotation holds the old key. Restoring it onto a fresh host
   brings the old key back, and the clients' configs from before the rotation work again.
+
+## 16. Your own TLS certificate (the sixth M5 slice)
+
+`drawbridge tls install|show|reset`, the **Web UI Certificate** card on the System page, and
+`GET|PUT|DELETE /api/system/certificate` serve a certificate the admin brings instead of the
+self-signed one (docs/PLAN.md §6.6, docs/tls-certificate.md). Nothing here has run on the
+reference platform, so nothing is `[VERIFIED]` yet. What has run, away from it: the browser tests
+install a certificate made by openssl through the page and through the CLI against the real daemon
+(the fake backend), then open a raw TLS connection to the daemon and read the certificate it
+presents, which was the new one at once and the self-signed one again after a reset. The Go tests
+do the same through a TLS listener built from the store's configuration. No real certificate
+authority, no real browser trust store, and no ACME client has been involved.
+
+- `[UNVERIFIED]` With a certificate from a CA your browser trusts (Let's Encrypt by the DNS-01
+  challenge, say), for a name that resolves to the host on your network: `sudo drawbridge tls
+  install --cert fullchain.pem --key privkey.pem` succeeds without a restart, and a fresh load of
+  `https://<that name>:51821` shows the padlock with no warning. The page you installed from keeps
+  working; reloading it is the first connection that uses the new certificate.
+- `[UNVERIFIED]` The same from the System page: pick the two files (or paste them), enter the
+  password, and the card says **Installed by you**, with the certificate's names, issuer, dates,
+  and fingerprint matching what the browser's certificate viewer shows. A wrong password installs
+  nothing and the log shows `Failed to install a TLS certificate (wrong password)`.
+- `[UNVERIFIED]` Opening the UI by the host's IP address, which the certificate doesn't name, still
+  gets the browser's warning, and the card's note said so when it was installed. A certificate that
+  covers the hostname, the `.local` name, or an address of the host has no such note.
+- `[UNVERIFIED]` A certificate file without the intermediates (just the leaf, from a CA that has
+  them) installs with the note about the missing chain, and an Android or iOS browser's behavior
+  with it is as the note says (some fetch the intermediates, some don't).
+- `[UNVERIFIED]` `sudo systemctl restart drawbridge` keeps the installed certificate: the journal's
+  `web UI TLS certificate` line says `source=uploaded`, and the System page still shows it.
+- `[UNVERIFIED]` A certificate within 30 days of its end makes the System page's TLS check (and
+  the dashboard's banner) warn and say to install a renewed one, and an expired one makes it
+  fail; the daemon keeps serving it either way, and doesn't swap in the self-signed one.
+- `[UNVERIFIED]` certbot's `--deploy-hook` with `drawbridge tls install --cert
+  "$RENEWED_LINEAGE/fullchain.pem" --key "$RENEWED_LINEAGE/privkey.pem"` installs the renewed
+  certificate after `certbot renew --force-renewal`, and `drawbridge tls show` has the new dates.
+- `[UNVERIFIED]` `sudo drawbridge tls reset` (or **Use the Self-Signed Certificate**) goes back:
+  the next load warns again, with the fingerprint the setup token printed, and
+  `/var/lib/drawbridge/tls/uploaded.pem` is gone.
+- `[UNVERIFIED]` With the daemon under its systemd sandbox (`ProtectSystem=strict`), the install
+  writes `/var/lib/drawbridge/tls/uploaded.pem` as the `drawbridge` user with mode 0600.
+- `[UNVERIFIED]` A damaged `uploaded.pem` (truncate it by hand) doesn't stop the daemon: it starts,
+  logs `can't use the uploaded TLS certificate`, and serves the self-signed one until `tls reset`
+  or a new install.
+- `[UNVERIFIED]` A read-only API token gets 403 from all three methods on
+  `/api/system/certificate`.

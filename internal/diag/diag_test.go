@@ -44,6 +44,7 @@ type fixture struct {
 	stateDir string
 	lookup   func(name string) ([]netip.Addr, error)
 	cert     time.Time
+	uploaded bool
 	in       Input
 }
 
@@ -93,6 +94,7 @@ func (f *fixture) run() []Check {
 		FS:           f.files,
 		StateDir:     f.stateDir,
 		CertNotAfter: f.cert,
+		CertUploaded: f.uploaded,
 		Now:          func() time.Time { return now },
 		Statfs: func(string) (uint64, uint64, error) {
 			return f.free, 64 << 30, f.statErr
@@ -409,6 +411,11 @@ func TestTLSCertificate(t *testing.T) {
 		{"expires soon", func(f *fixture) { f.cert = now.Add(10*24*time.Hour + time.Hour) }, "tls-certificate", Warn, "expires on 2026-10-09 (10 days)", "systemctl restart drawbridge"},
 		{"expired", func(f *fixture) { f.cert = now.Add(-time.Minute) }, "tls-certificate", Fail, "expired on 2026-09-29", "systemctl restart drawbridge"},
 		{"none", func(f *fixture) { f.cert = time.Time{} }, "tls-certificate", Skip, "no TLS certificate", ""},
+
+		// Nothing renews one the admin installed, so the hint says how to install another.
+		{"uploaded, valid", func(f *fixture) { f.uploaded = true }, "tls-certificate", Pass, "uploaded certificate is valid until 2026-12-28 (90 days)", ""},
+		{"uploaded, expires soon", func(f *fixture) { f.uploaded, f.cert = true, now.Add(10*24*time.Hour+time.Hour) }, "tls-certificate", Warn, "uploaded certificate expires on 2026-10-09 (10 days)", "drawbridge tls install --cert FILE --key FILE"},
+		{"uploaded, expired", func(f *fixture) { f.uploaded, f.cert = true, now.Add(-time.Minute) }, "tls-certificate", Fail, "uploaded certificate expired on 2026-09-29", "drawbridge tls reset"},
 	})
 }
 

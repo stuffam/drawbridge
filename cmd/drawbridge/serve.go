@@ -112,20 +112,14 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	if *tlsDir == "" {
 		*tlsDir = filepath.Join(filepath.Dir(*dbPath), "tls")
 	}
-	var vpnAddrs []netip.Addr
-	if st, err := svc.Settings(ctx); err == nil {
-		if srv, err := st.ServerAddrs(); err == nil {
-			vpnAddrs = []netip.Addr{srv.IPv4, srv.IPv6}
-		}
-	}
-	cert, err := loadCertificate(*tlsDir, vpnAddrs, log)
+	certs, err := tlscert.Open(*tlsDir, tlscert.Options{Names: certificateNames(ctx, svc, log), Log: log})
 	if err != nil {
 		log.Error("can't start", "err", err)
 		return 1
 	}
+	svc.TLS = certs
 
 	host := diag.NewHost(filepath.Dir(*dbPath))
-	host.CertNotAfter = cert.Leaf.NotAfter
 	svc.Diag = &host
 
 	ctl, err := control.Listen(*socket)
@@ -137,7 +131,7 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 
 	d := daemon{web: web, control: ctl, svc: svc, drift: *drift, sessionInterval: *sessionInterval,
 		trafficRetentionInterval: *trafficRetentionInterval, log: log,
-		tls: tlscert.Config(cert), fingerprint: tlscert.Fingerprint(cert),
+		tls:     certs.Config(),
 		allowed: allowlistFor(svc, lanCache.Prefixes)}
 	if err := d.run(ctx); err != nil {
 		log.Error("stopped", "err", err)
@@ -146,27 +140,22 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	return 0
 }
 
-// loadCertificate returns the web UI's certificate, creating it on first use (or when
-// it's about to expire) for this machine's names, its LAN addresses, and its VPN
-// addresses.
-func loadCertificate(dir string, vpnAddrs []netip.Addr, log *slog.Logger) (tls.Certificate, error) {
-	host, _ := os.Hostname()
-	addrs, err := lan.HostAddrs()
-	if err != nil {
-		log.Warn("can't list this machine's LAN addresses for the TLS certificate", "err", err)
+// certificateNames returns what a new self-signed certificate is valid for: this machine's
+// names, its LAN addresses, and the VPN's, read as they are when the certificate is made.
+func certificateNames(ctx context.Context, svc *service.Service, log *slog.Logger) func() tlscert.Names {
+	return func() tlscert.Names {
+		host, _ := os.Hostname()
+		addrs, err := lan.HostAddrs()
+		if err != nil {
+			log.Warn("can't list this machine's LAN addresses for the TLS certificate", "err", err)
+		}
+		if st, err := svc.Settings(ctx); err == nil {
+			if srv, err := st.ServerAddrs(); err == nil {
+				addrs = append(addrs, srv.IPv4, srv.IPv6)
+			}
+		}
+		return tlscert.DefaultNames(host, addrs...)
 	}
-	addrs = append(addrs, vpnAddrs...)
-	cert, created, err := tlscert.Ensure(dir, tlscert.DefaultNames(host, addrs...), time.Now())
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	if created {
-		log.Info("created a self-signed TLS certificate for the web UI", "dir", dir)
-	}
-	// Browsers warn about a self-signed certificate; this is how the admin can tell
-	// that the warning is about this one.
-	log.Info("web UI TLS certificate", "sha256", tlscert.Fingerprint(cert), "expires", cert.Leaf.NotAfter.Format(time.DateOnly))
-	return cert, nil
 }
 
 // allowlistFor returns who may use the web UI: loopback, link-local, the VPN's subnets,
@@ -274,9 +263,7 @@ type daemon struct {
 	trafficRetentionInterval time.Duration
 	log                      *slog.Logger
 	tls                      *tls.Config
-	// fingerprint is the TLS certificate's, which admin setup-token shows.
-	fingerprint string
-	allowed     func(context.Context) []netip.Prefix
+	allowed                  func(context.Context) []netip.Prefix
 }
 
 // freshConns tracks the connections the web server has accepted and that haven't sent a request
@@ -336,7 +323,7 @@ func (d daemon) run(ctx context.Context) error {
 	go func() { errc <- webSrv.Serve(web) }()
 
 	if d.control != nil && d.svc != nil {
-		ctlSrv := control.NewServer(d.svc, d.log, d.fingerprint)
+		ctlSrv := control.NewServer(d.svc, d.log)
 		servers = append(servers, ctlSrv)
 		go func() { errc <- ctlSrv.Serve(d.control) }()
 	}

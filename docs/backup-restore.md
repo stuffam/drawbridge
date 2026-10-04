@@ -94,7 +94,9 @@ What a restore does:
   warning is about the host's certificate, as it was before. It names the VPN addresses as they
   were when the host made it; if you reach the UI through the VPN's address and the restored VPN has
   other addresses, stop the daemon, `sudo rm -r /var/lib/drawbridge/tls`, and start it for a new
-  one.
+  one. On a new host, a certificate you installed
+  ([docs/tls-certificate.md](tls-certificate.md)) isn't there either: install it again with
+  `sudo drawbridge tls install`. (`rm -r` on that directory removes an installed certificate too.)
 
 It needs room for a second copy of the database beside the first while it works.
 

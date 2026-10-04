@@ -19,6 +19,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/model"
 	"github.com/stuffam/drawbridge/internal/reconcile"
 	"github.com/stuffam/drawbridge/internal/store"
+	"github.com/stuffam/drawbridge/internal/tlscert"
 	"github.com/stuffam/drawbridge/internal/wg"
 )
 
@@ -43,6 +44,8 @@ type Service struct {
 	// Diag is what Diagnose reads the host with (diagnose.go); nil means the daemon
 	// can't run the diagnostics.
 	Diag *diag.Host
+	// TLS is the web UI's certificate (certificate.go); nil means the daemon can't change it.
+	TLS *tlscert.Store
 
 	// SnapshotDir is where the nightly snapshots go (snapshots.go); empty means there are none.
 	// SnapshotInterval is how old the newest may be before the next is made (zero means a day,

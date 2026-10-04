@@ -131,6 +131,27 @@ export interface Diagnostics {
 	checks: DiagnosticCheck[];
 }
 
+/** The TLS certificate the web UI presents to a browser. It never carries the key. */
+export interface Certificate {
+	/** `self-signed` is the one the daemon makes and renews; `uploaded` is the admin's own. */
+	source: 'self-signed' | 'uploaded';
+	/** Such as `CN=vpn.example.com`. */
+	subject: string;
+	issuer: string;
+	/** What it is valid for: its DNS names, then its addresses. */
+	names: string[];
+	not_before: string;
+	not_after: string;
+	/** SHA-256, as a browser shows it. */
+	fingerprint: string;
+	/** How many certificates the daemon serves, the server's own included. */
+	chain: number;
+	/** Whether it signed itself, so no certificate authority vouches for it. */
+	self_issued: boolean;
+	/** Warnings about an uploaded certificate that aren't reasons to refuse it. */
+	notes: string[];
+}
+
 /** One snapshot of the database that the host keeps for itself. */
 export interface SnapshotInfo {
 	/** The file's name in the snapshot directory. */
@@ -527,6 +548,16 @@ export const api = {
 	dnsCheck: () => request<DNSCheck>('GET', '/api/server/dns-check'),
 	diagnostics: () => request<Diagnostics>('GET', '/api/system/health'),
 	snapshots: () => request<Snapshots>('GET', '/api/system/snapshots'),
+	certificate: () => request<Certificate>('GET', '/api/system/certificate'),
+	/**
+	 * Serves the admin's own certificate instead of the self-signed one: the chain and its key as
+	 * PEM text. It takes the account's password again. The server checks both before anything
+	 * changes, and a new connection is shown the certificate at once.
+	 */
+	installCertificate: (password: string, certificate: string, private_key: string) =>
+		request<Certificate>('PUT', '/api/system/certificate', { password, certificate, private_key }),
+	/** Goes back to the self-signed certificate. */
+	resetCertificate: () => request<Certificate>('DELETE', '/api/system/certificate'),
 	/**
 	 * Makes a backup and returns the file. It takes the account's password again, and the
 	 * passphrase the file is encrypted with. The server makes the whole file before it sends any

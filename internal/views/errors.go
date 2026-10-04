@@ -36,9 +36,11 @@ func ErrorStatus(err error) int {
 		errors.Is(err, store.ErrChangePending), errors.Is(err, store.ErrNoPending), errors.Is(err, service.ErrChangeExpired),
 		errors.Is(err, store.ErrTokenNameTaken), errors.Is(err, service.ErrTooManyTokens),
 		errors.Is(err, ipam.ErrExhausted), errors.Is(err, model.ErrNoEndpoint),
-		errors.Is(err, store.ErrSetupDone), errors.Is(err, store.ErrUserExists):
+		errors.Is(err, store.ErrSetupDone), errors.Is(err, store.ErrUserExists),
+		errors.Is(err, service.ErrNoUploadedCertificate):
 		return http.StatusConflict
-	case errors.Is(err, service.ErrNoDiagnostics), errors.Is(err, service.ErrNoBackup):
+	case errors.Is(err, service.ErrNoDiagnostics), errors.Is(err, service.ErrNoBackup),
+		errors.Is(err, service.ErrNoCertificates):
 		return http.StatusNotImplemented
 	}
 	return http.StatusInternalServerError

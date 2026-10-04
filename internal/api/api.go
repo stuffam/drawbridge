@@ -92,6 +92,9 @@ var routes = []route{
 	{"GET", "/api/system/health", false, (*handler).health},
 	{"POST", "/api/system/backup", false, (*handler).downloadBackup},
 	{"GET", "/api/system/snapshots", false, (*handler).snapshots},
+	{"GET", "/api/system/certificate", false, (*handler).certificate},
+	{"PUT", "/api/system/certificate", false, (*handler).installCertificate},
+	{"DELETE", "/api/system/certificate", false, (*handler).resetCertificate},
 	{"GET", "/api/events", false, (*handler).events},
 	{"GET", "/api/stream", false, (*handler).stream},
 }

@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/stuffam/drawbridge/internal/diag"
+	"github.com/stuffam/drawbridge/internal/tlscert"
 	"github.com/stuffam/drawbridge/internal/wg"
 )
 
@@ -59,5 +60,11 @@ func (s *Service) Diagnose(ctx context.Context) ([]diag.Check, error) {
 	for _, p := range s.probeAddrs(ctx, own) {
 		in.DNSProbes = append(in.DNSProbes, diag.DNSResult{Address: p.Address, Answered: p.Answered, Detail: p.Detail})
 	}
-	return diag.Run(ctx, *s.Diag, in), nil
+	// The certificate can change while the daemon runs, so it's read now and not at startup.
+	host := *s.Diag
+	if s.TLS != nil {
+		info := s.TLS.Info()
+		host.CertNotAfter, host.CertUploaded = info.NotAfter, info.Source == tlscert.Uploaded
+	}
+	return diag.Run(ctx, host, in), nil
 }

@@ -48,10 +48,9 @@ func Listen(path string) (net.Listener, error) {
 
 // NewServer returns the control socket's HTTP server. Each connection's changes are
 // attributed to the account of the process on the other end, for the event log.
-// fingerprint is the web UI's TLS certificate's, which setup-token shows.
-func NewServer(svc *service.Service, log *slog.Logger, fingerprint string) *http.Server {
+func NewServer(svc *service.Service, log *slog.Logger) *http.Server {
 	return &http.Server{
-		Handler:           NewHandler(svc, log, fingerprint),
+		Handler:           NewHandler(svc, log),
 		ReadHeaderTimeout: 10 * time.Second,
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			return service.WithActor(ctx, service.Actor{Name: peerName(c), Via: service.ViaCLI})
@@ -60,8 +59,8 @@ func NewServer(svc *service.Service, log *slog.Logger, fingerprint string) *http
 }
 
 // NewHandler returns the control API.
-func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http.Handler {
-	h := &handler{svc: svc, log: log, fingerprint: fingerprint}
+func NewHandler(svc *service.Service, log *slog.Logger) http.Handler {
+	h := &handler{svc: svc, log: log}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/settings", h.getSettings)
 	mux.HandleFunc("PATCH /v1/settings", h.patchSettings)
@@ -72,6 +71,9 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 	mux.HandleFunc("POST /v1/pending/revert", h.revertChange)
 	mux.HandleFunc("POST /v1/apply", h.apply)
 	mux.HandleFunc("GET /v1/diagnostics", h.diagnostics)
+	mux.HandleFunc("GET /v1/tls", h.certificate)
+	mux.HandleFunc("PUT /v1/tls", h.installCertificate)
+	mux.HandleFunc("DELETE /v1/tls", h.resetCertificate)
 	mux.HandleFunc("GET /v1/clients", h.listClients)
 	mux.HandleFunc("POST /v1/clients", h.addClient)
 	mux.HandleFunc("GET /v1/clients/{name}", h.getClient)
@@ -90,9 +92,8 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 }
 
 type handler struct {
-	svc         *service.Service
-	log         *slog.Logger
-	fingerprint string
+	svc *service.Service
+	log *slog.Logger
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
@@ -146,6 +147,42 @@ func (h *handler) diagnostics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, views.NewDiagnostics(checks))
+}
+
+// certificate describes the TLS certificate the web UI is serving.
+func (h *handler) certificate(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.Certificate(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewCertificate(c))
+}
+
+// installCertificate makes the given certificate and key the web UI's. The socket is root's (or
+// the drawbridge group's), so unlike the web API it doesn't ask for the account's password.
+func (h *handler) installCertificate(w http.ResponseWriter, r *http.Request) {
+	var req views.CertificateInstallRequest
+	if err := decode(r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	c, err := h.svc.InstallCertificate(r.Context(), req.Certificate, req.PrivateKey)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewCertificate(c))
+}
+
+// resetCertificate goes back to the self-signed certificate.
+func (h *handler) resetCertificate(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.ResetCertificate(r.Context())
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewCertificate(c))
 }
 
 // createBackup makes a backup and sends it. The passphrase comes in the body, which is only
@@ -360,7 +397,8 @@ func (h *handler) events(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetupTokenResult is the pending first-run setup token, and the fingerprint of the
-// certificate the browser will warn about.
+// certificate the browser will warn about. The fingerprint is empty when the web UI serves a
+// certificate the admin installed, which a browser that trusts it doesn't warn about.
 type SetupTokenResult struct {
 	Token       string `json:"token"`
 	Fingerprint string `json:"fingerprint,omitempty"`
@@ -372,7 +410,7 @@ func (h *handler) setupToken(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, SetupTokenResult{Token: token, Fingerprint: h.fingerprint})
+	writeJSON(w, http.StatusOK, SetupTokenResult{Token: token, Fingerprint: h.svc.SetupFingerprint()})
 }
 
 // AdminRequest names the admin account.

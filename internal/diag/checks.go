@@ -397,18 +397,30 @@ func (e *env) tlsCertificate() Check {
 	}
 	left := e.host.CertNotAfter.Sub(e.host.now())
 	day := e.host.CertNotAfter.Format(time.DateOnly)
+	// The daemon renews its self-signed certificate when it starts, and nothing renews one the
+	// admin installed, so the way out differs.
+	what, renew := "The web UI's certificate", "The daemon renews it only when it starts: sudo systemctl restart drawbridge"
+	expired := "sudo systemctl restart drawbridge creates a new one at startup."
+	if e.host.CertUploaded {
+		what = "The web UI's uploaded certificate"
+		renew = "Nothing renews an uploaded certificate. Install a renewed one: sudo drawbridge tls install --cert FILE --key FILE"
+		expired = "Install a renewed one (sudo drawbridge tls install --cert FILE --key FILE), or go back to the self-signed one (sudo drawbridge tls reset)."
+	}
 	switch {
 	case left <= 0:
 		c.Status = Fail
-		c.Detail = fmt.Sprintf("The web UI's certificate expired on %s.", day)
-		c.Hint = "sudo systemctl restart drawbridge creates a new one at startup."
+		c.Detail = fmt.Sprintf("%s expired on %s.", what, day)
+		c.Hint = expired
 	case left < certWarn:
 		c.Status = Warn
-		c.Detail = fmt.Sprintf("The web UI's certificate expires on %s (%s).", day, plural(int(left/(24*time.Hour)), "day"))
-		c.Hint = "The daemon renews it only when it starts: sudo systemctl restart drawbridge"
+		c.Detail = fmt.Sprintf("%s expires on %s (%s).", what, day, plural(int(left/(24*time.Hour)), "day"))
+		c.Hint = renew
 	default:
 		c.Status = Pass
 		c.Detail = fmt.Sprintf("Valid until %s (%s).", day, plural(int(left/(24*time.Hour)), "day"))
+		if e.host.CertUploaded {
+			c.Detail = "The uploaded certificate is valid until " + day + fmt.Sprintf(" (%s).", plural(int(left/(24*time.Hour)), "day"))
+		}
 	}
 	return c
 }

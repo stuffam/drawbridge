@@ -167,6 +167,24 @@ func (c *Client) Diagnostics(ctx context.Context) (views.Diagnostics, error) {
 	return v, c.do(ctx, http.MethodGet, "/v1/diagnostics", nil, &v)
 }
 
+// Certificate describes the TLS certificate the web UI is serving.
+func (c *Client) Certificate(ctx context.Context) (views.Certificate, error) {
+	var v views.Certificate
+	return v, c.do(ctx, http.MethodGet, "/v1/tls", nil, &v)
+}
+
+// InstallCertificate makes a certificate chain and its private key (PEM) the web UI's.
+func (c *Client) InstallCertificate(ctx context.Context, certPEM, keyPEM string) (views.Certificate, error) {
+	var v views.Certificate
+	return v, c.do(ctx, http.MethodPut, "/v1/tls", views.CertificateInstallRequest{Certificate: certPEM, PrivateKey: keyPEM}, &v)
+}
+
+// ResetCertificate goes back to the self-signed certificate.
+func (c *Client) ResetCertificate(ctx context.Context) (views.Certificate, error) {
+	var v views.Certificate
+	return v, c.do(ctx, http.MethodDelete, "/v1/tls", nil, &v)
+}
+
 // DNSCheck asks the server's VPN addresses whether a DNS resolver answers on them.
 func (c *Client) DNSCheck(ctx context.Context) (views.DNSCheck, error) {
 	var v views.DNSCheck
