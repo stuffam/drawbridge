@@ -7,6 +7,7 @@
 	import { describeUserAgent, formatAgo, formatTime } from '$lib/format';
 	import APITokens from '$lib/components/APITokens.svelte';
 	import Result from '$lib/components/Result.svelte';
+	import TwoFactor from '$lib/components/TwoFactor.svelte';
 
 	let { data } = $props();
 
@@ -118,6 +119,8 @@
 	<Result {error} {success} />
 	<button class="btn btn-primary self-start" type="submit" disabled={busy}>Change Password</button>
 </form>
+
+<TwoFactor username={data.me.user.username} />
 
 <section class="card flex flex-col gap-3" aria-labelledby="sessions-heading">
 	<h2 id="sessions-heading" class="font-semibold">Logged-in browsers</h2>

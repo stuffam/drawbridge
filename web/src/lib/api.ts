@@ -10,7 +10,9 @@ export class ApiError extends Error {
 		readonly status: number,
 		message: string,
 		/** Seconds to wait before retrying, for a 429. */
-		readonly retryAfter?: number
+		readonly retryAfter?: number,
+		/** Set when the status alone doesn't say what went wrong: "totp_required" for a login that needs a code. */
+		readonly code?: string
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -341,6 +343,23 @@ export interface User {
 	username: string;
 	created_at: string;
 	last_login_at?: string;
+	/** Whether a login needs a code from the admin's authenticator app. */
+	totp_enabled: boolean;
+	/** How many recovery codes haven't been used; 0 when 2FA is off. */
+	recovery_codes_left: number;
+}
+
+/** A new secret for an authenticator app, shown once. */
+export interface TOTPEnrollment {
+	/** Base32, for an app that can't scan the QR code. */
+	secret: string;
+	/** The otpauth:// address the QR code holds. It contains the secret. */
+	uri: string;
+}
+
+/** Recovery codes, shown once: the server keeps only their hashes. */
+export interface RecoveryCodes {
+	codes: string[];
 }
 
 export interface Session {
@@ -491,7 +510,18 @@ async function failure(res: Response, method: Method, path: string): Promise<Api
 			? (data as { error: string }).error
 			: `${method} ${path} failed with status ${res.status}`;
 	const retry = Number(res.headers.get('Retry-After'));
-	return new ApiError(res.status, message, Number.isFinite(retry) && retry > 0 ? retry : undefined);
+	const code =
+		typeof data === 'object' &&
+		data !== null &&
+		typeof (data as { code?: unknown }).code === 'string'
+			? (data as { code: string }).code
+			: undefined;
+	return new ApiError(
+		res.status,
+		message,
+		Number.isFinite(retry) && retry > 0 ? retry : undefined,
+		code
+	);
 }
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
@@ -515,12 +545,31 @@ export const api = {
 	setupStatus: () => request<{ needed: boolean }>('GET', '/api/setup'),
 	setup: (token: string, username: string, password: string) =>
 		request<Me>('POST', '/api/setup', { token, username, password }),
-	login: (username: string, password: string) =>
-		request<Me>('POST', '/api/auth/login', { username, password }),
+	/**
+	 * Logs in. An account with 2FA on answers a login without a code with a 401 whose `code` is
+	 * "totp_required"; ask again with the code from the app, or a recovery code.
+	 */
+	login: (username: string, password: string, code = '') =>
+		request<Me>(
+			'POST',
+			'/api/auth/login',
+			code ? { username, password, code } : { username, password }
+		),
 	logout: () => request<void>('POST', '/api/auth/logout'),
 	me: () => request<Me>('GET', '/api/auth/me'),
 	changePassword: (current_password: string, new_password: string) =>
 		request<void>('POST', '/api/auth/password', { current_password, new_password }),
+	/** Starts turning 2FA on: a new secret, waiting for its first code. Takes the password again. */
+	enrollTotp: (password: string) =>
+		request<TOTPEnrollment>('POST', '/api/auth/totp/enroll', { password }),
+	/** Finishes turning 2FA on with the first code from the app. Returns the recovery codes, once. */
+	verifyTotp: (code: string) => request<RecoveryCodes>('POST', '/api/auth/totp/verify', { code }),
+	/** Turns 2FA off. Takes the password again and a code from the app, or a recovery code. */
+	disableTotp: (password: string, code: string) =>
+		request<void>('POST', '/api/auth/totp/disable', { password, code }),
+	/** Replaces the recovery codes, and returns the new ones once. Takes the password and a code. */
+	newRecoveryCodes: (password: string, code: string) =>
+		request<RecoveryCodes>('POST', '/api/auth/totp/recovery-codes', { password, code }),
 	apiTokens: () => request<APIToken[]>('GET', '/api/auth/tokens'),
 	createApiToken: (name: string, password: string) =>
 		request<NewAPITokenResult>('POST', '/api/auth/tokens', { name, password }),

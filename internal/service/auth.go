@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/stuffam/drawbridge/internal/auth"
@@ -127,8 +129,20 @@ func (s *Service) CompleteSetup(ctx context.Context, token, username, password, 
 	return s.startSession(ctx, u, userAgent)
 }
 
-// Login checks a username and password and starts a session.
+// Login checks a username and password and starts a session. For an account with 2FA on it
+// returns ErrTOTPRequired when the password is right: LoginWithCode takes the code.
 func (s *Service) Login(ctx context.Context, username, password, userAgent string) (Login, error) {
+	return s.LoginWithCode(ctx, username, password, "", userAgent)
+}
+
+// LoginWithCode is Login for an account that may have 2FA on: code is the six digits from the
+// admin's authenticator app, or a recovery code. It is ignored by an account without 2FA.
+//
+// The password is checked first, and a right one with no code is not a failure: it is the first
+// step of a login that has two. A wrong code is a failure, and the failures are counted against
+// the same source and account as wrong passwords. Nothing clears them until the whole login has
+// passed, or the password alone would reset the count and the code could be guessed without limit.
+func (s *Service) LoginWithCode(ctx context.Context, username, password, code, userAgent string) (Login, error) {
 	keys := []string{sourceKey(ctx)}
 	u, err := s.Store.UserByName(ctx, username)
 	found := err == nil
@@ -154,6 +168,25 @@ func (s *Service) Login(ctx context.Context, username, password, userAgent strin
 		s.Limiter.Fail(keys...)
 		s.record(ctx, Event{Kind: "auth.login_failed", Actor: truncate(username, 64)})
 		return Login{}, ErrBadLogin
+	}
+	if u.TOTPEnabled() {
+		if strings.TrimSpace(code) == "" {
+			return Login{}, ErrTOTPRequired
+		}
+		recovery, left, err := s.useSecondFactor(ctx, u, code)
+		if errors.Is(err, ErrBadCode) {
+			s.Limiter.Fail(keys...)
+			s.record(ctx, Event{Kind: "auth.login_failed", Actor: truncate(username, 64),
+				Data: map[string]string{"reason": "wrong code"}})
+			return Login{}, ErrBadCode
+		}
+		if err != nil {
+			return Login{}, err
+		}
+		if recovery {
+			s.record(ctx, Event{Kind: "auth.recovery_code_used", Actor: u.Username,
+				Data: map[string]string{"left": strconv.Itoa(left)}})
+		}
 	}
 	s.Limiter.Succeed(keys...)
 	if err := s.Store.RecordLogin(ctx, u.ID); err != nil {
@@ -261,6 +294,16 @@ func (s *Service) confirmPassword(ctx context.Context, u store.User, password, f
 	if wait := s.Limiter.Wait(keys...); wait > 0 {
 		return &RateLimitedError{Wait: wait}
 	}
+	if err := s.checkPassword(ctx, u, password, failed, keys); err != nil {
+		return err
+	}
+	s.Limiter.Succeed(keys...)
+	return nil
+}
+
+// checkPassword is confirmPassword without the limiter's wait before it and its success after
+// it, for a check that has a second step to pass (a code) before the failures can be forgiven.
+func (s *Service) checkPassword(ctx context.Context, u store.User, password, failed string, keys []string) error {
 	ok, err := s.Hasher.Verify(ctx, u.PasswordHash, password)
 	if err != nil {
 		return err
@@ -270,7 +313,6 @@ func (s *Service) confirmPassword(ctx context.Context, u store.User, password, f
 		s.record(ctx, Event{Kind: failed, Data: map[string]string{"reason": "wrong password"}})
 		return &model.InvalidError{Err: ErrWrongPassword}
 	}
-	s.Limiter.Succeed(keys...)
 	return nil
 }
 

@@ -62,6 +62,7 @@ Commands:
   admin setup-token    Show the token that first-run setup in the web UI asks for.
   admin create NAME    Create the admin account with a random password.
   admin reset-password Give the admin account a new random password.
+  admin disable-2fa    Turn off two-factor authentication for the admin account.
   version              Print the version.
   help                 Show this help.
 

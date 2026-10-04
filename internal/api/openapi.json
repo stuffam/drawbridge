@@ -207,7 +207,7 @@
             "$ref": "#/components/responses/Invalid"
           },
           "401": {
-            "description": "The username or the password is wrong.",
+            "description": "The username or the password is wrong. Or the password is right and the account has two-factor authentication on: with no code, the error's code is totp_required and nothing is counted against the limits; with a wrong or already-used code, it is an ordinary failure.",
             "content": {
               "application/json": {
                 "schema": {
@@ -223,7 +223,7 @@
             "$ref": "#/components/responses/RateLimited"
           }
         },
-        "description": "After five failed attempts from a source or for the account, each further attempt waits twice as long as the last, up to 15 minutes.",
+        "description": "After five failed attempts from a source or for the account, each further attempt waits twice as long as the last, up to 15 minutes. A wrong code counts like a wrong password, and a right password doesn't clear the count, so a code can't be guessed faster than a password can. A code is good once, within a step either side of the current one.",
         "tags": [
           "auth"
         ],
@@ -336,6 +336,252 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/totp/enroll": {
+      "post": {
+        "summary": "Start turning on two-factor authentication",
+        "description": "Makes a new secret and keeps it, waiting for the first code from the admin's authenticator app (`/api/auth/totp/verify`). It takes the account's password again even in a logged-in session, because whoever turns two-factor authentication on picks the second factor; wrong attempts count against the login limits (429). Nothing changes at login until the first code is proved, and calling it again replaces the secret. The response is the only time the secret is shown. Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "The secret to put in the app.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TOTPEnrollment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The password is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TOTPEnrollRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/totp/verify": {
+      "post": {
+        "summary": "Finish turning on two-factor authentication",
+        "description": "Checks the first code from the app against the secret from `/api/auth/totp/enroll`, and turns two-factor authentication on. From then on a login needs a code. Returns ten recovery codes, **once**: only their hashes are kept. Every other session of the account is logged out, as when the password changes; the one that made this request stays. The code that proves the app is used up. Recorded as an `auth.totp_enabled` event. A wrong code counts against the login limits (429). Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "On. The recovery codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The code is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Two-factor authentication is on already, or no enrollment is waiting: start again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TOTPVerifyRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/totp/disable": {
+      "post": {
+        "summary": "Turn off two-factor authentication",
+        "description": "Turns it off, and forgets the secret and the recovery codes. It takes the account's password again and a code (from the app, or a recovery code), so a hijacked session can't take the second factor away. Wrong attempts count against the login limits, and a right password doesn't clear the count (429). Every other session of the account is logged out. Recorded as an `auth.totp_disabled` event. From the command line, `drawbridge admin disable-2fa` does it without a code, for an admin who has lost both. Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "204": {
+            "description": "Off."
+          },
+          "400": {
+            "description": "The password or the code is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Two-factor authentication isn't on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/totp/recovery-codes": {
+      "post": {
+        "summary": "Make new recovery codes",
+        "description": "Replaces the account's recovery codes with ten new ones, returned **once**; the old ones, used or not, stop working. It takes the account's password again and a code (from the app, or a recovery code), with the same limits as turning two-factor authentication off. Recorded as an `auth.recovery_codes_renewed` event. Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "The new codes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The password or the code is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Two-factor authentication isn't on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorRequest"
               }
             }
           }
@@ -2112,6 +2358,13 @@
           "error": {
             "type": "string",
             "description": "What went wrong, for people."
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "totp_required"
+            ],
+            "description": "Present when a client has to tell the error from others of its status: totp_required is a login whose password was right and whose account needs a code too (401)."
           }
         }
       },
@@ -2198,6 +2451,10 @@
           },
           "password": {
             "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "The six digits from the authenticator app (spaces are ignored), or a recovery code. Needed only by an account with two-factor authentication on: a login without one gets a 401 with the code totp_required, and the client asks again with the password and the code. An account without it ignores this."
           }
         }
       },
@@ -2222,7 +2479,9 @@
         "type": "object",
         "required": [
           "username",
-          "created_at"
+          "created_at",
+          "totp_enabled",
+          "recovery_codes_left"
         ],
         "properties": {
           "username": {
@@ -2236,6 +2495,14 @@
             "type": "string",
             "format": "date-time",
             "description": "When the account last logged in. In the response to logging in or setup, the login before this one, so people can spot one they did not make; absent if there was none."
+          },
+          "totp_enabled": {
+            "type": "boolean",
+            "description": "Whether a login needs a code from the admin's authenticator app."
+          },
+          "recovery_codes_left": {
+            "type": "integer",
+            "description": "How many recovery codes haven't been used; 0 when two-factor authentication is off."
           }
         }
       },
@@ -3625,6 +3892,82 @@
           "private_key": {
             "type": "string",
             "description": "The private key as PEM text, without a passphrase. It is checked, kept in the daemon's TLS directory (mode 0600), and never returned or logged."
+          }
+        }
+      },
+      "TOTPEnrollRequest": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "The account's password, again."
+          }
+        }
+      },
+      "TOTPEnrollment": {
+        "type": "object",
+        "required": [
+          "secret",
+          "uri"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "The secret in base32, for an authenticator app that can't scan a QR code. 32 characters."
+          },
+          "uri": {
+            "type": "string",
+            "description": "The otpauth:// address a QR code holds, for the app to read: HMAC-SHA1, six digits, a 30-second step. It contains the secret."
+          }
+        }
+      },
+      "TOTPVerifyRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The six digits the app shows for the secret just made."
+          }
+        }
+      },
+      "SecondFactorRequest": {
+        "type": "object",
+        "required": [
+          "password",
+          "code"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "The account's password, again."
+          },
+          "code": {
+            "type": "string",
+            "description": "The six digits from the authenticator app, or an unused recovery code."
+          }
+        }
+      },
+      "RecoveryCodes": {
+        "type": "object",
+        "required": [
+          "codes"
+        ],
+        "properties": {
+          "codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ten codes like ABCDE-FGHJK-LMNPQ, each good once. This response is the only place they appear; only their hashes are kept."
           }
         }
       }

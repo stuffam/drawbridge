@@ -136,7 +136,7 @@ All roles are subcommands of a single binary, `drawbridge`:
 | `drawbridge client list\|add\|show\|pause\|resume\|rename\|delete\|config\|qr\|rotate-keys` | Headless client management. `qr` prints the QR code in the terminal (M1; `rename` M2; `rotate-keys` M5). |
 | `drawbridge events [--client NAME]` | The event log: changes from the web and the CLI, logins, and corrected drift (M2). |
 | `drawbridge apply [--dry-run]` | Reconciles once and prints the diff; `--dry-run` prints what it would change and changes nothing (M5). |
-| `drawbridge admin create\|reset-password\|disable-2fa\|setup-token` | Recovery when locked out of the UI (M2; `disable-2fa` M5). |
+| `drawbridge admin create\|reset-password\|disable-2fa\|setup-token` | Recovery when locked out of the UI (M2; `disable-2fa` M5, built). |
 | `drawbridge backup create\|restore` | `create` makes a passphrase-encrypted file with a consistent DB snapshot and the key, through the daemon. `restore` (root, daemon stopped) puts one back (§6.6, M5). |
 | `drawbridge export --format wg-quick` | Prints an equivalent `wg-quick` config, for transparency or migrating away (M6). |
 | `drawbridge import --from wg-quick\|wg-easy <file>` | Migration from an existing setup (M6). |
@@ -927,7 +927,41 @@ stateDiagram-v2
     closes its stream, so it does idle out.
   - The API lists active sessions and can revoke them. Changing the password ends every other
     session.
-- **TOTP 2FA** with recovery codes (M5).
+- **TOTP 2FA** with recovery codes (M5, built 2026-10-04; docs/two-factor.md). It's optional, and
+  there's one account:
+  - **The code** is RFC 6238: HMAC-SHA1, six digits, a 30-second step, which every authenticator
+    app supports, and nothing more is offered. The secret is 160 random bits, sealed like the other
+    secrets (`totp_secret_enc`, with a purpose that names the account). A code is accepted from the
+    step before to the step after the current one, because the host may start with the wrong time
+    (§15). **A code is good once**: the last accepted step is kept (`totp_last_step`) and updated
+    in one conditional `UPDATE`, so a code that was used, and any earlier one, is refused even
+    inside the window, and two logins with the same code at once can't both pass (RFC 6238 §5.2).
+  - **Logging in has two steps over one endpoint.** `POST /api/auth/login` with the right password
+    and no code answers 401 with the error code `totp_required`, creates no session, and counts
+    as nothing: it isn't a failure. The page then asks for the code and sends all three. A wrong
+    code is a failure like a wrong password, against the same source and account. **Nothing clears
+    the failures until the whole login has passed**: a right password forgives nothing, or someone
+    with the password could guess the code without limit. The same rule holds when turning 2FA off
+    and when making new recovery codes, which take the password and a code.
+  - **Turning it on** takes the password again (`POST /api/auth/totp/enroll`: a session alone could
+    otherwise pick the second factor, which locks the admin out and keeps the attacker in), shows
+    the secret as a QR code, and does nothing until the first code is proved
+    (`/api/auth/totp/verify`). The secret waits in the database in the meantime; a login doesn't
+    ask for a code until `totp_enabled_at` is set. Turning it on or off ends the account's other
+    sessions, as a password change does.
+  - **Recovery codes** are ten random 75-bit codes (`ABCDE-FGHJK-LMNPQ`), shown once, and each
+    works once in place of an app code. Only their SHA-256 hashes are kept (they're random and
+    long, so no slow hash is needed), as a JSON array in `recovery_codes_hash`, and a code that's
+    used is removed in the same transaction that checks it. New ones void the old
+    (`/api/auth/totp/recovery-codes`). The Account page says how many are left.
+  - **`drawbridge admin disable-2fa`** is the way back for an admin who lost the app and the codes.
+    It goes through the control socket, which already can reset the password, and ends the
+    account's sessions and lifts the lockout. `reset-password` doesn't turn 2FA off.
+  - **API tokens are not asked for a code**: they're read-only dashboards that can't type one.
+  - Events: `auth.totp_enabled`, `auth.totp_disabled`, `auth.totp_failed` (a wrong password or code
+    on a change), `auth.login_failed` (with `reason: wrong code` when the password was right),
+    `auth.recovery_code_used` (with how many are left), and `auth.recovery_codes_renewed`. None
+    carries a secret or a code.
 - **Brute-force protection:** failed logins are rate-limited per source (IPv6 by /64) and per
   account. After five failures, each attempt waits twice as long as the last, from 2 seconds up
   to 15 minutes; an hour without a failure resets the count. `drawbridge admin reset-password`
@@ -1189,8 +1223,10 @@ events              id, ts, kind, category ('connection'|'admin'|'system'),
                     source_ip, client_id NULL, client_name, data JSON
                     INDEX(ts), INDEX(client_id, ts)
 users               id, username UNIQUE, password_hash, created_at, password_changed_at,
-                    last_login_at NULL, totp_secret_enc NULL (M5),
-                    recovery_codes_hash JSON NULL (M5)
+                    last_login_at NULL, totp_secret_enc NULL, totp_enabled_at NULL,
+                    totp_last_step (0), recovery_codes_hash JSON NULL
+                    (the secret is set from the start of an enrollment; 2FA is on once
+                    totp_enabled_at is. The hashes are those of the codes not yet used)
 auth_sessions       id PK (public, for revoking), token_hash UNIQUE, user_id, created_at,
                     last_seen_at, expires_at, ip, user_agent
 setup_token         (singleton) token_enc, created_at; deleted once the admin exists
@@ -1272,7 +1308,12 @@ GET    /api/clients/{id}/dns-log?limit=  a client's recent queries from AdGuard 
                                          `state` is off, ok, or error (M4)
 
 Later:
-POST   /api/auth/totp/enroll | /verify                                    (M5)
+POST   /api/auth/totp/enroll             password again; a new secret and its otpauth URI,
+                                         shown once (M5, built)
+POST   /api/auth/totp/verify             the first code; turns 2FA on and returns the recovery
+                                         codes, once
+POST   /api/auth/totp/disable            password and a code (or a recovery code)
+POST   /api/auth/totp/recovery-codes     password and a code; ten new codes, once
 GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                download a backup: password + passphrase (M5; built)
@@ -1294,7 +1335,7 @@ can be added later (i18n).
 | Page | Contents |
 |---|---|
 | **Setup wizard** | Setup token → admin account → endpoint FQDN → DNS (with a check of the host's resolver) → done. A subnets step (IPv4/IPv6) is planned. |
-| **Login** | Username, password, and TOTP code |
+| **Login** | Username and password; then, for an account with 2FA on, a second step that asks for the code from the authenticator app (or a recovery code). 2FA is turned on and off on the Account page, which also has the password, sessions, and API tokens |
 | **Dashboard** | Server card (up/down, endpoint, public key, port, addresses), client counts (total / online / paused / outdated), client list sortable by name or status (each connected client's endpoint address, session and total traffic), bandwidth chart, recent events, diagnostics warnings. Each box opens its page when it's clicked, and its outline turns blue under the pointer: the counts open the client list (filtered by state), Bandwidth opens Charts, Server opens the settings, and Clients opens the client list. A click on a link, button, or control inside a box does its own thing, and dragging over a box's text selects it without leaving (a double-click on a word leaves on its first click). The headings are links too, for the keyboard |
 | **Clients** | Searchable, filterable list, sortable by name, status, last handshake, or IP address: status dot, name, addresses, last handshake, endpoint, RX/TX, pause toggle, and quick actions (QR, download, edit, delete) |
 | **Client detail** | Overview, config and QR, bandwidth and cumulative charts, session history, recent DNS queries (from AdGuard Home, when its integration is on), and events. Pause (or Resume), Rename, and Delete are buttons at the top: Rename opens a dialog like Add Client's, and Delete asks to confirm in one. An "Advanced" edit section and rotating keys are planned. |
@@ -1538,8 +1579,8 @@ Each milestone ends in a usable, tested state.
 - Full systemd sandboxing, TOTP 2FA, safe apply with automatic rollback, outdated-config
   tracking, and encrypted backup/restore. *Built: the sandboxing (the units), outdated-config
   tracking with client key rotation (§6.1), safe apply with `drawbridge apply` (§4.3), and the
-  backups, rotating the server's key (§6.2), and uploading a certificate (§6.6). Left: TOTP
-  2FA.*
+  backups, rotating the server's key (§6.2), uploading a certificate (§6.6), and TOTP 2FA with
+  recovery codes (§6.5).*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the
@@ -1618,6 +1659,7 @@ Each milestone ends in a usable, tested state.
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
 | Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source, rotating the server's key) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
 | TLS certificate | The admin may install their own certificate (web and CLI), served at once without a restart; it stays in use after it expires, and is never replaced unasked | A browser warning about a self-signed certificate trains people to click through, and the UI is reachable only from the LAN and the VPN, so a public CA can issue for it only by DNS-01. The web install asks for the password again because a hijacked session could otherwise present a certificate whose key it holds. The private key sits in `tls/` beside the self-signed one, because the TLS stack needs it at startup (2026-10-04) |
+| Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/two-factor.md, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |

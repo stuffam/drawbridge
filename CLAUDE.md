@@ -50,7 +50,7 @@ setups.** What exists:
 - The CLI, which talks to the daemon over the control socket:
   `server show|set|rotate-key|confirm|revert`,
   `client list|add|show|pause|resume|rename|delete|config|qr|rotate-keys`, `events`, `doctor`,
-  `tls show|install|reset`, and `admin setup-token|create|reset-password`.
+  `tls show|install|reset`, and `admin setup-token|create|reset-password|disable-2fa`.
 - `drawbridge doctor`, the first slice of M5 (2026-09-29): 13 host and network checks, each with
   a fix hint, run by the daemon (`internal/diag`) and printed by the CLI. Exit status 1 when any
   check fails, 0 otherwise. The System page (the pulse icon in the header,
@@ -72,8 +72,7 @@ setups.** What exists:
   (`clientconf.Fingerprint`, docs/PLAN.md §6.1); a client whose current fingerprint differs is
   flagged `config_outdated` in the list, on its page, in the dashboard's Outdated count, and in
   `client list`. `client rotate-keys` (and `POST /api/clients/{id}/rotate-keys`, and a button on
-  the client's page) gives a client new keys, which cuts the old config off at once. Left in M5:
-  TOTP 2FA, the upgrade matrix, and the docs.
+  the client's page) gives a client new keys, which cuts the old config off at once.
 - Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
   cut the admin off (the listen port, removing an admin-UI source, rotating the server's key) is
   applied at once from the web UI and undone after 60 s unless it's kept, by a bar on every page
@@ -92,7 +91,16 @@ setups.** What exists:
   /api/system/certificate`, and the System page's **Web UI Certificate** card serve a certificate
   the admin brings instead of the self-signed one, checked first (`tlscert.Parse`) and used by the
   next connection with no restart (`tlscert.Store` is the TLS config's `GetCertificate`). `tls
-  reset` and `DELETE` go back. The web path asks for the password again. Left in M5: TOTP 2FA.
+  reset` and `DELETE` go back. The web path asks for the password again.
+- TOTP two-factor authentication (2026-10-04), the seventh slice of M5 (docs/PLAN.md §6.5,
+  docs/two-factor.md). The Account page's **Two-Factor Authentication** section turns it on (the
+  password again, a QR code, and the first code from the admin's app), shows ten single-use
+  recovery codes once, makes new ones, and turns it off (`POST /api/auth/totp/enroll|verify|disable|
+  recovery-codes`, `internal/service/totp.go`, `internal/auth/totp.go`, `internal/store/totp.go`).
+  With it on, `POST /api/auth/login` answers a right password and no code with a 401 whose error
+  code is `totp_required`, and the login page asks for the code in a second step.
+  `drawbridge admin disable-2fa` is the way back for an admin who lost the app and the codes.
+  Left in M5: the upgrade matrix and the docs (install, router setup, troubleshooting).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -389,6 +397,21 @@ These are the rules most likely to get silently broken.
   request whatever else it has: a cookie doesn't widen it. Making a token takes the password
   again, because it outlives a session. Its last use is written once an hour, not per request,
   and `TestWriteBudget` polls with one to keep it so.
+- **A second factor is good once, and a right password forgives nothing.**
+  `LoginWithCode` (`internal/service/auth.go`) and `confirmFactors` (`internal/service/totp.go`)
+  clear the limiter's failures only after the password *and* the code have both passed. Clearing
+  them after the password alone would let someone who has the password guess the six-digit code
+  without limit (`TestWrongCodesAreLimitedWhateverThePassword`, `TestDisableTOTPLimitsWrongCodes`).
+  A right password with no code is the login's first step, not a failure, and counts for nothing.
+  `auth.VerifyTOTP` takes only a step later than `totp_last_step`, which `Store.UseTOTPStep`
+  advances in one conditional `UPDATE`, so a code is never taken twice and two logins can't share
+  one (`TestLoginRefusesACodeUsedAlready`, `TestUseTOTPStepIsAtomic`). Recovery codes are kept
+  only as hashes and removed in the transaction that checks them. Turning 2FA on or off, and
+  making new codes, take the password again (and a code, except the first), and end the other
+  sessions. A wrong password or code from a logged-in session is a 400, never a 401, which the web
+  app takes for a lapsed session. The secret, its `otpauth://` address, and the codes appear in
+  one response each and nowhere else: not in a view, an event, or a log line
+  (`TestEnrollAndEnableTOTP`).
 - **Never retry an AdGuard Home 401 on a timer.** Five refusals block the daemon's address for
   15 minutes, and then the right password is refused too ("Verified facts"). A test remembers
   a refused account for 30 seconds, and the sync stops on a 401 until the connection changes, or
@@ -600,6 +623,8 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
 - `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
+- `docs/two-factor.md` is the admin's guide to two-factor authentication: turning it on, the
+  recovery codes, getting back in without them, and what it does and doesn't cover.
 - `docs/tls-certificate.md` is the admin's guide to serving their own TLS certificate: what it
   needs to cover, installing, renewing, and going back.
 - `docs/backup-restore.md` is the admin's guide to backups: making one, keeping it, and restoring
@@ -635,10 +660,11 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
     swaps it in. `store.Snapshot` is the `VACUUM INTO` copy it's made from.
   - `snapshot/` names, lists, and prunes the host's database snapshots, with no dependency on
     the store, which uses it for the one before a migration.
-  - `auth/` has password hashing, tokens, and the login rate limiter; `lan/` detects the LAN
-    and builds the admin allowlist; `tlscert/` makes the self-signed certificate and holds the
-    one in use (`Store`, which swaps it live and keeps the admin's own). `tlscert/tlscerttest`
-    makes certificates for tests, so none is checked into the repository.
+  - `auth/` has password hashing, tokens, the login rate limiter, and TOTP codes and recovery
+    codes (totp.go); `lan/` detects the LAN and builds the admin allowlist; `tlscert/` makes the
+    self-signed certificate and holds the one in use (`Store`, which swaps it live and keeps the
+    admin's own). `tlscert/tlscerttest` makes certificates for tests, so none is checked into the
+    repository.
 - `internal/api/` serves the JSON API (documented in `openapi.json`, with the security
   middleware in middleware.go) and the embedded web app. `internal/webui/` embeds the
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports

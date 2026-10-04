@@ -30,7 +30,11 @@ func (h *handler) fail(w http.ResponseWriter, err error) {
 		// The details are in the journal; they're no business of the network.
 		msg = "internal error; the details are in the journal (journalctl -u drawbridge)"
 	}
-	writeJSON(w, status, views.Error{Error: msg})
+	body := views.Error{Error: msg}
+	if errors.Is(err, service.ErrTOTPRequired) {
+		body.Code = "totp_required"
+	}
+	writeJSON(w, status, body)
 }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
@@ -79,7 +83,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, err)
 		return
 	}
-	login, err := h.svc.Login(r.Context(), req.Username, req.Password, r.UserAgent())
+	login, err := h.svc.LoginWithCode(r.Context(), req.Username, req.Password, req.Code, r.UserAgent())
 	if err != nil {
 		h.fail(w, err)
 		return
@@ -114,6 +118,65 @@ func (h *handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Two-factor authentication (docs/PLAN.md §6.5).
+
+func (h *handler) totpEnroll(w http.ResponseWriter, r *http.Request) {
+	var req views.TOTPEnrollRequest
+	if err := decode(w, r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	enrollment, err := h.svc.EnrollTOTP(r.Context(), sessionFrom(r.Context()).user, req.Password)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.TOTPEnrollment{Secret: enrollment.Secret, URI: enrollment.URI})
+}
+
+func (h *handler) totpVerify(w http.ResponseWriter, r *http.Request) {
+	var req views.TOTPVerifyRequest
+	if err := decode(w, r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	s := sessionFrom(r.Context())
+	codes, err := h.svc.EnableTOTP(r.Context(), s.user, s.session, req.Code)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.RecoveryCodes{Codes: codes})
+}
+
+func (h *handler) totpDisable(w http.ResponseWriter, r *http.Request) {
+	var req views.SecondFactorRequest
+	if err := decode(w, r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	s := sessionFrom(r.Context())
+	if err := h.svc.DisableTOTP(r.Context(), s.user, s.session, req.Password, req.Code); err != nil {
+		h.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *handler) totpRecoveryCodes(w http.ResponseWriter, r *http.Request) {
+	var req views.SecondFactorRequest
+	if err := decode(w, r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	codes, err := h.svc.NewRecoveryCodes(r.Context(), sessionFrom(r.Context()).user, req.Password, req.Code)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.RecoveryCodes{Codes: codes})
 }
 
 func (h *handler) sessions(w http.ResponseWriter, r *http.Request) {

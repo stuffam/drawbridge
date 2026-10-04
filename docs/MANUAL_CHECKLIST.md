@@ -758,3 +758,47 @@ authority, no real browser trust store, and no ACME client has been involved.
   or a new install.
 - `[UNVERIFIED]` A read-only API token gets 403 from all three methods on
   `/api/system/certificate`.
+
+## 17. Two-factor authentication (the seventh M5 slice)
+
+TOTP two-factor authentication, the Account page's **Two-Factor Authentication** section, the
+login's second step, and `drawbridge admin disable-2fa` (docs/PLAN.md §6.5, docs/two-factor.md).
+Nothing here has run on the reference platform, so nothing is `[VERIFIED]` yet. What has run, away
+from it: the Go tests check the codes against the RFC 4226 and RFC 6238 test vectors, and the
+security rules (a code is good once, a right password forgives no failures, a wrong code is limited
+like a wrong password) with a mutation check of each; the browser tests turn it on, log in with
+codes and recovery codes, make new codes, turn it off, and use `admin disable-2fa` against the
+real daemon (the fake backend), with a code generator written separately from the server's. No
+real authenticator app has scanned the QR code, and no phone's clock has been involved.
+
+- `[UNVERIFIED]` With a real authenticator app on a phone (try two of Aegis, Google Authenticator,
+  1Password, and Bitwarden), scanning the QR code adds an entry for Drawbridge with the account `admin`, and
+  the six-digit code it shows turns 2FA on. Typing the key shown beside the QR code into an app that
+  can't scan gives the same codes.
+- `[UNVERIFIED]` Logging out and in asks for the code after the password, and the app's code logs
+  in. A second login within the same 30 seconds with the same code is refused, and works with the
+  next code. A wrong code shows the error and stays on the code step.
+- `[UNVERIFIED]` On the reference host, with `systemd-timesyncd` running, the app's codes are
+  accepted when the phone's clock is a few seconds fast or slow. With the host's clock set a few
+  minutes off (`sudo timedatectl set-ntp false; sudo timedatectl set-time ...`), they're refused.
+  Note whether `drawbridge doctor`'s Clock check notices (it reads only timesyncd's synchronized
+  flag), and that `sudo timedatectl set-ntp true` fixes it.
+- `[UNVERIFIED]` After a reboot (a Raspberry Pi without its RTC battery starts with the wrong time
+  until timesyncd sets it), the first login waits for the clock and then works.
+- `[UNVERIFIED]` A recovery code logs in once, and the Account page then says nine are left. New
+  recovery codes void the old ones.
+- `[UNVERIFIED]` `sudo drawbridge admin disable-2fa` over ssh turns it off, logs out the browsers,
+  and the log shows `auth.totp_disabled` from the CLI. `sudo drawbridge admin reset-password`
+  doesn't turn it off.
+- `[UNVERIFIED]` Five wrong codes with the right password make the sixth attempt wait, even with
+  the right code, and the wait doubles. `sudo drawbridge admin disable-2fa` lifts it.
+- `[UNVERIFIED]` A backup made with 2FA on, restored onto a fresh host (docs/backup-restore.md),
+  keeps it on: the same app's codes log in, and an unused recovery code works.
+- `[UNVERIFIED]` Upgrading from the previous `.deb` keeps the account and its password, with 2FA
+  off; the journal says `upgraded the database` and `backups/` has the snapshot from before
+  the migration.
+- `[UNVERIFIED]` A read-only API token (docs/api-tokens.md) still reads `/api/server/status` with
+  2FA on, and gets 403 from all four `/api/auth/totp/*` routes.
+- `[UNVERIFIED]` Over the VPN from a phone: the login's code step and the Account page work in the
+  phone's browser, and the browser's password manager doesn't fill the code field with the
+  password.

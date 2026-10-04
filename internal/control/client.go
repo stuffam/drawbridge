@@ -321,6 +321,13 @@ func (c *Client) CreateAdmin(ctx context.Context, username string) (AdminResult,
 	return v, c.do(ctx, http.MethodPost, "/v1/admin/create", AdminRequest{Username: username}, &v)
 }
 
+// DisableTOTP turns two-factor authentication off for the admin account ("" for the only
+// account), and lifts any lockout.
+func (c *Client) DisableTOTP(ctx context.Context, username string) (TwoFactorResult, error) {
+	var v TwoFactorResult
+	return v, c.do(ctx, http.MethodPost, "/v1/admin/disable-2fa", AdminRequest{Username: username}, &v)
+}
+
 // ResetPassword gives the admin account a new random password ("" for the only account).
 func (c *Client) ResetPassword(ctx context.Context, username string) (AdminResult, error) {
 	var v AdminResult

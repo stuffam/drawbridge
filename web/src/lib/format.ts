@@ -180,6 +180,15 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 	{ kind: 'auth.password_reset', category: 'admin', label: 'Reset the password (CLI)' },
 	{ kind: 'auth.admin_created', category: 'admin', label: 'Created the admin account (CLI)' },
 	{ kind: 'auth.session_revoked', category: 'admin', label: 'Revoked a session' },
+	{ kind: 'auth.totp_enabled', category: 'admin', label: 'Turned on two-factor authentication' },
+	{ kind: 'auth.totp_disabled', category: 'admin', label: 'Turned off two-factor authentication' },
+	{
+		kind: 'auth.totp_failed',
+		category: 'admin',
+		label: 'Failed a two-factor change (wrong password or code)'
+	},
+	{ kind: 'auth.recovery_code_used', category: 'admin', label: 'Used a recovery code' },
+	{ kind: 'auth.recovery_codes_renewed', category: 'admin', label: 'Made new recovery codes' },
 	{ kind: 'auth.token_created', category: 'admin', label: 'Made an API token' },
 	{ kind: 'auth.token_revoked', category: 'admin', label: 'Revoked an API token' },
 	{

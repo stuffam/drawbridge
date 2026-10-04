@@ -33,7 +33,19 @@ type User struct {
 	PasswordChangedAt time.Time
 	// LastLoginAt is zero if the account has never logged in.
 	LastLoginAt time.Time
+	// TOTPEnabledAt is when the admin proved their authenticator app, which is when a login began
+	// asking for a code; zero while 2FA is off, or an enrollment is still waiting for its first
+	// code. The secret is never on a User: TOTPSecret reads it.
+	TOTPEnabledAt time.Time
+	// TOTPLastStep is the last time step whose code was accepted (docs/PLAN.md §6.5).
+	TOTPLastStep int64
+	// RecoveryCodesLeft is how many recovery codes haven't been used. Their hashes stay in the
+	// store.
+	RecoveryCodesLeft int
 }
+
+// TOTPEnabled reports whether a login needs a code from the admin's authenticator app.
+func (u User) TOTPEnabled() bool { return !u.TOTPEnabledAt.IsZero() }
 
 // Session is a logged-in browser.
 type Session struct {
@@ -154,16 +166,19 @@ func (s *Store) insertUser(ctx context.Context, tx *sql.Tx, username, passwordHa
 	return u, err
 }
 
-const userColumns = `id, username, password_hash, created_at, password_changed_at, last_login_at`
+const userColumns = `id, username, password_hash, created_at, password_changed_at, last_login_at,
+	totp_enabled_at, totp_last_step, recovery_codes_hash`
 
 func scanUser(row interface{ Scan(...any) error }) (User, error) {
 	var (
 		u                  User
 		created, changed   string
 		lastLogin          sql.NullString
+		totpAt, recovery   sql.NullString
 		errCreated, errChg error
 	)
-	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &created, &changed, &lastLogin); err != nil {
+	if err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &created, &changed, &lastLogin,
+		&totpAt, &u.TOTPLastStep, &recovery); err != nil {
 		return User{}, err
 	}
 	u.CreatedAt, errCreated = time.Parse(time.RFC3339Nano, created)
@@ -178,6 +193,18 @@ func scanUser(row interface{ Scan(...any) error }) (User, error) {
 		}
 		u.LastLoginAt = t
 	}
+	if totpAt.Valid {
+		t, err := time.Parse(time.RFC3339Nano, totpAt.String)
+		if err != nil {
+			return User{}, err
+		}
+		u.TOTPEnabledAt = t
+	}
+	hashes, err := parseRecoveryHashes(recovery)
+	if err != nil {
+		return User{}, err
+	}
+	u.RecoveryCodesLeft = len(hashes)
 	return u, nil
 }
 
