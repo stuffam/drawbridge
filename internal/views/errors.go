@@ -37,7 +37,7 @@ func ErrorStatus(err error) int {
 		errors.Is(err, ipam.ErrExhausted), errors.Is(err, model.ErrNoEndpoint),
 		errors.Is(err, store.ErrSetupDone), errors.Is(err, store.ErrUserExists):
 		return http.StatusConflict
-	case errors.Is(err, service.ErrNoDiagnostics):
+	case errors.Is(err, service.ErrNoDiagnostics), errors.Is(err, service.ErrNoBackup):
 		return http.StatusNotImplemented
 	}
 	return http.StatusInternalServerError

@@ -539,6 +539,19 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   group), so check that it doesn't fail on the key or on the temporary files. Note how long it
   takes, and how big the file is, with a few days of traffic history.
 - `[UNVERIFIED]` The event log has `Made a backup`, from the CLI's account.
+- `[UNVERIFIED]` **The web download:** on the System page, the Backup card with a wrong password
+  shows "the current password is wrong" and saves nothing, and with the right one your browser
+  saves `drawbridge-<time>.backup`. Do it through the reverse proxy you use for the UI too (a
+  proxy that buffers or limits the body could cut it), and once from the VPN. The card then says
+  when the last backup was made, and the event log has `Made a backup` from your account (via the
+  web) and `Failed to make a backup (wrong password)` for the wrong one, and neither the password
+  nor the passphrase. `sudo drawbridge backup restore` of the file you downloaded (with the
+  daemon stopped, as in the exit criterion below) works with its passphrase. Note how long the
+  click takes on the Pi, since it makes the snapshot and the encryption before the download
+  starts.
+- `[UNVERIFIED]` The System page's Snapshots card lists the files in
+  `/var/lib/drawbridge/backups/` with the right kind, time, and size, newest first, and has no way
+  to download one. With `--snapshot-interval 0`, it says the nightly snapshot is off.
 - `[UNVERIFIED]` **The exit criterion:** on a freshly flashed card with Drawbridge installed and
   not set up, `sudo systemctl stop drawbridge.service`, `sudo drawbridge backup restore FILE`,
   and `sudo systemctl restart drawbridge-tunnel.service drawbridge.service` bring the old

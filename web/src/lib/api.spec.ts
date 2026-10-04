@@ -108,4 +108,78 @@ describe('api', () => {
 			'/api/clients/c1/sessions?before=2026-09-28T00%3A00%3A00Z&limit=10'
 		]);
 	});
+
+	it('downloads a backup with the password and passphrase, and names the file as the server did', async () => {
+		const file = 'drawbridge-backup\nxxxxxxxx';
+		const fetchFn = vi.fn(async () =>
+			respond(200, file, {
+				'Content-Type': 'application/octet-stream',
+				'Content-Length': String(file.length),
+				'Content-Disposition': 'attachment; filename="drawbridge-20261004-143000.backup"'
+			})
+		);
+		setFetch(fetchFn);
+		const got = await api.downloadBackup('the password', 'a long enough passphrase');
+		expect(fetchFn).toHaveBeenCalledWith('/api/system/backup', {
+			method: 'POST',
+			headers: { 'X-Drawbridge': '1', 'Content-Type': 'application/json' },
+			body: '{"password":"the password","passphrase":"a long enough passphrase"}',
+			credentials: 'same-origin'
+		});
+		expect(got.name).toBe('drawbridge-20261004-143000.backup');
+		expect(await got.blob.text()).toBe(file);
+	});
+
+	it('reports why a backup was refused, and sends a lapsed session to the login', async () => {
+		const handler = vi.fn();
+		onUnauthorized(handler);
+		setFetch(async () => respond(400, { error: 'the current password is wrong' }));
+		const err = await api.downloadBackup('x', 'a long enough passphrase').catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(ApiError);
+		expect((err as ApiError).message).toBe('the current password is wrong');
+		expect(handler).not.toHaveBeenCalled();
+
+		setFetch(async () =>
+			respond(429, { error: 'too many failed attempts' }, { 'Retry-After': '30' })
+		);
+		const limited = await api
+			.downloadBackup('x', 'a long enough passphrase')
+			.catch((e: unknown) => e);
+		expect((limited as ApiError).retryAfter).toBe(30);
+
+		setFetch(async () => respond(401, { error: 'not logged in' }));
+		await expect(api.downloadBackup('x', 'a long enough passphrase')).rejects.toThrow(
+			'not logged in'
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a backup that arrived short, or empty, instead of saving it', async () => {
+		const headers = { 'Content-Length': '100', 'Content-Disposition': 'attachment; filename="x"' };
+		setFetch(async () => respond(200, 'only part of it', headers));
+		const short = await api
+			.downloadBackup('p', 'a long enough passphrase')
+			.catch((e: unknown) => e);
+		expect(short).toBeInstanceOf(ApiError);
+		expect((short as ApiError).message).toContain('cut short');
+
+		setFetch(async () => respond(200, '', { 'Content-Length': '0' }));
+		await expect(api.downloadBackup('p', 'a long enough passphrase')).rejects.toThrow('cut short');
+
+		// A body that fails while it's read, as a dropped connection does.
+		const broken = new ReadableStream({
+			pull(c) {
+				c.error(new TypeError('network error'));
+			}
+		});
+		setFetch(async () => new Response(broken, { status: 200, headers }));
+		await expect(api.downloadBackup('p', 'a long enough passphrase')).rejects.toThrow('cut short');
+	});
+
+	it('reads the snapshots', async () => {
+		const fetchFn = vi.fn(async () => respond(200, { dir: '/d', nightly: true, snapshots: [] }));
+		setFetch(fetchFn);
+		expect(await api.snapshots()).toEqual({ dir: '/d', nightly: true, snapshots: [] });
+		expect((fetchFn.mock.calls[0] as unknown[])[0]).toBe('/api/system/snapshots');
+	});
 });

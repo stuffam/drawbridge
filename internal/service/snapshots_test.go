@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -193,5 +194,59 @@ func TestFailedSnapshotLeavesNothing(t *testing.T) {
 	}
 	if made, err := s.SnapshotIfDue(ctx); made || err == nil {
 		t.Errorf("SnapshotIfDue: made %v, err %v; want an error", made, err)
+	}
+}
+
+// The page's list is what's in the directory, newest first, and it never has a file the daemon
+// didn't make: an admin's own file in that directory isn't a snapshot.
+func TestListSnapshots(t *testing.T) {
+	ctx := context.Background()
+	s, clk := newTestService(t)
+
+	// A daemon with no directory keeps none, and says so with an empty list, not an error.
+	l, err := s.ListSnapshots()
+	if err != nil || l.Dir != "" || l.Nightly || l.Items == nil || len(l.Items) != 0 {
+		t.Fatalf("no directory: %+v, %v", l, err)
+	}
+
+	dir := withSnapshots(t, s)
+	if l, err = s.ListSnapshots(); err != nil || l.Dir != dir || !l.Nightly || l.Items == nil || len(l.Items) != 0 {
+		t.Fatalf("no snapshots yet: %+v, %v", l, err)
+	}
+	if _, err := s.SnapshotDatabase(ctx); err != nil {
+		t.Fatal(err)
+	}
+	clk.advance(24 * time.Hour)
+	if _, err := s.SnapshotDatabase(ctx); err != nil {
+		t.Fatal(err)
+	}
+	pre := snapshot.NewPath(dir, snapshot.PreMigration, 3, clk.now().Add(-time.Hour))
+	if err := os.WriteFile(pre, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "my-own-copy.db"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	l, err = s.ListSnapshots()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, i := range l.Items {
+		names = append(names, i.Name)
+	}
+	want := []string{"nightly-20260927-120000.db", "pre-migration-v3-20260927-110000.db", "nightly-20260926-120000.db"}
+	if !slices.Equal(names, want) {
+		t.Errorf("snapshots %v, want %v", names, want)
+	}
+	if l.Items[1].Schema != 3 || l.Items[0].Size == 0 {
+		t.Errorf("items %+v", l.Items)
+	}
+
+	// With the nightly job off, the ones that are there still show, and the page can say it's off.
+	s.SnapshotInterval = -1
+	if l, err = s.ListSnapshots(); err != nil || l.Nightly || len(l.Items) != 3 {
+		t.Errorf("nightly off: %+v, %v", l, err)
 	}
 }

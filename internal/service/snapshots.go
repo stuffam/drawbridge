@@ -64,6 +64,31 @@ func (s *Service) SnapshotDatabase(ctx context.Context) (snapshot.Info, error) {
 	return info, nil
 }
 
+// SnapshotList is the snapshots the host keeps, for the System page.
+type SnapshotList struct {
+	// Dir is where they are, or empty when this daemon keeps none.
+	Dir string
+	// Nightly is whether the daily job runs. The snapshot before a migration is made either way.
+	Nightly bool
+	// Items are the snapshots, newest first. Never nil.
+	Items []snapshot.Info
+}
+
+// ListSnapshots lists the snapshots on the host. It reads a directory of a few files, so it's
+// fine to ask for on every page view, and it changes nothing.
+func (s *Service) ListSnapshots() (SnapshotList, error) {
+	l := SnapshotList{Dir: s.SnapshotDir, Nightly: s.SnapshotsOn(), Items: []snapshot.Info{}}
+	if s.SnapshotDir == "" {
+		return l, nil
+	}
+	items, err := snapshot.List(s.SnapshotDir)
+	if err != nil {
+		return SnapshotList{}, err
+	}
+	l.Items = append(l.Items, items...)
+	return l, nil
+}
+
 // SnapshotDue is whether the newest nightly snapshot is older than the interval, or there is
 // none.
 func (s *Service) SnapshotDue() (bool, error) {

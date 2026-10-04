@@ -37,10 +37,6 @@ var ErrTooManyTokens = fmt.Errorf("an account can have at most %d API tokens; re
 // token outlives the session and a password change, so a hijacked session mustn't be able to
 // mint one. The attempts count against the same limits as a login.
 func (s *Service) CreateAPIToken(ctx context.Context, u store.User, password, name string) (store.APIToken, string, error) {
-	keys := []string{sourceKey(ctx), auth.AccountKey(u.ID)}
-	if wait := s.Limiter.Wait(keys...); wait > 0 {
-		return store.APIToken{}, "", &RateLimitedError{Wait: wait}
-	}
 	name = strings.TrimSpace(name)
 	if n := len([]rune(name)); n == 0 || n > MaxTokenNameLength {
 		return store.APIToken{}, "", &model.InvalidError{Err: fmt.Errorf("a token name must be 1–%d characters", MaxTokenNameLength)}
@@ -48,16 +44,9 @@ func (s *Service) CreateAPIToken(ctx context.Context, u store.User, password, na
 	if strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return store.APIToken{}, "", &model.InvalidError{Err: errors.New("a token name can't contain control characters")}
 	}
-	ok, err := s.Hasher.Verify(ctx, u.PasswordHash, password)
-	if err != nil {
+	if err := s.confirmPassword(ctx, u, password, "auth.token_failed"); err != nil {
 		return store.APIToken{}, "", err
 	}
-	if !ok {
-		s.Limiter.Fail(keys...)
-		s.record(ctx, Event{Kind: "auth.token_failed", Data: map[string]string{"reason": "wrong password"}})
-		return store.APIToken{}, "", &model.InvalidError{Err: ErrWrongPassword}
-	}
-	s.Limiter.Succeed(keys...)
 	if n, err := s.Store.CountAPITokens(ctx, u.ID); err != nil {
 		return store.APIToken{}, "", err
 	} else if n >= MaxAPITokens {

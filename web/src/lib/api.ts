@@ -1,6 +1,8 @@
 // A typed client for Drawbridge's API (internal/api/openapi.json on the Go side). The
 // field names match the server's JSON exactly, so nothing is renamed in between.
 
+import { backupFileName } from './backup';
+
 /** An error response from the API. */
 export class ApiError extends Error {
 	constructor(
@@ -104,6 +106,34 @@ export interface DiagnosticCheck {
 export interface Diagnostics {
 	/** In the order to read them: the tunnel first, then the host, then what's around it. */
 	checks: DiagnosticCheck[];
+}
+
+/** One snapshot of the database that the host keeps for itself. */
+export interface SnapshotInfo {
+	/** The file's name in the snapshot directory. */
+	name: string;
+	/** `nightly` is the daily one; `pre-migration` is made before an upgrade changes the database. */
+	kind: 'nightly' | 'pre-migration';
+	made_at: string;
+	/** The database version a pre-migration snapshot holds. Absent for a nightly one. */
+	schema?: number;
+	/** Bytes. */
+	size: number;
+}
+
+export interface Snapshots {
+	/** Where they are on the host. Empty when this daemon keeps none. */
+	dir: string;
+	/** Whether the daily snapshot is on. The one before an upgrade is made either way. */
+	nightly: boolean;
+	/** Newest first. */
+	snapshots: SnapshotInfo[];
+}
+
+/** A file the server made, with the name it gave it. */
+export interface Download {
+	blob: Blob;
+	name: string;
 }
 
 export interface DNSCheck {
@@ -377,7 +407,8 @@ function eventQuery(filter: EventFilter, format?: 'csv'): string {
 	return qs ? '?' + qs : '';
 }
 
-async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+/** Sends a request, with the CSRF header and the session's cookie. */
+function send(method: Method, path: string, body?: unknown): Promise<Response> {
 	// Every change carries X-Drawbridge, which a cross-site request can't (the CSRF check).
 	const headers: Record<string, string> = { 'X-Drawbridge': '1' };
 	let payload: string | undefined;
@@ -385,33 +416,42 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 		headers['Content-Type'] = 'application/json';
 		payload = JSON.stringify(body);
 	}
-	const res = await fetchFn(path, { method, headers, body: payload, credentials: 'same-origin' });
-	if (res.status === 204) {
-		return undefined as T;
-	}
+	return fetchFn(path, { method, headers, body: payload, credentials: 'same-origin' });
+}
+
+/** The error a failed response is, and a lapsed session's trip to the login. */
+async function failure(res: Response, method: Method, path: string): Promise<ApiError> {
 	const text = await res.text();
 	let data: unknown = text;
 	if (text && (res.headers.get('Content-Type') ?? '').startsWith('application/json')) {
 		data = JSON.parse(text);
 	}
-	if (!res.ok) {
-		if (res.status === 401 && !path.startsWith('/api/auth/login')) {
-			unauthorized?.();
-		}
-		const message =
-			typeof data === 'object' &&
-			data !== null &&
-			typeof (data as { error?: unknown }).error === 'string'
-				? (data as { error: string }).error
-				: `${method} ${path} failed with status ${res.status}`;
-		const retry = Number(res.headers.get('Retry-After'));
-		throw new ApiError(
-			res.status,
-			message,
-			Number.isFinite(retry) && retry > 0 ? retry : undefined
-		);
+	if (res.status === 401 && !path.startsWith('/api/auth/login')) {
+		unauthorized?.();
 	}
-	return data as T;
+	const message =
+		typeof data === 'object' &&
+		data !== null &&
+		typeof (data as { error?: unknown }).error === 'string'
+			? (data as { error: string }).error
+			: `${method} ${path} failed with status ${res.status}`;
+	const retry = Number(res.headers.get('Retry-After'));
+	return new ApiError(res.status, message, Number.isFinite(retry) && retry > 0 ? retry : undefined);
+}
+
+async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+	const res = await send(method, path, body);
+	if (res.status === 204) {
+		return undefined as T;
+	}
+	if (!res.ok) {
+		throw await failure(res, method, path);
+	}
+	const text = await res.text();
+	if (text && (res.headers.get('Content-Type') ?? '').startsWith('application/json')) {
+		return JSON.parse(text) as T;
+	}
+	return text as T;
 }
 
 const clientPath = (id: string, suffix = '') => `/api/clients/${encodeURIComponent(id)}${suffix}`;
@@ -440,6 +480,33 @@ export const api = {
 	status: () => request<ServerStatus>('GET', '/api/server/status'),
 	dnsCheck: () => request<DNSCheck>('GET', '/api/server/dns-check'),
 	diagnostics: () => request<Diagnostics>('GET', '/api/system/health'),
+	snapshots: () => request<Snapshots>('GET', '/api/system/snapshots'),
+	/**
+	 * Makes a backup and returns the file. It takes the account's password again, and the
+	 * passphrase the file is encrypted with. The server makes the whole file before it sends any
+	 * of it, so what comes back is complete or an error.
+	 */
+	downloadBackup: async (password: string, passphrase: string): Promise<Download> => {
+		const path = '/api/system/backup';
+		const res = await send('POST', path, { password, passphrase });
+		if (!res.ok) {
+			throw await failure(res, 'POST', path);
+		}
+		const name = backupFileName(res.headers.get('Content-Disposition'));
+		const cut = new ApiError(0, 'The backup was cut short on the way. Try again.');
+		let blob: Blob;
+		try {
+			blob = await res.blob();
+		} catch {
+			throw cut;
+		}
+		// The server announces the length, so a body that ended early is one to refuse.
+		const want = Number(res.headers.get('Content-Length'));
+		if (blob.size === 0 || (want > 0 && blob.size !== want)) {
+			throw cut;
+		}
+		return { blob, name };
+	},
 
 	adguard: () => request<AdGuardConnection>('GET', '/api/integrations/adguard'),
 	saveAdGuard: (r: AdGuardRequest) =>

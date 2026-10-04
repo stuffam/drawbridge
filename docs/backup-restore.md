@@ -28,6 +28,18 @@ from a script.
 - Making one is in the event log (`Made a backup`), because the file holds every secret.
 - Make one after you add clients. A client added later isn't in an older backup.
 
+**In the browser,** the System page (the pulse icon in the header) has a Backup card that makes
+the same file. It asks for your password again, because the file holds every secret the server
+has, and a logged-in browser alone shouldn't be able to carry them off. It asks for the passphrase
+twice, because a passphrase mistyped once makes a backup nobody can open. Your browser saves
+`drawbridge-YYYYMMDD-HHMMSS.backup`, and the card says when the last one was made, by either way.
+A wrong password counts against the same limit as a login, and is in the event log. The file is
+made in full before the download starts, so a failure is an error on the page, and never a file
+that stops partway.
+
+Restoring is only on the command line, on purpose: it replaces the database, your password
+included, so a web page that could do it would let a hijacked session take everything.
+
 ## Restore onto a fresh host
 
 This is what the backup is for: the SD card failed, or you're moving to another Raspberry Pi.
@@ -112,7 +124,9 @@ Besides a backup you make, Drawbridge keeps copies of its database on the host, 
   the upgrade doesn't change the database, and says why.
 
 They're a way back from a bad change or a bad upgrade, **not from a lost card**: they sit on the
-same card as the database, with the key. Keep a backup somewhere else for that.
+same card as the database, with the key. Keep a backup somewhere else for that. The System page
+lists them, with the time and size of each, and doesn't offer them for download: a snapshot has no
+passphrase, and the database has your password hash in it. A backup is how a copy leaves the host.
 
 To go back to one, stop the daemon and restore it. A snapshot needs no passphrase, and the host's
 own key stays, because it's what the snapshot was sealed with:
@@ -141,5 +155,3 @@ upgrades. `sudo drawbridge doctor` checks the free space.
 - Anything outside Drawbridge: the router's port forward, your DNS records, and AdGuard Home
   itself. Drawbridge's connection to AdGuard Home (the address, the account, and the password)
   is in it, and the client names it added there come back with the next sync.
-
-A download from the web UI isn't built yet.

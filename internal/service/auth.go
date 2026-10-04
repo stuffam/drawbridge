@@ -252,6 +252,28 @@ func (s *Service) ChangePassword(ctx context.Context, u store.User, current stor
 	return nil
 }
 
+// confirmPassword checks a logged-in account's password again, before something that outlives
+// the session or hands out every secret the server has (an API token, a backup): a hijacked
+// session mustn't be able to do either. A wrong password counts against the same limits as a
+// login, and is an event of the kind failed.
+func (s *Service) confirmPassword(ctx context.Context, u store.User, password, failed string) error {
+	keys := []string{sourceKey(ctx), auth.AccountKey(u.ID)}
+	if wait := s.Limiter.Wait(keys...); wait > 0 {
+		return &RateLimitedError{Wait: wait}
+	}
+	ok, err := s.Hasher.Verify(ctx, u.PasswordHash, password)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		s.Limiter.Fail(keys...)
+		s.record(ctx, Event{Kind: failed, Data: map[string]string{"reason": "wrong password"}})
+		return &model.InvalidError{Err: ErrWrongPassword}
+	}
+	s.Limiter.Succeed(keys...)
+	return nil
+}
+
 // ListSessions returns an account's active sessions, newest first.
 func (s *Service) ListSessions(ctx context.Context, userID string) ([]store.Session, error) {
 	all, err := s.Store.Sessions(ctx, userID)
