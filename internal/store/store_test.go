@@ -57,6 +57,8 @@ var undo = map[int][]string{
 	8:  {`DROP TABLE api_tokens`},
 	9:  {`ALTER TABLE clients DROP COLUMN delivered_hash`, `ALTER TABLE clients DROP COLUMN delivered_at`},
 	10: {`DROP TABLE pending_apply`},
+	11: {`ALTER TABLE users DROP COLUMN totp_secret_enc`, `ALTER TABLE users DROP COLUMN totp_enabled_at`,
+		`ALTER TABLE users DROP COLUMN totp_last_step`, `ALTER TABLE users DROP COLUMN recovery_codes_hash`},
 }
 
 // rollBackTo puts the database back as it was after the given migration, so a test can open it

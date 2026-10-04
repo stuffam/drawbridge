@@ -183,6 +183,10 @@ func TestTokenReadableIsShortAndHasNoSecrets(t *testing.T) {
 		"GET /api/auth/tokens",           // the tokens
 		"POST /api/auth/tokens",          // a token can't make a token
 		"DELETE /api/auth/tokens/{id}",   // or revoke one
+		"POST /api/auth/totp/enroll",     // a token can't change the second factor
+		"POST /api/auth/totp/verify",
+		"POST /api/auth/totp/disable",
+		"POST /api/auth/totp/recovery-codes",
 		"POST /api/integrations/adguard/test",
 	} {
 		if !served[key] {

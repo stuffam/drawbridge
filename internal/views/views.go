@@ -393,6 +393,9 @@ type ClientPatch struct {
 // Error is the body of every error response.
 type Error struct {
 	Error string `json:"error"`
+	// Code is set when a client has to tell the error from others of its status; "totp_required"
+	// for a login whose password was right and needs a code too.
+	Code string `json:"code,omitempty"`
 }
 
 // EventView is one entry in the event log.
@@ -466,6 +469,40 @@ type SetupRequest struct {
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	// Code is the six digits from the authenticator app, or a recovery code. It is needed only by
+	// an account with 2FA on, and a login without it gets a 401 with the code "totp_required".
+	Code string `json:"code,omitempty"`
+}
+
+// TOTPEnrollRequest starts turning 2FA on. It takes the password again, even in a logged-in
+// session.
+type TOTPEnrollRequest struct {
+	Password string `json:"password"`
+}
+
+// TOTPEnrollment is the secret to put in an authenticator app, shown once, with the address its QR
+// code holds.
+type TOTPEnrollment struct {
+	// Secret is base32, for an app that can't scan.
+	Secret string `json:"secret"`
+	URI    string `json:"uri"`
+}
+
+// TOTPVerifyRequest finishes turning 2FA on, with the first code from the app.
+type TOTPVerifyRequest struct {
+	Code string `json:"code"`
+}
+
+// SecondFactorRequest is a change to 2FA that takes the password again and a code: the six digits
+// from the authenticator app, or a recovery code.
+type SecondFactorRequest struct {
+	Password string `json:"password"`
+	Code     string `json:"code"`
+}
+
+// RecoveryCodes is a new set of recovery codes, shown once.
+type RecoveryCodes struct {
+	Codes []string `json:"codes"`
 }
 
 // PasswordChange changes the logged-in account's password.
@@ -482,11 +519,16 @@ type UserView struct {
 	// it's the login before this one, so people can spot one they didn't make; zero if
 	// there was none.
 	LastLoginAt time.Time `json:"last_login_at,omitzero"`
+	// TOTPEnabled is whether a login needs a code from the admin's authenticator app.
+	TOTPEnabled bool `json:"totp_enabled"`
+	// RecoveryCodesLeft is how many recovery codes haven't been used; 0 when 2FA is off.
+	RecoveryCodesLeft int `json:"recovery_codes_left"`
 }
 
 // User converts an account to its view.
 func User(u store.User) UserView {
-	return UserView{Username: u.Username, CreatedAt: u.CreatedAt, LastLoginAt: u.LastLoginAt}
+	return UserView{Username: u.Username, CreatedAt: u.CreatedAt, LastLoginAt: u.LastLoginAt,
+		TOTPEnabled: u.TOTPEnabled(), RecoveryCodesLeft: u.RecoveryCodesLeft}
 }
 
 // SessionView is a logged-in browser. Its token is never shown.

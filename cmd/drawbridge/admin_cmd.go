@@ -26,13 +26,17 @@ const adminUsage = `Usage: drawbridge admin <command> [USERNAME] [flags]
   reset-password [USERNAME]
                      Give the admin account a new random password, log out all of its
                      sessions, and lift any lockout from failed logins.
+  disable-2fa [USERNAME]
+                     Turn off two-factor authentication for the admin account, for an
+                     admin who lost both the authenticator app and the recovery codes.
+                     It logs out all of the account's sessions and lifts any lockout.
 
 Flags:
 `
 
 func adminCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	// The number of arguments each command takes: at least, at most.
-	commands := map[string][2]int{"setup-token": {0, 0}, "create": {1, 1}, "reset-password": {0, 1}}
+	commands := map[string][2]int{"setup-token": {0, 0}, "create": {1, 1}, "reset-password": {0, 1}, "disable-2fa": {0, 1}}
 	if len(args) == 0 {
 		fmt.Fprint(stderr, adminUsage)
 		return 2
@@ -99,6 +103,23 @@ func adminCmd(ctx context.Context, args []string, stdout, stderr io.Writer) int 
 		}
 		fmt.Fprintf(stdout, "New password for %q: %s\n", res.Username, res.Password)
 		fmt.Fprintln(stdout, "Its sessions are logged out. Log in with the new password, then change it.")
+		return 0
+
+	case "disable-2fa":
+		username := ""
+		if len(pos) == 1 {
+			username = pos[0]
+		}
+		res, err := c.DisableTOTP(ctx, username)
+		if err != nil {
+			return fail(err)
+		}
+		if !res.WasOn {
+			fmt.Fprintf(stdout, "Two-factor authentication was already off for %q.\n", res.Username)
+			return 0
+		}
+		fmt.Fprintf(stdout, "Two-factor authentication is off for %q. Its sessions are logged out.\n", res.Username)
+		fmt.Fprintln(stdout, "Log in with the password, then turn it on again on the Account page.")
 		return 0
 	}
 	return 2

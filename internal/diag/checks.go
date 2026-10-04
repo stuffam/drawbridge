@@ -354,7 +354,7 @@ func (e *env) timeSync() Check {
 		return c
 	}
 	c.Status = Warn
-	c.Detail = "systemd-timesyncd hasn't reported a synchronized clock. TLS certificates and WireGuard handshakes depend on the time."
+	c.Detail = "systemd-timesyncd hasn't reported a synchronized clock. TLS certificates, WireGuard handshakes, and two-factor codes depend on the time."
 	c.Hint = "sudo timedatectl set-ntp true, then timedatectl status. Only systemd-timesyncd is recognized: a host that keeps time with chrony or ntpd shows this warning even when its clock is right."
 	return c
 }

@@ -90,6 +90,7 @@ func TestRunHelpAndErrors(t *testing.T) {
 		{args: []string{"admin"}, code: 2, wantStderr: "Usage: drawbridge admin"},
 		{args: []string{"admin", "create"}, code: 2, wantStderr: "Usage: drawbridge admin"},
 		{args: []string{"admin", "reset-password", "a", "b"}, code: 2, wantStderr: "Usage: drawbridge admin"},
+		{args: []string{"admin", "disable-2fa", "a", "b"}, code: 2, wantStderr: "Usage: drawbridge admin"},
 		{args: []string{"admin", "promote"}, code: 2, wantStderr: `unknown command "promote"`},
 		{args: []string{"events", "extra"}, code: 2, wantStderr: `unexpected argument "extra"`},
 		{args: []string{"serve", "--backend", "userspace"}, code: 2, wantStderr: "--backend must be kernel or fake"},
@@ -498,6 +499,57 @@ func TestAdminCommands(t *testing.T) {
 	if r := runCLI("", "events", sock); !strings.Contains(r.stdout, "auth.password_reset") ||
 		!strings.Contains(r.stdout, "auth.admin_created") {
 		t.Fatalf("admin events:\n%s", r.stdout)
+	}
+}
+
+// The way back in for an admin who lost the authenticator app and the recovery codes.
+func TestAdminDisable2FA(t *testing.T) {
+	env := newFakeEnv(t)
+	startDaemon(t, env)
+	sock := "--control=" + env.socket
+	ctx := context.Background()
+
+	if r := runCLI("", "admin", "disable-2fa", sock); r.code != 1 || !strings.Contains(r.stderr, "no such account") {
+		t.Fatalf("before the account exists: %+v", r)
+	}
+	r := runCLI("", "admin", "create", "admin", sock)
+	password := strings.TrimSpace(strings.SplitN(strings.SplitN(r.stdout, "Password: ", 2)[1], "\n", 2)[0])
+	if r := runCLI("", "admin", "disable-2fa", sock); r.code != 0 || !strings.Contains(r.stdout, `was already off for "admin"`) {
+		t.Fatalf("with 2FA off: %+v", r)
+	}
+
+	// Turn it on the way the web UI does.
+	login, err := env.svc.Login(ctx, "admin", password, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.svc.EnrollTOTP(ctx, login.User, password); err != nil {
+		t.Fatal(err)
+	}
+	secret, err := env.svc.Store.TOTPSecret(ctx, login.User.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.svc.EnableTOTP(ctx, login.User, login.Session, auth.TOTPCode(secret, auth.TOTPStep(time.Now()))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.svc.Login(ctx, "admin", password, "test"); !errors.Is(err, service.ErrTOTPRequired) {
+		t.Fatalf("a login with 2FA on and no code: %v", err)
+	}
+
+	r = runCLI("", "admin", "disable-2fa", "admin", sock)
+	if r.code != 0 || !strings.Contains(r.stdout, `Two-factor authentication is off for "admin"`) {
+		t.Fatalf("disable-2fa: %+v", r)
+	}
+	if _, err := env.svc.Login(ctx, "admin", password, "test"); err != nil {
+		t.Fatalf("a login with the password alone, after: %v", err)
+	}
+	if _, _, err := env.svc.Authenticate(ctx, login.Token); err == nil {
+		t.Error("a session from before survived")
+	}
+	if r := runCLI("", "events", sock); !strings.Contains(r.stdout, "auth.totp_enabled") ||
+		!strings.Contains(r.stdout, "auth.totp_disabled") {
+		t.Fatalf("events:\n%s", r.stdout)
 	}
 }
 

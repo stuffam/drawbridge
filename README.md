@@ -11,7 +11,8 @@ only the home network and the VPN can reach, from the command line
 [docs/PLAN.md](docs/PLAN.md) for the architecture, feature spec, and roadmap.
 
 To use your own TLS certificate for the web UI instead of the self-signed one, see
-[docs/tls-certificate.md](docs/tls-certificate.md).
+[docs/tls-certificate.md](docs/tls-certificate.md). To ask for a code from an authenticator app
+at login, see [docs/two-factor.md](docs/two-factor.md).
 
 **Before you install**, read [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): it lists what
 Drawbridge needs from the host and your network, and the setups where it needs a workaround

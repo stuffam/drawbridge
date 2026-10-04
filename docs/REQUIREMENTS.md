@@ -138,7 +138,8 @@ internet).
 
 ### The host's clock has to be right
 
-TLS certificates and WireGuard's handshakes depend on the time. A host without a battery-backed
+TLS certificates, WireGuard's handshakes, and two-factor authentication's codes
+(docs/two-factor.md) depend on the time. A host without a battery-backed
 clock, such as a Raspberry Pi without its RTC battery, needs network time
 (`systemd-timesyncd`) running before it can be trusted. `drawbridge doctor` recognizes only
 `systemd-timesyncd`: on a host that keeps time with chrony or ntpd, its clock check warns even

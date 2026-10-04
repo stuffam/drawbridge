@@ -36,6 +36,10 @@ household. Treat a token like a password you've written in another program's con
 
 You can have 20 tokens, and each needs a different name.
 
+If you've turned on two-factor authentication (docs/two-factor.md), a token still works without a
+code: a dashboard can't type one. That's why a token is read-only. Making a token asks for your
+password again, as it always did, but not for a code.
+
 ## Try it
 
 ```bash

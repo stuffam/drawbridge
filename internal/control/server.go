@@ -88,6 +88,7 @@ func NewHandler(svc *service.Service, log *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /v1/admin/setup-token", h.setupToken)
 	mux.HandleFunc("POST /v1/admin/create", h.createAdmin)
 	mux.HandleFunc("POST /v1/admin/reset-password", h.resetPassword)
+	mux.HandleFunc("POST /v1/admin/disable-2fa", h.disableTOTP)
 	return mux
 }
 
@@ -450,6 +451,27 @@ func (h *handler) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, AdminResult{Username: u.Username, Password: password})
+}
+
+// TwoFactorResult says whether turning 2FA off changed anything.
+type TwoFactorResult struct {
+	Username string `json:"username"`
+	// WasOn is false when 2FA was off already.
+	WasOn bool `json:"was_on"`
+}
+
+func (h *handler) disableTOTP(w http.ResponseWriter, r *http.Request) {
+	var req AdminRequest
+	if err := decode(r, &req); err != nil {
+		h.fail(w, err)
+		return
+	}
+	u, wasOn, err := h.svc.DisableTOTPFor(r.Context(), req.Username)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, TwoFactorResult{Username: u.Username, WasOn: wasOn})
 }
 
 // peerName names the account of the process on the other end of a Unix socket: its

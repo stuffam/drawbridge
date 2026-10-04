@@ -23,7 +23,9 @@ func ErrorStatus(err error) int {
 	switch {
 	case model.IsInvalid(err):
 		return http.StatusBadRequest
-	case errors.Is(err, service.ErrBadLogin):
+	case errors.Is(err, service.ErrBadLogin), errors.Is(err, service.ErrTOTPRequired), errors.Is(err, service.ErrBadCode):
+		// A bad code outside a login is wrapped as invalid input (400, above): a 401 there would be
+		// taken for a lapsed session.
 		return http.StatusUnauthorized
 	case errors.Is(err, store.ErrBadSetupToken):
 		return http.StatusForbidden
@@ -35,6 +37,7 @@ func ErrorStatus(err error) int {
 	case errors.Is(err, store.ErrNameTaken), errors.Is(err, store.ErrHasClients), errors.Is(err, store.ErrNoClientKey),
 		errors.Is(err, store.ErrChangePending), errors.Is(err, store.ErrNoPending), errors.Is(err, service.ErrChangeExpired),
 		errors.Is(err, store.ErrTokenNameTaken), errors.Is(err, service.ErrTooManyTokens),
+		errors.Is(err, store.ErrTOTPEnabled), errors.Is(err, store.ErrTOTPOff), errors.Is(err, store.ErrNoEnrollment),
 		errors.Is(err, ipam.ErrExhausted), errors.Is(err, model.ErrNoEndpoint),
 		errors.Is(err, store.ErrSetupDone), errors.Is(err, store.ErrUserExists),
 		errors.Is(err, service.ErrNoUploadedCertificate):

@@ -83,6 +83,10 @@ What a restore does:
   API tokens are kept, so a dashboard that has one keeps working. If you restored because
   someone else had access, run `sudo drawbridge admin reset-password`, which revokes the
   tokens too.
+- Two-factor authentication (docs/two-factor.md) comes with the backup, if it was on: the secret
+  is in the database and sealed with the key, so your authenticator app keeps working and the
+  recovery codes you hadn't used still do. If you restored because someone else had access, make
+  new recovery codes.
 - A backup from an older Drawbridge is brought up to date. One from a newer Drawbridge is
   refused: upgrade first.
 - What it replaced is kept next to it: `drawbridge.db.before-restore-<time>` (with its `-wal` and

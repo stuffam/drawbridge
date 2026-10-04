@@ -49,6 +49,31 @@ describe('api', () => {
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
 
+	it('carries the error code, and sends the 2FA code only when there is one', async () => {
+		const fetchFn = vi.fn(async () =>
+			respond(401, { error: 'enter the code from your authenticator app', code: 'totp_required' })
+		);
+		setFetch(fetchFn);
+		const err = await api.login('admin', 'pw').catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(ApiError);
+		expect((err as ApiError).status).toBe(401);
+		expect((err as ApiError).code).toBe('totp_required');
+		const bodyOf = (n: number) =>
+			(fetchFn.mock.calls[n] as unknown as [string, { body: string }])[1].body;
+		expect(JSON.parse(bodyOf(0))).toEqual({ username: 'admin', password: 'pw' });
+
+		await api.login('admin', 'pw', '123 456').catch(() => undefined);
+		expect(JSON.parse(bodyOf(1))).toEqual({ username: 'admin', password: 'pw', code: '123 456' });
+
+		// An error with no code has none, and a failed login still isn't a lapsed session.
+		const handler = vi.fn();
+		onUnauthorized(handler);
+		setFetch(async () => respond(401, { error: 'that code is wrong' }));
+		const wrong = await api.login('admin', 'pw', '000000').catch((e: unknown) => e);
+		expect((wrong as ApiError).code).toBeUndefined();
+		expect(handler).not.toHaveBeenCalled();
+	});
+
 	it('returns plain text for configs, and nothing for 204', async () => {
 		setFetch(async () =>
 			respond(200, '[Interface]\n', { 'Content-Type': 'text/plain; charset=utf-8' })
