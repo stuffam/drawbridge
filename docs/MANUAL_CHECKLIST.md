@@ -381,6 +381,13 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
 - `[UNVERIFIED]` An endpoint name whose AAAA record is a temporary address warns.
 - `[UNVERIFIED]` A host that keeps time with chrony or ntpd shows the clock warning even when the
   clock is right (a known limit, docs/REQUIREMENTS.md).
+- `[UNVERIFIED]` The dashboard raises what the System page shows as Warning or Failed, in one
+  banner (red when anything failed, amber otherwise) that names each check and links to the System
+  page, and shows no banner when every check passes or is skipped. With nobody connected,
+  `sudo sysctl -w net.ipv4.ip_forward=0` makes the banner name Forwarding sysctls within five
+  minutes (or at once when any setting is saved, or the page is reloaded); turning it back on
+  clears the banner the same way. With the tunnel stopped, the dashboard's own "tunnel is stopped"
+  banner appears and the diagnostics banner doesn't name the Tunnel check a second time.
 
 ## 9. Traffic history and the charts (an M4 slice, built ahead of the rest of it)
 

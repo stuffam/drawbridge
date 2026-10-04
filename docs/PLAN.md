@@ -1017,13 +1017,24 @@ stateDiagram-v2
   `GET /api/system/health` (a session is needed; an API token can't read it, because it says
   where the host's weak points are). Both run a fresh set of checks each time, with nothing
   cached, so a fix shows on the next run. The checks change nothing, so they record no events.
-  The doctor's exit status is 1 when a check failed, and 0 otherwise. Known limits:*
-  - *Comparing the A record with the current public IPv4 address (§5.6) isn't built (§16).*
-  - *The host firewall check is a best guess from `nft -j list ruleset`: it doesn't model rule
-    order, can't see iptables-legacy, and doesn't check input-chain drops of UDP 51820.*
-  - *The clock check recognizes only systemd-timesyncd, so a host that uses chrony or ntpd sees
-    a warning.*
-  - *The overlap hint is limited because the VPN's subnets can't change after setup.*
+  The doctor's exit status is 1 when a check failed, and 0 otherwise.*
+  - *The dashboard raises the checks that warn or fail (2026-10-04), in one banner that names each
+    and links to the System page, where the fix hints are. It's red when any check failed and
+    amber otherwise, and absent when none needs attention. A skipped check isn't raised: the
+    daemon couldn't read what it needed, which is the System page's to say. The page runs the
+    checks when it opens, every five minutes while it's showing (not while the tab is hidden), and
+    when a settings change arrives on the live feed, because a fix made at a terminal is not an
+    event. It leaves out the tunnel check, because the dashboard reads the tunnel from the live
+    status, which is fresher, and says so in a banner of its own; and it leaves out an endpoint
+    that isn't set, for the same reason. If the checks can't run, the banner is simply absent.
+    Nothing is cached on the server, and no token reaches the route, so Homepage doesn't see it.*
+  - *Known limits:*
+    - *Comparing the A record with the current public IPv4 address (§5.6) isn't built (§16).*
+    - *The host firewall check is a best guess from `nft -j list ruleset`: it doesn't model rule
+      order, can't see iptables-legacy, and doesn't check input-chain drops of UDP 51820.*
+    - *The clock check recognizes only systemd-timesyncd, so a host that uses chrony or ntpd sees
+      a warning.*
+    - *The overlap hint is limited because the VPN's subnets can't change after setup.*
 - **Backup and restore (decided 2026-10-03):**
   - **A backup is one file with the database and the key.** The database's secrets (the
     server's and the clients' private keys, the AdGuard Home password) are encrypted with
@@ -1482,8 +1493,8 @@ Each milestone ends in a usable, tested state.
   backups, and rotating the server's key (§6.2). Left: TOTP 2FA and uploading a certificate.*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
-  growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
-  built (§6.6). The dashboard doesn't show the warnings yet.* Of the backups, `backup
+  growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the
+  dashboard's warnings are built (§6.6).* Of the backups, `backup
   create|restore`, the local snapshots (nightly, and before a migration), and the System page's
   download and snapshot list are built.
 - **Exit:**

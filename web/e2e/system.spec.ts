@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stateDir } from '../playwright.config';
-import { admin, cliOnFiles, login, navigate, watchConsole } from './helpers';
+import { admin, cli, cliOnFiles, login, navigate, watchConsole } from './helpers';
 
 // These share one daemon with app.spec.ts (playwright.config.ts: workers: 1), and run after its
 // setup test, so the admin account already exists.
@@ -102,6 +102,120 @@ test('the System page says so when the checks cannot run', async ({ page }) => {
 	const section = page.getByRole('region', { name: 'Diagnostics' });
 	await expect(section.getByRole('alert')).toContainText("can't run the diagnostics");
 	await expect(section.getByRole('listitem')).toHaveCount(0);
+});
+
+const isHealth = (r: { url(): string }) => r.url().endsWith('/api/system/health');
+
+test('the dashboard raises the checks that need attention, and only those', async ({ page }) => {
+	const problems = watchConsole(page);
+	await page.route('**/api/system/health', (route) =>
+		route.fulfill({
+			json: {
+				checks: [
+					// The dashboard has its own, fresher word on the tunnel.
+					{ id: 'tunnel', name: 'Tunnel', status: 'fail', detail: 'wg0 is stopped.' },
+					{ id: 'uplink', name: 'Uplink', status: 'pass', detail: 'Uplink is eth0.' },
+					{
+						id: 'forwarding',
+						name: 'Forwarding sysctls',
+						status: 'fail',
+						detail: "IPv4 forwarding is off, so VPN clients' traffic isn't routed.",
+						hint: 'sudo sysctl -w net.ipv4.ip_forward=1.'
+					},
+					{
+						id: 'time-sync',
+						name: 'Clock',
+						status: 'warn',
+						detail: 'The clock may not be synced.',
+						hint: 'Install systemd-timesyncd.'
+					},
+					{ id: 'disk-space', name: 'Free disk space', status: 'skip', detail: "Couldn't read it." }
+				]
+			}
+		})
+	);
+	await login(page);
+	const banner = page.getByTestId('diagnostics-warning');
+	await expect(banner).toContainText('2 checks need attention');
+	await expect(banner).toHaveClass(/alert-error/); // a failure makes it red
+	await expect(banner.getByRole('listitem')).toHaveText([
+		"Forwarding sysctls: IPv4 forwarding is off, so VPN clients' traffic isn't routed.",
+		'Clock: The clock may not be synced.'
+	]);
+	await expect(banner).not.toContainText('Tunnel');
+	await expect(banner).not.toContainText('Uplink');
+	await expect(banner).not.toContainText('Free disk space');
+	// The fix is on the System page, and the banner leads there.
+	await banner.getByRole('link', { name: 'See System' }).click();
+	await expect(page).toHaveURL(/\/system$/);
+	expect(problems).toEqual([]);
+});
+
+test('the dashboard banner is amber for a warning, and absent when all is well', async ({
+	page
+}) => {
+	let checks = [
+		{ id: 'time-sync', name: 'Clock', status: 'warn', detail: 'The clock may not be synced.' },
+		{ id: 'uplink', name: 'Uplink', status: 'pass', detail: 'Uplink is eth0.' }
+	];
+	await page.route('**/api/system/health', (route) => route.fulfill({ json: { checks } }));
+	const first = page.waitForResponse(isHealth);
+	await login(page);
+	await first;
+	const banner = page.getByTestId('diagnostics-warning');
+	await expect(banner).toContainText('1 check needs attention');
+	await expect(banner).toContainText('for how to fix it.');
+	await expect(banner).toHaveClass(/alert-warning/);
+
+	checks = checks.map((c) => ({ ...c, status: 'pass' }));
+	const again = page.waitForResponse(isHealth);
+	await page.reload();
+	await again;
+	await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+	await expect(banner).toHaveCount(0);
+});
+
+test('the dashboard runs the checks again when the settings change', async ({ page }) => {
+	let broken = true;
+	await page.route('**/api/system/health', (route) =>
+		route.fulfill({
+			json: {
+				checks: [
+					{
+						id: 'forwarding',
+						name: 'Forwarding sysctls',
+						status: broken ? 'fail' : 'pass',
+						detail: broken ? 'IPv4 forwarding is off.' : 'Forwarding is on.'
+					}
+				]
+			}
+		})
+	);
+	await login(page);
+	const banner = page.getByTestId('diagnostics-warning');
+	await expect(banner).toContainText('IPv4 forwarding is off.');
+
+	// Fixed at a terminal, which tells nobody; the next settings change makes the dashboard look
+	// again. Client isolation is on by default, so turning it off and on again leaves things as
+	// they were.
+	broken = false;
+	try {
+		cli('server', 'set', '--client-isolation=false');
+		await expect(banner).toHaveCount(0, { timeout: 5000 });
+	} finally {
+		cli('server', 'set', '--client-isolation=true');
+	}
+});
+
+test('the dashboard says nothing about checks that cannot run', async ({ page }) => {
+	await page.route('**/api/system/health', (route) =>
+		route.fulfill({ status: 501, json: { error: "this daemon can't run the diagnostics" } })
+	);
+	const asked = page.waitForResponse(isHealth);
+	await login(page);
+	expect((await asked).status()).toBe(501);
+	await expect(page.getByTestId('diagnostics-warning')).toHaveCount(0);
+	await expect(page.getByRole('alert')).toHaveCount(0); // that is the System page's to say
 });
 
 test('the System page downloads a backup that restores, and asks for the password again', async ({
