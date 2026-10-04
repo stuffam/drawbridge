@@ -4,11 +4,13 @@
 	import {
 		api,
 		type Client,
+		type DiagnosticCheck,
 		type ServerStatus,
 		type Settings,
 		type TrafficRange,
 		type TrafficSeries
 	} from '$lib/api';
+	import { attentionHeadline, dashboardChecks } from '$lib/diagnostics';
 	import { errorMessage } from '$lib/errors';
 	import { clientState, endpointAddress, formatBitrate, formatBytes } from '$lib/format';
 	import { live, onLiveEvent, useLive } from '$lib/live.svelte';
@@ -24,6 +26,9 @@
 	import StateBadge from '$lib/components/StateBadge.svelte';
 	import { fetchVersion, formatVersion, type VersionInfo } from '$lib/version';
 
+	// How often the dashboard runs the host's checks again.
+	const checksMs = 5 * 60 * 1000;
+
 	let settings = $state<Settings>();
 	let status = $state<ServerStatus>();
 	let clients = $state<Client[]>([]);
@@ -32,6 +37,7 @@
 	let trafficShown = $state<TrafficRange>(chartRange.value);
 	let bandwidth = $derived(traffic ? buildSeriesData(traffic, trafficShown) : undefined);
 	let version = $state<VersionInfo>();
+	let checks = $state<DiagnosticCheck[]>([]);
 	let error = $state('');
 	let now = $state(Date.now());
 
@@ -65,6 +71,22 @@
 			// The chart just stays as it was; load() above already shows a real error.
 		}
 	}
+
+	// The host's checks (what `drawbridge doctor` prints) take a moment, because they ask DNS, so
+	// they run apart from the status above, and a run that fails (the daemon can't run them) just
+	// leaves the banner as it was: the System page is where that's said.
+	let checksAsked = 0;
+	async function loadChecks() {
+		const asked = ++checksAsked;
+		try {
+			const result = (await api.diagnostics()).checks;
+			// A slower response to an earlier run mustn't replace a newer one.
+			if (asked === checksAsked) checks = result;
+		} catch {
+			// Nothing to say here.
+		}
+	}
+	let attention = $derived(dashboardChecks(checks, { endpointSet: !!settings?.endpoint }));
 
 	// The Clients page has no route parameter for a state filter, only a query string.
 	function goClients(state: 'all' | 'online' | 'paused' | 'outdated') {
@@ -101,9 +123,15 @@
 	});
 	$effect(() =>
 		onLiveEvent((e) => {
-			if (e.kind === 'server.settings_changed') void loadSettings();
+			if (e.kind === 'server.settings_changed') {
+				void loadSettings();
+				void loadChecks();
+			}
 		})
 	);
+	// A fix made at a terminal isn't an event, so the checks run again every few minutes, and not
+	// while the page is hidden.
+	$effect(() => poll(loadChecks, checksMs));
 	// Traffic history is minute-granularity at best (the 1 minute range is the exception), so it
 	// doesn't need the 5s peer-status cadence above; changing the range restarts this poll, for
 	// an immediate refetch.
@@ -141,6 +169,24 @@
 		Clients can't get a config until the server's public address is set.
 		<a class="font-medium underline" href={resolve('/settings')}>Set it in Settings</a>.
 	</p>
+{/if}
+{#if attention.length > 0}
+	<div
+		class={attention.some((c) => c.status === 'fail') ? 'alert-error' : 'alert-warning'}
+		role="status"
+		data-testid="diagnostics-warning"
+	>
+		<p class="font-semibold">{attentionHeadline(attention.length)}</p>
+		<ul class="mt-1 list-disc pl-5">
+			{#each attention as c (c.id)}
+				<li><span class="font-medium">{c.name}:</span> {c.detail}</li>
+			{/each}
+		</ul>
+		<p class="mt-1">
+			<a class="font-medium underline" href={resolve('/system')}>See System</a> for how to fix
+			{attention.length === 1 ? 'it' : 'them'}.
+		</p>
+	</div>
 {/if}
 
 {#if status}

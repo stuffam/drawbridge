@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CheckStatus, DiagnosticCheck } from './api';
-import { needsAttention, summarize } from './diagnostics';
+import { attentionHeadline, dashboardChecks, needsAttention, summarize } from './diagnostics';
 
 const checks = (...statuses: CheckStatus[]): DiagnosticCheck[] =>
 	statuses.map((status, i) => ({ id: `c${i}`, name: `Check ${i}`, status, detail: '' }));
@@ -33,5 +33,53 @@ describe('needsAttention', () => {
 	it('is the warnings and the failures', () => {
 		const got = checks('pass', 'warn', 'fail', 'skip').map(needsAttention);
 		expect(got).toEqual([false, true, true, false]);
+	});
+});
+
+describe('dashboardChecks', () => {
+	const named = (id: string, status: CheckStatus): DiagnosticCheck => ({
+		id,
+		name: id,
+		status,
+		detail: ''
+	});
+	const ids = (cs: DiagnosticCheck[]) => cs.map((c) => c.id);
+
+	it('keeps the warnings and the failures, in order, and drops the rest', () => {
+		const got = dashboardChecks(
+			[
+				named('forwarding', 'fail'),
+				named('uplink', 'pass'),
+				named('time-sync', 'warn'),
+				named('disk-space', 'skip')
+			],
+			{ endpointSet: true }
+		);
+		expect(ids(got)).toEqual(['forwarding', 'time-sync']);
+	});
+
+	it('leaves the tunnel to the dashboard, which knows it fresher', () => {
+		const got = dashboardChecks([named('tunnel', 'fail'), named('kernel-module', 'warn')], {
+			endpointSet: true
+		});
+		expect(ids(got)).toEqual(['kernel-module']);
+	});
+
+	it('leaves an endpoint that is not set to the dashboard, but not one that fails to resolve', () => {
+		const checks = [named('endpoint', 'fail')];
+		expect(dashboardChecks(checks, { endpointSet: false })).toEqual([]);
+		expect(ids(dashboardChecks(checks, { endpointSet: true }))).toEqual(['endpoint']);
+	});
+
+	it('is empty when everything is fine', () => {
+		expect(dashboardChecks(checks('pass', 'pass', 'skip'), { endpointSet: true })).toEqual([]);
+		expect(dashboardChecks([], { endpointSet: true })).toEqual([]);
+	});
+});
+
+describe('attentionHeadline', () => {
+	it('counts them', () => {
+		expect(attentionHeadline(1)).toBe('1 check needs attention');
+		expect(attentionHeadline(3)).toBe('3 checks need attention');
 	});
 });

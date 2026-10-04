@@ -54,9 +54,11 @@ setups.** What exists:
 - `drawbridge doctor`, the first slice of M5 (2026-09-29): 13 host and network checks, each with
   a fix hint, run by the daemon (`internal/diag`) and printed by the CLI. Exit status 1 when any
   check fails, 0 otherwise. The System page (the pulse icon in the header,
-  `GET /api/system/health`) shows the same checks, and the dashboard doesn't summarize them yet.
-  The comparison of the endpoint's A record with the current public IPv4 address isn't built
-  (docs/PLAN.md §16).
+  `GET /api/system/health`) shows the same checks. The dashboard raises the ones that warn or
+  fail in a banner that links to the System page (2026-10-04): it asks when it opens, every five
+  minutes while it's showing, and when the settings change, and it leaves out the tunnel check and
+  an unset endpoint, which the dashboard already says itself from fresher data. The comparison of
+  the endpoint's A record with the current public IPv4 address isn't built (docs/PLAN.md §16).
 - `drawbridge backup create|restore` (2026-10-03), the second slice of M5: one file with a
   consistent snapshot of the database and the secret key, encrypted with a required passphrase
   (`internal/backup`, docs/backup-restore.md). `create` goes through the daemon; `restore` is
@@ -71,8 +73,7 @@ setups.** What exists:
   flagged `config_outdated` in the list, on its page, in the dashboard's Outdated count, and in
   `client list`. `client rotate-keys` (and `POST /api/clients/{id}/rotate-keys`, and a button on
   the client's page) gives a client new keys, which cuts the old config off at once. Left in M5:
-  TOTP 2FA, uploading a certificate, the dashboard's diagnostics warnings, the upgrade matrix, and
-  the docs.
+  TOTP 2FA, uploading a certificate, the upgrade matrix, and the docs.
 - Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
   cut the admin off (the listen port, removing an admin-UI source, rotating the server's key) is
   applied at once from the web UI and undone after 60 s unless it's kept, by a bar on every page
