@@ -35,6 +35,14 @@ import (
 	"github.com/stuffam/drawbridge/internal/wg"
 )
 
+// errDatabaseNewer means the database was last used by a newer Drawbridge, which the daemon
+// won't write to (docs/PLAN.md §11). exitDatabaseNewer is its exit status (EX_CONFIG), which
+// drawbridge.service names in RestartPreventExitStatus so that systemd doesn't restart the
+// daemon every two seconds until a person fixes it.
+var errDatabaseNewer = errors.New("the database is from a newer Drawbridge")
+
+const exitDatabaseNewer = 78
+
 // defaultListen is every address, IPv4 and IPv6, on the admin port. The allowlist and
 // the firewall keep it to the LAN and the VPN (docs/PLAN.md §6.5).
 var defaultListen = ":" + strconv.Itoa(model.AdminPort)
@@ -93,6 +101,10 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	svc, closeSvc, err := openService(ctx, *dbPath, *secret, *backend == "fake", lanCache.Prefixes, log)
 	if err != nil {
 		log.Error("can't start", "err", err)
+		if errors.Is(err, errDatabaseNewer) {
+			// Trying again changes nothing, so the unit doesn't (RestartPreventExitStatus).
+			return exitDatabaseNewer
+		}
 		return 1
 	}
 	defer closeSvc()
@@ -190,6 +202,11 @@ func openService(ctx context.Context, dbPath, secretPath string, fake bool, lanP
 		return nil, nil, err
 	}
 	logMigration(log, st)
+	if v := st.NewerSchema(); v > 0 {
+		_ = st.Close()
+		return nil, nil, fmt.Errorf("%w: it's at schema %d and this build knows up to %d; run the Drawbridge that last used it, or restore a backup made by this one (docs/backup-restore.md)",
+			errDatabaseNewer, v, store.LatestSchema())
+	}
 	if created, err := st.Initialize(ctx); err != nil {
 		_ = st.Close()
 		return nil, nil, err

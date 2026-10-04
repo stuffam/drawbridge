@@ -115,9 +115,13 @@ jobs:
     # step is skipped there), but never one attached to a public repo: it would run code from
     # forks' pull requests.
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The upgrade test builds the older releases in test/integration/upgrade-from.txt
+          # from their commits.
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -146,6 +150,8 @@ jobs:
           if [ "$(id -u)" != 0 ]; then exec_args=(-exec "sudo -E"); fi
           DRAWBRIDGE_INTEGRATION=1 DRAWBRIDGE_BIN="$PWD/dist/drawbridge" \
             go test -tags integration -count=1 -v "${exec_args[@]}" ./test/integration/
+      - name: Upgrade tests (each older build, then this one, with the tunnel up)
+        run: DRAWBRIDGE_BIN="$PWD/dist/drawbridge" test/integration/upgrade.sh
 
   spelling:
     name: Spelling (U.S. English)

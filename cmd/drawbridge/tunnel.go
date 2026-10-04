@@ -61,6 +61,12 @@ func tunnelCmd(ctx context.Context, args []string, stderr io.Writer) int {
 	}
 	defer st.Close()
 	logMigration(log, st)
+	if v := st.NewerSchema(); v > 0 {
+		// The tunnel only reads the database, and the VPN matters more than the web UI, so it
+		// comes up. The daemon refuses to start on this database until it's upgraded (§11).
+		log.Warn("the database is from a newer Drawbridge than this one: going on, because the tunnel only reads it, but the web UI won't start until Drawbridge is upgraded again",
+			"schema", v, "known", store.LatestSchema())
+	}
 	backend, err := wg.NewKernel()
 	if err != nil {
 		log.Error("can't start", "err", err)

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -13,8 +14,10 @@ import (
 )
 
 // LatestSchema is the newest schema version this build knows: the number of its last migration.
-func LatestSchema() int {
-	names, _ := fs.Glob(migrationFiles, "migrations/*.sql")
+func LatestSchema() int { return latestSchemaIn(migrationFiles) }
+
+func latestSchemaIn(fsys fs.FS) int {
+	names, _ := fs.Glob(fsys, "migrations/*.sql")
 	latest := 0
 	for _, name := range names {
 		base := strings.TrimPrefix(name, "migrations/")
@@ -51,15 +54,43 @@ func (s *Store) Snapshot(ctx context.Context, path string) error {
 	return nil
 }
 
+// errMovedOn means another process upgraded the database while this one was copying it, so the
+// copy isn't the database as it was before the migration.
+var errMovedOn = errors.New("the database was upgraded by another process while it was being snapshotted")
+
 // snapshotBeforeMigrating saves the database as it is, at schema version from, in the snapshot
 // directory, and drops the oldest such snapshots past the number to keep. It returns the path.
+// A snapshot that turns out to hold a later schema than its name says, because another process
+// migrated the database first, is removed and errMovedOn returned.
 func (s *Store) snapshotBeforeMigrating(ctx context.Context, from int) (string, error) {
 	if err := os.MkdirAll(s.snapshotDir, 0o700); err != nil {
 		return "", err
 	}
-	path := snapshot.NewPath(s.snapshotDir, snapshot.PreMigration, from, s.now())
-	if err := s.Snapshot(ctx, path); err != nil {
+	var (
+		path string
+		err  error
+	)
+	for range 10 {
+		path = snapshot.NewPath(s.snapshotDir, snapshot.PreMigration, from, s.now())
+		// A name another process took between NewPath's look and our create is tried again.
+		if err = s.Snapshot(ctx, path); !errors.Is(err, fs.ErrExist) {
+			break
+		}
+	}
+	if err != nil {
 		return "", err
+	}
+	held, err := snapshotSchema(path)
+	if err != nil {
+		_ = os.Remove(path)
+		return "", err
+	}
+	if held != from {
+		_ = os.Remove(path)
+		if held > from {
+			return "", errMovedOn
+		}
+		return "", fmt.Errorf("the snapshot holds schema %d, not %d", held, from)
 	}
 	keep := s.snapshotKeep
 	if keep <= 0 {
@@ -68,6 +99,20 @@ func (s *Store) snapshotBeforeMigrating(ctx context.Context, from int) (string, 
 	// A snapshot that can't be pruned is a few megabytes too many, not a reason to stop.
 	_, _ = snapshot.Prune(s.snapshotDir, snapshot.PreMigration, keep)
 	return path, nil
+}
+
+// snapshotSchema reads the schema version a snapshot file holds.
+func snapshotSchema(path string) (int, error) {
+	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	var v int
+	if err := db.QueryRow(`SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&v); err != nil {
+		return 0, fmt.Errorf("reading the snapshot: %w", err)
+	}
+	return v, nil
 }
 
 // CheckIntegrity runs SQLite's integrity check, and returns what it found if it isn't "ok".

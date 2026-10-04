@@ -11,6 +11,8 @@ Group=drawbridge
 ExecStart=/usr/bin/drawbridge serve
 Restart=on-failure
 RestartSec=2s
+# 78: the database is from a newer Drawbridge. Starting again can't change that.
+RestartPreventExitStatus=78
 
 # CAP_NET_ADMIN, and nothing else, configures WireGuard, addresses, and nftables
 # (ADR 0007). The daemon only changes a tunnel that drawbridge-tunnel.service brought up.
