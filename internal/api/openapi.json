@@ -1082,6 +1082,49 @@
         "description": "Also readable with a read-only API token."
       }
     },
+    "/api/traffic/total": {
+      "get": {
+        "summary": "Every client's traffic over a range, added up",
+        "description": "The stored history of every client over the range, added into one received and one sent number, so a dashboard that can show a value and can't add up a list (Homepage) can show a total. It adds the same samples as `/api/traffic`, so it ends where that does: a bucket still filling isn't in it, which is up to a minute behind, or up to an hour for 7d, 30d, and 90d. It counts every client in the database now, paused ones included, and a restart doesn't take anything out of it. A client's history is deleted with the client, so deleting one takes its share out. History is kept for 90 days, so there's no total beyond that. Also readable with a read-only API token.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TrafficRange"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "The totals, and the window they cover.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrafficTotal"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "clients"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": []
+          }
+        ]
+      }
+    },
     "/api/events": {
       "get": {
         "summary": "The event log",
@@ -1998,7 +2041,9 @@
           "tunnel_up",
           "clients",
           "paused",
-          "online"
+          "online",
+          "receive_bytes",
+          "send_bytes"
         ],
         "properties": {
           "tunnel_up": {
@@ -2014,6 +2059,14 @@
           "online": {
             "type": "integer",
             "description": "Clients with a handshake in the last three minutes."
+          },
+          "receive_bytes": {
+            "type": "integer",
+            "description": "Bytes the server has received from the clients that are in the tunnel now: the sum of their counters, which run from when each joined it (the tunnel starting, or the client being resumed). It falls when a client is paused or deleted and starts over when the tunnel restarts; `/api/traffic/total` is the total that survives a pause or a restart."
+          },
+          "send_bytes": {
+            "type": "integer",
+            "description": "Bytes the server has sent to the clients that are in the tunnel now, summed the same way as `receive_bytes`."
           },
           "adguard_warning": {
             "type": "string",
@@ -2853,6 +2906,49 @@
           "hint": {
             "type": "string",
             "description": "How to fix a warning or a failure; absent otherwise."
+          }
+        }
+      },
+      "TrafficTotal": {
+        "type": "object",
+        "required": [
+          "range",
+          "since",
+          "until",
+          "receive_bytes",
+          "send_bytes"
+        ],
+        "properties": {
+          "range": {
+            "type": "string",
+            "enum": [
+              "1m",
+              "1h",
+              "12h",
+              "24h",
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "description": "The range asked for; `24h` when none was."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The start of what was added."
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Where the history ends. The total adds the samples that start in [since, until)."
+          },
+          "receive_bytes": {
+            "type": "integer",
+            "description": "Bytes the server received from every client over the range: what the clients sent up."
+          },
+          "send_bytes": {
+            "type": "integer",
+            "description": "Bytes the server sent to every client over the range."
           }
         }
       }

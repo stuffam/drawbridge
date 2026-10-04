@@ -31,6 +31,7 @@ var tokenReadable = map[string]bool{
 	"GET /api/clients/{id}/sessions": true,
 	"GET /api/traffic":               true,
 	"GET /api/traffic/clients":       true,
+	"GET /api/traffic/total":         true,
 }
 
 // requireAuth lets a request in if it has a valid session, or, for a route that tokens may use,

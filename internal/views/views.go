@@ -406,6 +406,10 @@ type ServerStatus struct {
 	Paused   int  `json:"paused"`
 	// Online counts clients with a handshake in the last three minutes.
 	Online int `json:"online"`
+	// ReceiveBytes and SendBytes add up the counters of the peers in the tunnel now, counted at
+	// the server (service.Status).
+	ReceiveBytes int64 `json:"receive_bytes"`
+	SendBytes    int64 `json:"send_bytes"`
 	// AdGuardWarning is set when the AdGuard Home name sync needs the admin: it can't reach
 	// AdGuard Home, was refused, or couldn't name some clients.
 	AdGuardWarning string `json:"adguard_warning,omitempty"`
@@ -414,7 +418,7 @@ type ServerStatus struct {
 // NewServerStatus converts the service's status.
 func NewServerStatus(s service.Status) ServerStatus {
 	return ServerStatus{TunnelUp: s.TunnelUp, Clients: s.Clients, Paused: s.Paused, Online: s.Online,
-		AdGuardWarning: s.AdGuardWarning}
+		ReceiveBytes: s.ReceiveBytes, SendBytes: s.SendBytes, AdGuardWarning: s.AdGuardWarning}
 }
 
 // StreamStatus is the stream's "status" message: what the dashboard, the client list, and a
@@ -460,6 +464,23 @@ type TrafficSamplesView struct {
 // NewTrafficSamples converts the service's samples.
 func NewTrafficSamples(t service.TrafficSamples) TrafficSamplesView {
 	return TrafficSamplesView{StepSeconds: t.Step.Seconds(), Until: t.Until, Samples: TrafficSamples(t.Samples)}
+}
+
+// TrafficTotalView is every client's traffic over a range, added up (GET /api/traffic/total).
+type TrafficTotalView struct {
+	// Range is the range asked for, as written: "24h" when none was.
+	Range string `json:"range"`
+	// Since and Until bound what was added: the samples that start in [Since, Until).
+	Since time.Time `json:"since"`
+	Until time.Time `json:"until"`
+	// ReceiveBytes and SendBytes are counted at the server.
+	ReceiveBytes int64 `json:"receive_bytes"`
+	SendBytes    int64 `json:"send_bytes"`
+}
+
+// NewTrafficTotal converts the service's total, for the range called name.
+func NewTrafficTotal(name string, t service.TrafficTotal) TrafficTotalView {
+	return TrafficTotalView{Range: name, Since: t.Since, Until: t.Until, ReceiveBytes: t.RxBytes, SendBytes: t.TxBytes}
 }
 
 // ClientTrafficView is one client's samples in a TrafficHistoryView.

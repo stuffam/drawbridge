@@ -56,7 +56,20 @@ test('make an API token, use it from somewhere that has no login, and revoke it'
 		});
 		const status = await dashboard.get('/api/server/status');
 		expect(status.status()).toBe(200);
-		expect(await status.json()).toMatchObject({ tunnel_up: true });
+		// The status carries the bytes as plain numbers, and the total adds up a range: what a
+		// widget that can't add up a list reads.
+		expect(await status.json()).toMatchObject({
+			tunnel_up: true,
+			receive_bytes: expect.any(Number),
+			send_bytes: expect.any(Number)
+		});
+		const total = await dashboard.get('/api/traffic/total?range=1h');
+		expect(total.status()).toBe(200);
+		expect(await total.json()).toMatchObject({
+			range: '1h',
+			receive_bytes: expect.any(Number),
+			send_bytes: expect.any(Number)
+		});
 		expect((await dashboard.get('/api/clients')).status()).toBe(200);
 		expect((await dashboard.get(`/api/clients/${probe.id}/traffic`)).status()).toBe(200);
 

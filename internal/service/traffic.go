@@ -348,6 +348,34 @@ func (s *Service) TotalTraffic(ctx context.Context, resolution string, lookback 
 	return w.settle(ss), nil
 }
 
+// TrafficTotal is every client's traffic over one range, added up.
+type TrafficTotal struct {
+	// Since and Until bound it: it adds the samples that start in [Since, Until). Until is where
+	// the history ends, as in TrafficSamples: a bucket still filling isn't in it, so the total
+	// is up to a bucket behind (a minute, or an hour for the 7d, 30d, and 90d ranges).
+	Since, Until time.Time
+	// RxBytes and TxBytes are what the server received and sent, for every client in the
+	// database now. A paused client's history stays; a deleted client's goes with it (the
+	// traffic table cascades), so the total falls by its share.
+	RxBytes, TxBytes int64
+}
+
+// TrafficTotal adds up TotalTraffic over the range that resolution and lookback describe
+// (views.ParseTrafficRange). It reads the stored history, so a restart or a pause doesn't take
+// bytes out of it. Deleting a client does, with its history, and the retention does (90 days).
+func (s *Service) TrafficTotal(ctx context.Context, resolution string, lookback time.Duration) (TrafficTotal, error) {
+	t, err := s.TotalTraffic(ctx, resolution, lookback)
+	if err != nil {
+		return TrafficTotal{}, err
+	}
+	out := TrafficTotal{Since: t.Until.Add(-lookback), Until: t.Until}
+	for _, sm := range t.Samples {
+		out.RxBytes += sm.RxBytes
+		out.TxBytes += sm.TxBytes
+	}
+	return out, nil
+}
+
 // TrafficSeries is one client's samples in a TrafficHistory.
 type TrafficSeries struct {
 	Client  model.Client

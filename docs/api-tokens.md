@@ -10,10 +10,11 @@ A token works on these `GET` routes and no others:
 
 | Route | What it returns |
 |---|---|
-| `/api/server/status` | whether the tunnel is up, and how many clients there are, online, and paused |
+| `/api/server/status` | whether the tunnel is up, how many clients there are, online, and paused, and the bytes received and sent since the tunnel started (below) |
 | `/api/clients` and `/api/clients/{id}` | the clients, with their addresses, public keys, and when each last connected |
 | `/api/clients/{id}/traffic` and `/sessions` | one client's traffic history and connections |
-| `/api/traffic` and `/api/traffic/clients` | traffic history, in total and per client |
+| `/api/traffic` and `/api/traffic/clients` | traffic history, in total and per client, as a list of samples |
+| `/api/traffic/total` | every client's traffic over a range, added up into one received and one sent number (below) |
 
 Everything else answers `403`, with no exceptions for a token that looks right. In particular a
 token **can't** read a client's config (it holds the client's private key) or its DNS queries, the
@@ -67,6 +68,60 @@ widget:
 ```
 
 The Account page shows this with the real address and the new token filled in, to copy.
+
+## Traffic totals
+
+Homepage shows a value; it can't add up a list. So there are two routes that return the sums.
+
+**Since the tunnel started.** `/api/server/status` has `receive_bytes` and `send_bytes`, the
+counters of the clients that are in the tunnel now, added up:
+
+```yaml
+    - field: receive_bytes
+      label: Received
+      format: bytes
+    - field: send_bytes
+      label: Sent
+      format: bytes
+```
+
+They're counted at the server, so "received" is what the clients sent up, and "sent" is what they
+downloaded. A client's counters run from when it joined the tunnel, so the sums **fall when a client
+is paused or deleted** (a paused client has left the tunnel), a resumed client starts at zero, and
+they all start over when the tunnel restarts. They're a "since the tunnel last started" number, not
+a total that only grows.
+
+**Over a range.** `/api/traffic/total?range=24h` adds up the stored history. The range is `1m`,
+`1h`, `12h`, `24h` (the default), `7d`, `30d`, or `90d`:
+
+```yaml
+widget:
+  type: customapi
+  url: https://your-host:51821/api/traffic/total?range=24h
+  headers:
+    Authorization: Bearer dbt_…
+  mappings:
+    - field: receive_bytes
+      label: Received (24 h)
+      format: bytes
+    - field: send_bytes
+      label: Sent (24 h)
+      format: bytes
+```
+
+```json
+{"range":"24h","since":"2026-10-03T21:15:00Z","until":"2026-10-04T21:15:00Z","receive_bytes":734003200,"send_bytes":125829120}
+```
+
+- A restart or a paused client doesn't take anything out of it. **Deleting a client does**: its
+  history goes with it, so the total falls by its share.
+- It's the same history the charts draw, so it stops at the last complete bucket. That's a minute
+  behind for the ranges up to 24 h, and up to an hour behind for 7d, 30d, and 90d.
+- History is kept for 90 days, so there's no all-time total. For a longer one, ask for `90d` and
+  keep the number somewhere else.
+
+For more than one range, use a widget for each. The reply is one object, not a list, so
+`dynamic-list` doesn't apply to it.
 
 ## When Homepage can't reach it
 
