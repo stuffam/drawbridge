@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/stuffam/drawbridge/internal/snapshot"
 )
 
 // LatestSchema is the newest schema version this build knows: the number of its last migration.
@@ -47,6 +49,25 @@ func (s *Store) Snapshot(ctx context.Context, path string) error {
 		return fmt.Errorf("snapshotting the database: %w", err)
 	}
 	return nil
+}
+
+// snapshotBeforeMigrating saves the database as it is, at schema version from, in the snapshot
+// directory, and drops the oldest such snapshots past the number to keep. It returns the path.
+func (s *Store) snapshotBeforeMigrating(ctx context.Context, from int) (string, error) {
+	if err := os.MkdirAll(s.snapshotDir, 0o700); err != nil {
+		return "", err
+	}
+	path := snapshot.NewPath(s.snapshotDir, snapshot.PreMigration, from, s.now())
+	if err := s.Snapshot(ctx, path); err != nil {
+		return "", err
+	}
+	keep := s.snapshotKeep
+	if keep <= 0 {
+		keep = snapshot.DefaultKeepPreMigration
+	}
+	// A snapshot that can't be pruned is a few megabytes too many, not a reason to stop.
+	_, _ = snapshot.Prune(s.snapshotDir, snapshot.PreMigration, keep)
+	return path, nil
 }
 
 // CheckIntegrity runs SQLite's integrity check, and returns what it found if it isn't "ok".

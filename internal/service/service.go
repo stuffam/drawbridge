@@ -43,6 +43,12 @@ type Service struct {
 	// can't run the diagnostics.
 	Diag *diag.Host
 
+	// SnapshotDir is where the nightly snapshots go (snapshots.go); empty means there are none.
+	// SnapshotInterval is how old the newest may be before the next is made (zero means a day,
+	// negative turns the nightly job off), and SnapshotKeep how many stay (zero means seven).
+	SnapshotDir      string
+	SnapshotInterval time.Duration
+	SnapshotKeep     int
 	// SecretKeyPath is the at-rest encryption key's file, which a backup carries (backup.go);
 	// empty means the daemon can't make backups.
 	SecretKeyPath string

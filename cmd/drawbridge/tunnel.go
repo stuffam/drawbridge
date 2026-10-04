@@ -13,6 +13,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/lan"
 	"github.com/stuffam/drawbridge/internal/model"
 	"github.com/stuffam/drawbridge/internal/reconcile"
+	"github.com/stuffam/drawbridge/internal/snapshot"
 	"github.com/stuffam/drawbridge/internal/store"
 	"github.com/stuffam/drawbridge/internal/wg"
 )
@@ -51,12 +52,15 @@ func tunnelCmd(ctx context.Context, args []string, stderr io.Writer) int {
 		log.Error("can't start", "err", err)
 		return 1
 	}
-	st, err := store.Open(ctx, *dbPath, sealer)
+	// This unit starts before the daemon, so after an upgrade it's the one that migrates the
+	// database, and the one that snapshots it first.
+	st, err := store.Open(ctx, *dbPath, sealer, store.WithMigrationSnapshots(snapshot.Dir(*dbPath), snapshot.DefaultKeepPreMigration))
 	if err != nil {
 		log.Error("can't open the database", "err", err)
 		return 1
 	}
 	defer st.Close()
+	logMigration(log, st)
 	backend, err := wg.NewKernel()
 	if err != nil {
 		log.Error("can't start", "err", err)

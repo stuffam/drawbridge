@@ -521,6 +521,10 @@ hardware. Every step below has since passed on the reference platform, with a re
   notices.
 - `[VERIFIED 2026-10-03]` `sudo drawbridge admin reset-password` revokes every token (the Account
   page shows none afterward), and the log lists "Revoked every API token (password reset)".
+- `[VERIFIED 2026-10-04]` A real Homepage shows the traffic totals (docs/api-tokens.md, "Traffic
+  totals"), with the same token that reads the status, and they work well. The run didn't note the
+  status numbers falling when a client is paused (a paused client has left the tunnel; the tests
+  pin that), so that part is still tested and not observed on hardware.
 
 ## 12. Backup and restore (the second M5 slice)
 
@@ -550,8 +554,17 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   migrated (the upgrade half of the matrix, until that has its own tests).
 - `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
   and an API token made before the backup still works.
-- `[UNVERIFIED]` Homepage shows the totals (docs/api-tokens.md, "Traffic totals"): a widget on
-  `/api/server/status` with `receive_bytes` and `send_bytes` (format `bytes`) shows numbers that
-  grow while a client moves traffic, and fall when that client is paused. A widget on
-  `/api/traffic/total?range=24h` shows what the charts' 24 h range adds up to, within the last
-  minute or so, and the same token that reads the status reads it.
+- `[UNVERIFIED]` Nightly snapshots: a minute after the daemon starts on a host with none, one
+  appears in `/var/lib/drawbridge/backups/` (0600, in a 0700 directory, owned by `drawbridge`), and
+  a restart doesn't make another. With `--snapshot-interval 1m` (a scratch run), a new one comes
+  every few minutes and only the newest `--snapshot-keep` stay. (Seen in a container with the fake
+  backend: the daemon made one 60 seconds after it started, mode 0600 in a 0700 directory, a restart
+  made no second one, and `backup restore` took it. Not on the Pi.)
+- `[UNVERIFIED]` An upgrade that adds a migration (the next release that does) leaves a
+  `pre-migration-v<n>-*.db` before the schema changes, made by `drawbridge-tunnel.service` or the
+  daemon, whichever opened the database first, and the journal says "upgraded the database". With
+  the directory made unwritable, the upgrade is refused with a message that says the snapshot
+  failed, and the old version of the database is untouched.
+- `[UNVERIFIED]` `sudo drawbridge backup restore` of a nightly snapshot, with the daemon stopped,
+  asks for no passphrase, keeps the host's key, and brings the clients back as they were when it
+  was made; a client added since is gone.

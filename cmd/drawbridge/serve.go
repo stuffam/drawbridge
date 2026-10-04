@@ -27,6 +27,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/reconcile"
 	"github.com/stuffam/drawbridge/internal/sdnotify"
 	"github.com/stuffam/drawbridge/internal/service"
+	"github.com/stuffam/drawbridge/internal/snapshot"
 	"github.com/stuffam/drawbridge/internal/store"
 	"github.com/stuffam/drawbridge/internal/tlscert"
 	"github.com/stuffam/drawbridge/internal/version"
@@ -54,6 +55,9 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 		"how long hourly traffic-history buckets are kept")
 	trafficRetentionInterval := flags.Duration("traffic-retention-interval", 24*time.Hour,
 		"how often the traffic-history rollup-and-prune job runs")
+	snapshotInterval := flags.Duration("snapshot-interval", snapshot.DefaultInterval,
+		"how old the newest nightly database snapshot may get before the next is made; 0 turns the nightly snapshots off")
+	snapshotKeep := flags.Int("snapshot-keep", snapshot.DefaultKeep, "how many nightly database snapshots to keep")
 	tlsDir := flags.String("tls-dir", "", "`directory` of the web UI's TLS certificate (default: tls/ next to the database)")
 	backend := flags.String("backend", "kernel", "WireGuard `backend`: kernel, or fake to develop the web UI without root or WireGuard (nothing reaches the kernel)")
 	pos, err := parseArgs(flags, args)
@@ -91,6 +95,12 @@ func serve(ctx context.Context, args []string, stderr io.Writer) int {
 	svc.TrackInterval = *sessionInterval
 	svc.TrafficHourlyRetention = *trafficHourlyRetention
 	svc.SecretKeyPath = *secret
+	svc.SnapshotDir = snapshot.Dir(*dbPath)
+	svc.SnapshotKeep = *snapshotKeep
+	// The service reads zero as "a day", so that a bare one has the default; off is negative.
+	if svc.SnapshotInterval = *snapshotInterval; *snapshotInterval == 0 {
+		svc.SnapshotInterval = -1
+	}
 
 	if *tlsDir == "" {
 		*tlsDir = filepath.Join(filepath.Dir(*dbPath), "tls")
@@ -164,6 +174,14 @@ func allowlistFor(svc *service.Service, lanPrefixes func() []netip.Prefix) func(
 	}
 }
 
+// logMigration says when opening the database upgraded it, and where the snapshot from before
+// went. A new database isn't an upgrade.
+func logMigration(log *slog.Logger, st *store.Store) {
+	if m := st.Migration(); m != nil && m.From > 0 {
+		log.Info("upgraded the database", "from_schema", m.From, "to_schema", m.To, "snapshot", m.Snapshot)
+	}
+}
+
 // openService opens the database (initializing it on first use), the kernel backend,
 // and the reconciler.
 func openService(ctx context.Context, dbPath, secretPath string, fake bool, lanPrefixes func() []netip.Prefix, log *slog.Logger) (*service.Service, func(), error) {
@@ -171,10 +189,11 @@ func openService(ctx context.Context, dbPath, secretPath string, fake bool, lanP
 	if err != nil {
 		return nil, nil, err
 	}
-	st, err := store.Open(ctx, dbPath, sealer)
+	st, err := store.Open(ctx, dbPath, sealer, store.WithMigrationSnapshots(snapshot.Dir(dbPath), snapshot.DefaultKeepPreMigration))
 	if err != nil {
 		return nil, nil, err
 	}
+	logMigration(log, st)
 	if created, err := st.Initialize(ctx); err != nil {
 		_ = st.Close()
 		return nil, nil, err
@@ -304,6 +323,11 @@ func (d daemon) run(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			d.svc.RunAdGuardSync(loopCtx)
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			d.svc.RunSnapshots(loopCtx)
 		}()
 	}
 

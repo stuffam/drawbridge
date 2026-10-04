@@ -60,8 +60,9 @@ setups.** What exists:
   consistent snapshot of the database and the secret key, encrypted with a required passphrase
   (`internal/backup`, docs/backup-restore.md). `create` goes through the daemon; `restore` is
   root-only with the daemon stopped, checks everything before it changes anything, and keeps
-  what it replaces. The web download, the nightly snapshots, and the snapshot before a migration
-  aren't built.
+  what it replaces. The host also keeps snapshots of the database alone (`internal/snapshot`, in
+  `backups/` beside it): a nightly one, and one before a migration, which `restore` takes too. The
+  web download isn't built.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -347,6 +348,12 @@ These are the rules most likely to get silently broken.
   integrity check, and the key opens the database) before it moves anything, keeps what it
   replaces with a time in the name, and undoes its moves on a failure. The tests for each of those
   are in `internal/backup/restore_test.go`. Each is a mutation check.
+- **A migration needs its snapshot first.** `store.Open` with `WithMigrationSnapshots` (both
+  units pass it) snapshots a database that has data before applying any migration to it, and
+  returns an error without migrating when it can't. Don't make that a warning: a migration that
+  goes wrong has nothing to go back to otherwise. The nightly snapshots are one DB-sized file
+  written a day (`--snapshot-interval 0` turns them off), so they stay inside the SD card rule
+  above, and `snapshot.Prune` touches only files whose names it made.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -560,6 +567,8 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   - `backup/` is the encrypted backup file (a chunked XChaCha20-Poly1305 stream under an Argon2id
     key, holding a gzipped tar of the manifest, the key, and the database) and `Restore`, which
     swaps it in. `store.Snapshot` is the `VACUUM INTO` copy it's made from.
+  - `snapshot/` names, lists, and prunes the host's database snapshots, with no dependency on
+    the store, which uses it for the one before a migration.
   - `auth/` has password hashing, tokens, and the login rate limiter; `lan/` detects the LAN
     and builds the admin allowlist; `tlscert/` makes the self-signed certificate.
 - `internal/api/` serves the JSON API (documented in `openapi.json`, with the security

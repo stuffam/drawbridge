@@ -198,3 +198,57 @@ func TestReadPassphraseOnATerminal(t *testing.T) {
 		t.Errorf("restore prompt: %q, %v, %q", got, err, errOut.String())
 	}
 }
+
+// A snapshot from the host's backups directory restores with no passphrase, and the host's key
+// stays where it is.
+func TestRestoreASnapshotNeedsNoPassphrase(t *testing.T) {
+	env := newFakeEnv(t)
+	ctx := context.Background()
+	if _, _, err := env.svc.AddClient(ctx, "a phone"); err != nil {
+		t.Fatal(err)
+	}
+	snap := filepath.Join(t.TempDir(), "nightly-20261004-030000.db")
+	if err := env.store.Snapshot(ctx, snap); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := env.svc.AddClient(ctx, "a laptop"); err != nil {
+		t.Fatal(err)
+	}
+
+	// The host: a database with the laptop in it, and the key the snapshot was sealed with.
+	dir := t.TempDir()
+	db, key := filepath.Join(dir, "drawbridge.db"), filepath.Join(dir, "secret.key")
+	secret := bytes.Repeat([]byte{5}, keys.SecretSize)
+	if err := os.WriteFile(key, secret, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	sealer, _ := keys.NewSealer(secret)
+	st, err := store.Open(ctx, db, sealer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Initialize(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_ = st.Close()
+
+	gone := "--control=" + filepath.Join(t.TempDir(), "no-daemon.sock")
+	// Nothing on stdin: it must not ask.
+	r := runCLI("", "backup", "restore", snap, "--db", db, "--secret-key", key, "--owner", "none", gone)
+	if r.code != 0 || !strings.Contains(r.stdout, "Restored the snapshot made") || !strings.Contains(r.stdout, "unchanged") ||
+		strings.Contains(r.stderr, "passphrase") || !strings.Contains(r.stdout, "Delete it once") {
+		t.Fatalf("restore: %+v", r)
+	}
+	if got, _ := os.ReadFile(key); !bytes.Equal(got, secret) {
+		t.Error("the host's key changed")
+	}
+	st, err = store.Open(ctx, db, sealer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	clients, _ := st.Clients(ctx)
+	if len(clients) != 1 || clients[0].Name != "a phone" {
+		t.Errorf("clients %+v, want only the one the snapshot had", clients)
+	}
+}

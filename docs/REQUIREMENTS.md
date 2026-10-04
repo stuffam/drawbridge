@@ -18,6 +18,9 @@ problem, and changes nothing. It exits with status 1 if a check failed.
   (`wireguard-go`) isn't supported.
 - **Root to install.** The package's install scripts need root. The daemons themselves run as an
   unprivileged `drawbridge` user with only `CAP_NET_ADMIN`.
+- **Some free disk.** The database is small, but Drawbridge keeps up to ten snapshots of it
+  beside it (seven nightly, three from upgrades), so allow about ten times its size, and the
+  room for a backup you download.
 - **Two free ports:** UDP 51820 for WireGuard (changeable with `drawbridge server set --port`)
   and TCP 51821 for the admin UI.
 

@@ -100,6 +100,41 @@ It needs room for a second copy of the database beside the first while it works.
 In every one of these, nothing was changed. If a restore fails while it's moving files (a full
 disk, say), it puts back the ones it moved, and says so.
 
+## Snapshots on the host
+
+Besides a backup you make, Drawbridge keeps copies of its database on the host, in
+`/var/lib/drawbridge/backups/`:
+
+- **Nightly:** the daemon makes one when the newest is a day old, and keeps the newest seven.
+  `--snapshot-interval` changes the interval (0 turns them off) and `--snapshot-keep` the number.
+- **Before an upgrade changes the database:** `pre-migration-v<n>-<time>.db`, where `<n>` is the
+  version the database was at, and the newest three are kept. If it can't be made (a full disk),
+  the upgrade doesn't change the database, and says why.
+
+They're a way back from a bad change or a bad upgrade, **not from a lost card**: they sit on the
+same card as the database, with the key. Keep a backup somewhere else for that.
+
+To go back to one, stop the daemon and restore it. A snapshot needs no passphrase, and the host's
+own key stays, because it's what the snapshot was sealed with:
+
+```bash
+sudo systemctl stop drawbridge.service
+sudo drawbridge backup restore /var/lib/drawbridge/backups/nightly-20261004-030000.db
+sudo systemctl restart drawbridge-tunnel.service drawbridge.service
+```
+
+It's the same restore as above, with the same checks, and what it replaces is kept as
+`*.before-restore-<time>`. The database is as it was when the snapshot was made, so changes since
+then are gone: a client added after it isn't there. A snapshot from before an upgrade is brought up
+to date when it goes in.
+
+A snapshot that was made under another key (copied from another host, say) is refused, and says
+that the host's key doesn't open it. Use a backup for that.
+
+The snapshots take room: each is about the size of the database, so allow ten times its size
+(`ls -lh /var/lib/drawbridge/drawbridge.db`) for the seven nightly ones and the three from
+upgrades. `sudo drawbridge doctor` checks the free space.
+
 ## Not in a backup
 
 - The web UI's certificate (above), and the log in the journal (the event log is in the backup).
@@ -107,4 +142,4 @@ disk, say), it puts back the ones it moved, and says so.
   itself. Drawbridge's connection to AdGuard Home (the address, the account, and the password)
   is in it, and the client names it added there come back with the next sync.
 
-Nightly snapshots on the host itself, and a download from the web UI, aren't built yet.
+A download from the web UI isn't built yet.
