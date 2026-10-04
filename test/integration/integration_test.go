@@ -58,6 +58,10 @@ func TestMain(m *testing.M) {
 		fmt.Println("skipping: set DRAWBRIDGE_INTEGRATION=1 (make test-integration) to run the kernel tests")
 		os.Exit(0)
 	}
+	// A runner that's a systemd service hands JOURNAL_STREAM down to every step, and a binary
+	// that sees it logs to the journal and prints nothing to the standard error these tests read.
+	// The journal tests set it on their own daemon.
+	_ = os.Unsetenv("JOURNAL_STREAM")
 	os.Exit(m.Run())
 }
 

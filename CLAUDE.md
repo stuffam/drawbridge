@@ -589,6 +589,12 @@ preinstalled, running as root):
   preinstalled, and root through passwordless sudo. The modules load without
   `linux-modules-extra`, the preflight's probes all pass, and the kernel tests pass there
   (about 40 seconds).
+- On that runner (2026-10-04), the drawbridge processes the kernel tests start printed nothing to
+  standard error, and the journal is reachable there (the journal tests don't skip). Setting
+  `JOURNAL_STREAM` with a journal socket present reproduces the silence exactly, so the runner
+  evidently hands `JOURNAL_STREAM` to every step: a binary that sees it logs to the journal
+  (`newLoggerAt`). `TestMain` unsets it, and the journal tests set it on their own daemon. A test
+  that reads a child's output needs that, or it passes in a container and fails in CI.
 - Current GitHub Actions majors: `actions/checkout@v7`, `actions/setup-go@v7`,
   `actions/setup-node@v7`, `actions/upload-artifact@v7`, `actions/download-artifact@v8`, and
   `golangci/golangci-lint-action@v9`. All run on Node 24.
