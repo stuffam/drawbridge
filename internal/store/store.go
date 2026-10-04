@@ -37,6 +37,9 @@ var (
 	ErrNotFound = errors.New("no such client")
 	// ErrNameTaken means another client already has the name.
 	ErrNameTaken = errors.New("a client with that name already exists")
+	// ErrNoClientKey means the server doesn't keep the client's private key, so it can't make
+	// the client new keys.
+	ErrNoClientKey = errors.New("the server doesn't keep this client's private key, so it can't rotate its keys")
 	// ErrHasClients means a change needs the client list to be empty.
 	ErrHasClients = errors.New("the VPN subnets can't change while clients exist (re-addressing isn't supported yet)")
 )
@@ -362,7 +365,7 @@ func cmpNonNil(ps []netip.Prefix) []netip.Prefix {
 }
 
 const clientColumns = `id, name, enabled, ipv4, ipv6, public_key, private_key_enc, psk_enc,
-	created_at, updated_at`
+	created_at, updated_at, delivered_hash, delivered_at`
 
 // Clients returns every client, ordered by IPv4 address.
 func (s *Store) Clients(ctx context.Context) ([]model.Client, error) {
@@ -440,9 +443,10 @@ func (s *Store) scanClient(rows *sql.Rows) (model.Client, error) {
 		ipv6                 sql.NullString
 		keyEnc, pskEnc       []byte
 		createdAt, updatedAt string
+		deliveredAt          sql.NullString
 	)
 	if err := rows.Scan(&c.ID, &c.Name, &c.Enabled, &ipv4, &ipv6, &pub, &keyEnc, &pskEnc,
-		&createdAt, &updatedAt); err != nil {
+		&createdAt, &updatedAt, &c.ConfigHash, &deliveredAt); err != nil {
 		return model.Client{}, err
 	}
 	var err error
@@ -474,6 +478,11 @@ func (s *Store) scanClient(rows *sql.Rows) (model.Client, error) {
 	}
 	if c.UpdatedAt, err = time.Parse(time.RFC3339Nano, updatedAt); err != nil {
 		return model.Client{}, err
+	}
+	if deliveredAt.Valid {
+		if c.ConfigDeliveredAt, err = time.Parse(time.RFC3339Nano, deliveredAt.String); err != nil {
+			return model.Client{}, err
+		}
 	}
 	return c, nil
 }
@@ -583,6 +592,57 @@ func (s *Store) RenameClient(ctx context.Context, ref Ref, name string) (model.C
 		updated = c
 		_, err = tx.ExecContext(ctx, `UPDATE clients SET name = ?, updated_at = ? WHERE id = ?`,
 			name, formatTime(c.UpdatedAt), c.ID)
+		return err
+	})
+	return updated, err
+}
+
+// MarkConfigDelivered records that the admin was given the config whose fingerprint is hash
+// (clientconf.Fingerprint) for the client, at the store's current time. A client whose
+// current fingerprint later differs from it has an outdated config.
+func (s *Store) MarkConfigDelivered(ctx context.Context, id, hash string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE clients SET delivered_hash = ?, delivered_at = ? WHERE id = ?`,
+		hash, s.timestamp(), id)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return fmt.Errorf("%w: ID %s", ErrNotFound, id)
+	}
+	return nil
+}
+
+// RotateClientKeys gives a client a new key pair and a new preshared key. Its old keys stop
+// working at once, and whatever config it holds with them stops connecting, so the caller
+// reconciles and the admin hands out the new config. A client whose private key the server
+// doesn't keep can't be rotated: only the client can make a new one.
+func (s *Store) RotateClientKeys(ctx context.Context, ref Ref) (model.Client, error) {
+	var updated model.Client
+	err := s.tx(ctx, func(tx *sql.Tx) error {
+		c, err := s.client(ctx, tx, ref)
+		if err != nil {
+			return err
+		}
+		if c.PrivateKey == nil {
+			return fmt.Errorf("%w: %q", ErrNoClientKey, c.Name)
+		}
+		priv, err := keys.NewPrivateKey()
+		if err != nil {
+			return err
+		}
+		psk, err := keys.NewPresharedKey()
+		if err != nil {
+			return err
+		}
+		c.PublicKey, c.PrivateKey, c.PresharedKey = priv.PublicKey(), &priv, psk
+		c.UpdatedAt = s.now().UTC()
+		updated = c
+		_, err = tx.ExecContext(ctx, `UPDATE clients SET public_key = ?, private_key_enc = ?, psk_enc = ?,
+			updated_at = ? WHERE id = ?`,
+			c.PublicKey.String(), s.sealer.SealKey(priv, clientKeyPurpose(c.ID)),
+			s.sealer.SealKey(psk, clientPSKPurpose(c.ID)), formatTime(c.UpdatedAt), c.ID)
 		return err
 	})
 	return updated, err

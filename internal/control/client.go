@@ -207,6 +207,12 @@ func (c *Client) SetEnabled(ctx context.Context, name string, enabled bool) (vie
 	return v, c.do(ctx, http.MethodPost, clientPath(name, action), nil, &v)
 }
 
+// RotateClientKeys gives a client new keys.
+func (c *Client) RotateClientKeys(ctx context.Context, name string) (views.ClientResult, error) {
+	var v views.ClientResult
+	return v, c.do(ctx, http.MethodPost, clientPath(name, "/rotate-keys"), nil, &v)
+}
+
 // DeleteClient deletes a client.
 func (c *Client) DeleteClient(ctx context.Context, name string) (views.ClientResult, error) {
 	var v views.ClientResult

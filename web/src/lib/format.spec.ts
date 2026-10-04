@@ -91,6 +91,7 @@ describe('events', () => {
 	});
 	it('labels kinds, and passes unknown ones through', () => {
 		expect(eventLabel('client.paused')).toBe('Paused a client');
+		expect(eventLabel('client.keys_rotated')).toBe("Rotated a client's keys");
 		expect(eventLabel('something.new')).toBe('something.new');
 	});
 	it('lists the kinds of event, by category', () => {

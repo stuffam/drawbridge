@@ -41,7 +41,15 @@ class FakeSource implements Source {
 }
 
 const status = (clients: number): StreamStatus => ({
-	server: { tunnel_up: true, clients, paused: 0, online: 0, receive_bytes: 0, send_bytes: 0 },
+	server: {
+		tunnel_up: true,
+		clients,
+		paused: 0,
+		online: 0,
+		outdated: 0,
+		receive_bytes: 0,
+		send_bytes: 0
+	},
 	clients: []
 });
 

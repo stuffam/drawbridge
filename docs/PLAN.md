@@ -13,7 +13,8 @@ in the product name.
 > monitoring and logging, which ends with the AdGuard Home integration). The kernel tests pass in
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
 > `drawbridge doctor`, the diagnostics page, `drawbridge backup create|restore`, the local
-> snapshots, and the backup download on the System page, slices of M5, are built too.
+> snapshots, the backup download on the System page, outdated-config tracking, and client key
+> rotation, slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -132,7 +133,7 @@ All roles are subcommands of a single binary, `drawbridge`:
 | `drawbridge serve` | The long-running daemon: HTTP API, SSE, embedded SPA, reconciler, and monitor. |
 | `drawbridge tunnel up\|down` | Used by `drawbridge-tunnel.service` to bring the VPN up or down from DB state (M1). |
 | `drawbridge server show\|set` | Shows or changes the server's settings: endpoint, port, MTU, DNS, keepalive, client isolation (M1). |
-| `drawbridge client list\|add\|show\|pause\|resume\|rename\|delete\|config\|qr` | Headless client management. `qr` prints the QR code in the terminal (M1; `rename` M2). |
+| `drawbridge client list\|add\|show\|pause\|resume\|rename\|delete\|config\|qr\|rotate-keys` | Headless client management. `qr` prints the QR code in the terminal (M1; `rename` M2; `rotate-keys` M5). |
 | `drawbridge events [--client NAME]` | The event log: changes from the web and the CLI, logins, and corrected drift (M2). |
 | `drawbridge apply [--dry-run]` | Reconciles once and prints the diff (M5). |
 | `drawbridge admin create\|reset-password\|disable-2fa\|setup-token` | Recovery when locked out of the UI (M2; `disable-2fa` M5). |
@@ -433,8 +434,42 @@ changes.
 | **Pause / resume** | Pausing sets `enabled=false` and **removes the peer from the kernel** while keeping all config in the DB, so the client can't handshake at all. Resuming re-adds the peer. Clients can also be paused until a set date and time (M6). |
 | **Remove** | Deletes the peer and the DB row after confirmation. Past events keep a snapshot of the client name, so the logs stay readable. |
 | **Config delivery** | Download a `.conf` file or show a QR code (generated in the browser; the view is logged). One-time download links that expire (M6). |
-| **Outdated-config tracking** | Stores the hash of the config the client last received. When server-side changes (endpoint, port, server key, DNS, and so on) alter the rendered config, the client is flagged **"config outdated, re-import needed"**. |
-| **Key rotation** | Regenerates the client keypair and PSK, and flags the config as outdated. |
+| **Outdated-config tracking** | Stores the fingerprint of the config the client last received. When server-side changes (endpoint, port, server key, DNS, and so on) alter the rendered config, the client is flagged **"config outdated, re-import needed"**. *Built (2026-10-04); details below.* |
+| **Key rotation** | Regenerates the client keypair and PSK, and flags the config as outdated. *Built for clients (2026-10-04): `POST /api/clients/{id}/rotate-keys`, `drawbridge client rotate-keys`, and a button on the client's page. Rotating the server's key is part of safe apply (§4.3).* |
+
+**How outdated-config tracking works (built 2026-10-04).**
+
+- A client's config is "received" when the admin hands it out: downloaded, shown as a QR code in
+  the web UI, or printed by `client config` or `client qr`. Every one of those goes through
+  `Service.Config`, which stores the config's fingerprint and the time on the client
+  (`delivered_hash`, `delivered_at`) and records the `client.config_viewed` event.
+- The **fingerprint** (`clientconf.Fingerprint`) is the SHA-256 of the rendered config with the
+  client's *public* key where its private key goes, and "a preshared key is present" where the
+  preshared key goes. No secret is in it, so it's stored unsealed, and it can be computed for a
+  client whose private key the server doesn't keep. A preshared key can't change without the
+  client's keys, and rotating them changes the public key.
+- A client is **outdated** when it has a stored fingerprint and the fingerprint of the config the
+  server would render now differs from it. It's a comparison, not a count of changes: undoing a
+  change before the client imports anything leaves it current. It's computed on each read (the
+  list, one client, and the live stream), never stored, so nothing writes to the database on a
+  poll. The responses to a change leave it out.
+- A client whose config was never handed out isn't outdated: there's nothing for it to be out of
+  date with. So is one whose config can't be rendered now (no endpoint is set).
+- **Upgrading from a release without tracking:** existing clients have no stored fingerprint, so
+  none is flagged by the upgrade. Each gets its baseline the next time its config is viewed.
+- Changing how a config is rendered changes every fingerprint, which flags every client that was
+  handed one the moment the server is upgraded. `TestFingerprintIsTheHashOfAKnownText` pins the
+  rendering, so that is a decision someone has to make out loud.
+- The dashboard counts the outdated clients (a tile that opens the client list filtered to them);
+  the list and a client's page badge them, and the page says what to do. In the CLI, `client list`
+  has a CONFIG column and `client show` a Config row.
+- **Key rotation** replaces the client's key pair and preshared key in one transaction, then
+  reconciles: the old peer leaves the kernel and the new one joins, so the client is cut off at
+  once and the connection tracker closes its session. The stored fingerprint stays, so the client
+  reads as outdated until the admin hands out the new config. The
+  web UI asks first, and shows the new QR code afterward. The event is `client.keys_rotated`, with
+  the new public key and no secret. A client whose private key the server doesn't keep can't be
+  rotated (409): only the client could make a key pair.
 | **Live status** | Online, idle, or never connected; last handshake; current endpoint (IP:port); RX/TX totals; live throughput. |
 
 Example generated client config:
@@ -1024,7 +1059,8 @@ clients             id (uuid), name UNIQUE, notes, enabled, ipv4 UNIQUE, ipv6 UN
                     allowed_ips JSON NULL, routed_subnets JSON, dns JSON NULL,
                     mtu NULL, keepalive NULL, endpoint_override NULL,
                     access_policy, expires_at NULL, paused_until NULL,
-                    delivered_config_hash NULL, created_at, updated_at
+                    delivered_hash ('' until a config is handed out), delivered_at NULL,
+                    created_at, updated_at
 client_sessions     id, client_id, started_at, ended_at NULL, endpoint,
                     baseline_rx, baseline_tx, rx_bytes, tx_bytes
 traffic             client_id, resolution ('raw'|'hourly'), bucket_start, rx_bytes, tx_bytes
@@ -1085,6 +1121,7 @@ GET    /api/server/dns-check             asks the VPN addresses for DNS; which o
 GET    /api/clients                      POST /api/clients
 GET    /api/clients/{id}                 PATCH /api/clients/{id} (rename)   DELETE /api/clients/{id}
 POST   /api/clients/{id}/pause           POST /api/clients/{id}/resume
+POST   /api/clients/{id}/rotate-keys     new keys; the old config stops working   (M5; built)
 GET    /api/clients/{id}/config          text/plain; attachment
 
 GET    /api/events?client=&category=&kind=&from=&to=&before=&limit=&format=json|csv
@@ -1114,7 +1151,6 @@ Later:
 POST   /api/auth/totp/enroll | /verify                                    (M5)
 POST   /api/server/rotate-key                                              (M5)
 POST   /api/server/apply/confirm         confirm a safe-apply change       (M5)
-POST   /api/clients/{id}/rotate-keys                                       (M5)
 GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                download a backup: password + passphrase (M5; built)
@@ -1375,7 +1411,9 @@ Each milestone ends in a usable, tested state.
 ### M5: Hardening and operations → **v1.0**
 
 - Full systemd sandboxing, TOTP 2FA, safe apply with automatic rollback, outdated-config
-  tracking, and encrypted backup/restore.
+  tracking, and encrypted backup/restore. *Built: the sandboxing (the units), outdated-config
+  tracking with client key rotation (§6.1), and the backups. Left: TOTP 2FA, safe apply (with
+  `drawbridge apply` and rotating the server's key), and uploading a certificate.*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are

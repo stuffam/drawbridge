@@ -72,6 +72,7 @@ var routes = []route{
 	{"DELETE", "/api/clients/{id}", false, (*handler).deleteClient},
 	{"POST", "/api/clients/{id}/pause", false, (*handler).pauseClient},
 	{"POST", "/api/clients/{id}/resume", false, (*handler).resumeClient},
+	{"POST", "/api/clients/{id}/rotate-keys", false, (*handler).rotateClientKeys},
 	{"GET", "/api/clients/{id}/config", false, (*handler).clientConfig},
 	{"GET", "/api/clients/{id}/traffic", false, (*handler).clientTraffic},
 	{"GET", "/api/clients/{id}/sessions", false, (*handler).clientSessions},

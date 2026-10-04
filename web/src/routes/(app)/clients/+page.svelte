@@ -7,6 +7,7 @@
 	import { live, useLive } from '$lib/live.svelte';
 	import { poll } from '$lib/poll';
 	import { sortClients, storedSort, storeSort, type SortKey } from '$lib/sort';
+	import OutdatedBadge from '$lib/components/OutdatedBadge.svelte';
 	import Result from '$lib/components/Result.svelte';
 	import SortSelect from '$lib/components/SortSelect.svelte';
 	import StateBadge from '$lib/components/StateBadge.svelte';
@@ -21,10 +22,16 @@
 	// The dashboard's tiles link here with a state filter; "all" means none. This resets
 	// on every navigation to this page (even a query-only one, since the component isn't
 	// remounted for those), but stays clearable locally in between.
-	let stateFilter = $state<ClientState | 'all'>('all');
+	// "outdated" isn't a connection state: it picks the clients whose config must be re-imported.
+	type Filter = ClientState | 'outdated' | 'all';
+	const filterLabels: Record<ClientState | 'outdated', string> = {
+		...stateLabels,
+		outdated: 'Config Outdated'
+	};
+	let stateFilter = $state<Filter>('all');
 	$effect(() => {
 		const s = page.url.searchParams.get('state');
-		stateFilter = s === 'online' || s === 'paused' ? s : 'all';
+		stateFilter = s === 'online' || s === 'paused' || s === 'outdated' ? s : 'all';
 	});
 
 	async function load() {
@@ -55,7 +62,9 @@
 	let shown = $derived(
 		sortClients(
 			(clients ?? []).filter((c) => {
-				if (stateFilter !== 'all' && clientState(c, now) !== stateFilter) return false;
+				if (stateFilter === 'outdated') {
+					if (!c.config_outdated) return false;
+				} else if (stateFilter !== 'all' && clientState(c, now) !== stateFilter) return false;
 				const q = search.trim().toLowerCase();
 				return !q || c.name.toLowerCase().includes(q) || c.ipv4.includes(q) || c.ipv6.includes(q);
 			}),
@@ -106,10 +115,10 @@
 			<button
 				type="button"
 				class="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200"
-				aria-label={`Clear the ${stateLabels[stateFilter].toLowerCase()} filter`}
+				aria-label={`Clear the ${filterLabels[stateFilter].toLowerCase()} filter`}
 				onclick={() => (stateFilter = 'all')}
 			>
-				<span aria-hidden="true">{stateLabels[stateFilter]} ✕</span>
+				<span aria-hidden="true">{filterLabels[stateFilter]} ✕</span>
 			</button>
 		{/if}
 		<span class="text-sm text-neutral-500">{shown.length} of {clients.length}</span>
@@ -126,6 +135,7 @@
 						class="font-medium text-indigo-700 hover:underline dark:text-indigo-300"
 						href={resolve('/(app)/clients/[id]', { id: c.id })}>{c.name}</a
 					>
+					{#if c.config_outdated}<OutdatedBadge />{/if}
 					<p class="text-xs text-neutral-500 dark:text-neutral-400">
 						{c.ipv4}{#if c.ipv6}, {c.ipv6}{/if}
 					</p>
@@ -156,7 +166,11 @@
 				{#if search}
 					No client matches “{search}”.
 				{:else}
-					No client is {stateLabels[stateFilter as ClientState].toLowerCase()}.
+					{#if stateFilter === 'outdated'}
+						No client's config is outdated.
+					{:else}
+						No client is {stateLabels[stateFilter as ClientState].toLowerCase()}.
+					{/if}
 				{/if}
 			</li>
 		{/each}

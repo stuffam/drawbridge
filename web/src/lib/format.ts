@@ -125,6 +125,7 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 	{ kind: 'client.resumed', category: 'admin', label: 'Resumed a client' },
 	{ kind: 'client.deleted', category: 'admin', label: 'Deleted a client' },
 	{ kind: 'client.config_viewed', category: 'admin', label: 'Viewed the config' },
+	{ kind: 'client.keys_rotated', category: 'admin', label: "Rotated a client's keys" },
 	{ kind: 'server.settings_changed', category: 'admin', label: 'Changed server settings' },
 	{
 		kind: 'integration.adguard_changed',

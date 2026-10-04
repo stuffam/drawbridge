@@ -581,3 +581,45 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
 - `[UNVERIFIED]` `sudo drawbridge backup restore` of a nightly snapshot, with the daemon stopped,
   asks for no passphrase, keeps the host's key, and brings the clients back as they were when it
   was made; a client added since is gone.
+
+## 13. Outdated configs and client key rotation (the third M5 slice)
+
+A client is flagged "config outdated" when the server's settings or its own keys change after the
+admin last handed out its config, and `drawbridge client rotate-keys` gives a client new keys
+(docs/PLAN.md §6.1). Nothing here has run on the reference platform, so nothing is `[VERIFIED]`
+yet. What has run, away from it: the kernel test (`TestEndToEnd`'s rotation step) passes in
+network namespaces on a 7.0 aarch64 kernel (Docker Desktop's VM): after a rotation the server has
+only the new peer, the old config can't fetch anything through the tunnel, and the new one
+connects over IPv4 and IPv6. And the previous release's database (schema 8) was opened by this
+build with the fake backend: it migrated to schema 9 and took `pre-migration-v8-*.db` first, the
+clients were kept and none was flagged, and a client's baseline was set the first time its config
+was viewed.
+
+- `[UNVERIFIED]` **The upgrade:** `sudo apt install ./drawbridge_*.deb` over the previous release
+  (schema 8) restarts both units, the journal says "upgraded the database" with `from_schema=8
+  to_schema=9`, `/var/lib/drawbridge/backups/` has `pre-migration-v8-*.db`, the tunnel stays up
+  and a connected client stays connected. This is the first release that adds a migration, so it
+  is also the first real run of the snapshot-before-migrating step (§12's last items). Every
+  client reads "no record" for its config at first, and none is flagged outdated.
+- `[UNVERIFIED]` **Handing out a config sets the baseline:** `drawbridge client show NAME` says
+  the config is current, with when it was last handed out, after `client config NAME`, after
+  `client qr NAME`, after "Download .conf" in the web UI, and after "Show QR code" there.
+- `[UNVERIFIED]` **A server change flags it:** change the MTU (`drawbridge server set --mtu`) and
+  the client's row and page get a "Config outdated" badge within a few seconds, the dashboard's
+  Outdated tile counts it and opens the list filtered to it, and `client list` says `outdated`.
+  Putting the MTU back leaves the client current again, with no new download. Changing the
+  endpoint, the DNS servers, and the keepalive does the same; turning client isolation on or off
+  does not (the firewall isn't in the config).
+- `[UNVERIFIED]` **With a real phone:** import a config in the WireGuard app, change the MTU, and
+  the badge appears; scan the new QR code, the badge goes, and the app shows the new MTU.
+- `[UNVERIFIED]` **Rotating keys:** on a connected phone, "Rotate keys" on its page (the popup asks
+  first; Cancel changes nothing) cuts it off within a handshake interval, shows the new QR code at
+  once, and the old config never connects again. Scanning the new code reconnects it. The event
+  log has `Rotated a client's keys` from the admin and the new public key, and no secret. The
+  client's session closes with a `Disconnected` event, then a new one opens.
+- `[UNVERIFIED]` `sudo drawbridge client rotate-keys NAME` asks `[y/N]` on a terminal, refuses
+  without `--yes` when its input isn't one, and prints the commands for the new QR code and
+  config.
+- `[UNVERIFIED]` A read-only API token gets 403 from `POST /api/clients/{id}/rotate-keys`, and
+  sees `config_outdated` and the `outdated` count in the client list and the status (they hold no
+  secret).

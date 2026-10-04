@@ -835,6 +835,54 @@
         ]
       }
     },
+    "/api/clients/{id}/rotate-keys": {
+      "post": {
+        "summary": "Give a client new keys",
+        "description": "Replaces the client's key pair and preshared key. The old keys stop working at once: the client is out of the tunnel until it imports its new config (download it or show its QR code), and its `config_outdated` is set until the admin does. Recorded as a `client.keys_rotated` event. Nothing in the response is a key.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "200": {
+            "description": "Rotated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "The server doesn't keep this client's private key, so it can't make the client new keys.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "clients"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ClientID"
+          },
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ]
+      }
+    },
     "/api/clients/{id}/config": {
       "get": {
         "summary": "Download a client's config",
@@ -2136,6 +2184,7 @@
           "clients",
           "paused",
           "online",
+          "outdated",
           "receive_bytes",
           "send_bytes"
         ],
@@ -2153,6 +2202,10 @@
           "online": {
             "type": "integer",
             "description": "Clients with a handshake in the last three minutes."
+          },
+          "outdated": {
+            "type": "integer",
+            "description": "Clients whose `config_outdated` is set: their config changed since the admin last handed it out."
           },
           "receive_bytes": {
             "type": "integer",
@@ -2285,6 +2338,15 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "config_delivered_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the admin last downloaded the client's config or showed its QR code. Absent when there is no record of it: the admin never has, or the client existed before this was tracked and its config has not been viewed since."
+          },
+          "config_outdated": {
+            "type": "boolean",
+            "description": "True when the server's settings (the endpoint, DNS, MTU, keepalive, and so on) or the client's keys have changed since `config_delivered_at`, so the config the client holds no longer matches and it must import the new one. Absent (false) for a client whose config was never handed out. Set in the responses that carry live status (the client list, one client, and the stream), not in the response to a change."
           },
           "peer": {
             "allOf": [

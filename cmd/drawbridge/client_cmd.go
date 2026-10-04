@@ -27,6 +27,9 @@ const clientUsage = `Usage: drawbridge client <command> [NAME] [flags]
   delete NAME   Delete a client.
   config NAME   Print the client's WireGuard config (save it as a .conf file).
   qr NAME       Show the config as a QR code to scan with the WireGuard app.
+  rotate-keys NAME
+                Give a client new keys. The config it holds stops working until it
+                imports the new one.
 
 Quote names that contain spaces: drawbridge client add "Alex's iPhone"
 
@@ -36,7 +39,7 @@ Flags:
 func clientCmd(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// The number of names each command takes.
 	commands := map[string]int{"list": 0, "add": 1, "show": 1, "pause": 1, "resume": 1,
-		"rename": 2, "delete": 1, "config": 1, "qr": 1}
+		"rename": 2, "delete": 1, "config": 1, "qr": 1, "rotate-keys": 1}
 	if len(args) == 0 {
 		fmt.Fprint(stderr, clientUsage)
 		return 2
@@ -50,7 +53,7 @@ func clientCmd(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 	flags := newFlagSet("client "+sub, stderr)
 	socket := flags.String("control", defaultControl, "daemon control socket `path`")
 	showQR := flags.Bool("qr", false, "with add: show the new client's QR code")
-	yes := flags.Bool("yes", false, "with delete: don't ask for confirmation")
+	yes := flags.Bool("yes", false, "with delete or rotate-keys: don't ask for confirmation")
 	flags.Usage = func() { fmt.Fprint(stderr, clientUsage); flags.PrintDefaults() }
 	pos, err := parseArgs(flags, args[1:])
 	if err != nil {
@@ -146,6 +149,28 @@ func clientCmd(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 		fmt.Fprintf(stdout, "Deleted client %q.\n", res.Client.Name)
 		return warn(stderr, res.Warning, res.ApplyFailed)
 
+	case "rotate-keys":
+		if !*yes {
+			ok, err := confirm(stdin, stdout, fmt.Sprintf(
+				"Give client %q new keys? The config it holds stops working until it imports the new one. [y/N] ", pos[0]))
+			if err != nil {
+				return fail(err)
+			}
+			if !ok {
+				fmt.Fprintln(stdout, "Keys not rotated.")
+				return 1
+			}
+		}
+		res, err := c.RotateClientKeys(ctx, pos[0])
+		if err != nil {
+			return fail(err)
+		}
+		q := shellQuote(res.Client.Name)
+		fmt.Fprintf(stdout, "Rotated the keys of client %q. It can't connect until it imports its new config.\n", res.Client.Name)
+		fmt.Fprintf(stdout, "Show its QR code:   drawbridge client qr %s\n", q)
+		fmt.Fprintf(stdout, "Save its config:    drawbridge client config %s > %s\n", q, views.ConfigFileName(res.Client.Name))
+		return warn(stderr, res.Warning, res.ApplyFailed)
+
 	case "config":
 		conf, err := c.Config(ctx, pos[0])
 		if err != nil {
@@ -179,7 +204,7 @@ func printQR(ctx context.Context, c *control.Client, name string, stdout, stderr
 func confirm(stdin io.Reader, stdout io.Writer, question string) (bool, error) {
 	if f, ok := stdin.(*os.File); ok {
 		if info, err := f.Stat(); err != nil || info.Mode()&os.ModeCharDevice == 0 {
-			return false, fmt.Errorf("not a terminal; add --yes to delete without asking")
+			return false, fmt.Errorf("not a terminal; add --yes to go ahead without asking")
 		}
 	}
 	fmt.Fprint(stdout, question)
@@ -209,13 +234,25 @@ func clientState(v views.ClientView) string {
 	return "active"
 }
 
+// configState says whether the config the admin last handed out still matches the server's:
+// "outdated" when it doesn't, "current" when it does, and "-" when none was handed out.
+func configState(v views.ClientView) string {
+	switch {
+	case v.ConfigOutdated:
+		return "outdated"
+	case v.ConfigDeliveredAt.IsZero():
+		return "-"
+	}
+	return "current"
+}
+
 func printClients(w io.Writer, clients []views.ClientView, now time.Time) {
 	if len(clients) == 0 {
 		fmt.Fprintln(w, `No clients yet. Add one with: drawbridge client add NAME`)
 		return
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAME\tSTATE\tIPV4\tIPV6\tHANDSHAKE\tENDPOINT\tRECEIVED\tSENT")
+	fmt.Fprintln(tw, "NAME\tSTATE\tCONFIG\tIPV4\tIPV6\tHANDSHAKE\tENDPOINT\tRECEIVED\tSENT")
 	for _, v := range clients {
 		ipv6 := "-"
 		if v.IPv6.IsValid() {
@@ -229,8 +266,8 @@ func printClients(w io.Writer, clients []views.ClientView, now time.Time) {
 			}
 			rx, tx = bytesText(p.ReceiveBytes), bytesText(p.SendBytes)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Name, clientState(v), v.IPv4, ipv6,
-			handshake, endpoint, rx, tx)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", v.Name, clientState(v), configState(v),
+			v.IPv4, ipv6, handshake, endpoint, rx, tx)
 	}
 	_ = tw.Flush()
 }
@@ -248,6 +285,7 @@ func printClient(w io.Writer, v views.ClientView, now time.Time) {
 		{"IPv6", ipv6},
 		{"Public key", v.PublicKey},
 		{"Created", v.CreatedAt.UTC().Format("2006-01-02 15:04 MST")},
+		{"Config", configText(v, now)},
 	}
 	if p := v.Peer; p != nil {
 		endpoint := p.Endpoint
@@ -270,6 +308,17 @@ func printClient(w io.Writer, v views.ClientView, now time.Time) {
 		fmt.Fprintf(tw, "%s:\t%s\n", r[0], r[1])
 	}
 	_ = tw.Flush()
+}
+
+func configText(v views.ClientView, now time.Time) string {
+	switch {
+	case v.ConfigDeliveredAt.IsZero():
+		return "no record of it being handed out"
+	case v.ConfigOutdated:
+		return "outdated (last handed out " + ago(v.ConfigDeliveredAt, now) +
+			"; the server's settings or the client's keys changed since). Hand out the new one with `client qr` or `client config`"
+	}
+	return "current, last handed out " + ago(v.ConfigDeliveredAt, now)
 }
 
 // ago formats how long ago t was: "never", "12s ago", "5m ago", "3h ago", or "2d ago".

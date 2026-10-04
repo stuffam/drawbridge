@@ -229,6 +229,9 @@ type Status struct {
 	Paused   int
 	// Online counts clients with a handshake within OnlineWithin.
 	Online int
+	// Outdated counts clients holding a config that no longer matches the server's
+	// (ClientStatus.ConfigOutdated).
+	Outdated int
 	// ReceiveBytes and SendBytes add up the peers' counters, counted at the server: what the
 	// clients now in the tunnel have sent up and been sent. A peer's counters run from when it
 	// joined the tunnel (the tunnel starting, or the client being resumed), so the sums fall when
@@ -259,7 +262,7 @@ func (s *Service) Snapshot(ctx context.Context) (Status, []ClientStatus, error) 
 	} else if !errors.Is(err, wg.ErrNoDevice) {
 		return Status{}, nil, err
 	}
-	clients, err := s.Clients(ctx)
+	clients, err := s.clients(ctx, st)
 	if err != nil {
 		return Status{}, nil, err
 	}
@@ -268,6 +271,9 @@ func (s *Service) Snapshot(ctx context.Context) (Status, []ClientStatus, error) 
 		out.Clients++
 		if !c.Enabled {
 			out.Paused++
+		}
+		if c.ConfigOutdated {
+			out.Outdated++
 		}
 		if c.Peer != nil && !c.Peer.LastHandshake.IsZero() && now.Sub(c.Peer.LastHandshake) < OnlineWithin {
 			out.Online++
@@ -288,10 +294,33 @@ type ClientStatus struct {
 	Peer *wg.Peer
 	// Session is the client's open connection, if it has one (internal/service/conntrack.go).
 	Session *store.ClientSession
+	// ConfigOutdated means the config the admin last handed out for this client (downloaded or
+	// shown as a QR code) no longer matches what the server would hand out now: the client
+	// needs to import it again. A client whose config was never handed out isn't outdated.
+	ConfigOutdated bool
+}
+
+// configOutdated reports whether the config last handed out for c differs from the one the
+// server would give it now. A client with no config handed out has nothing to be out of date,
+// and one whose config can't be rendered now (the endpoint isn't set) can't be compared.
+func configOutdated(st model.Settings, c model.Client) bool {
+	if c.ConfigHash == "" {
+		return false
+	}
+	now, err := clientconf.Fingerprint(st, c)
+	return err == nil && now != c.ConfigHash
 }
 
 // Clients returns every client with its live status.
 func (s *Service) Clients(ctx context.Context) ([]ClientStatus, error) {
+	st, err := s.Store.Settings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.clients(ctx, st)
+}
+
+func (s *Service) clients(ctx context.Context, st model.Settings) ([]ClientStatus, error) {
 	clients, err := s.Store.Clients(ctx)
 	if err != nil {
 		return nil, err
@@ -300,7 +329,7 @@ func (s *Service) Clients(ctx context.Context) ([]ClientStatus, error) {
 	sessions := s.sessions(ctx)
 	out := make([]ClientStatus, len(clients))
 	for i, c := range clients {
-		out[i] = ClientStatus{Client: c}
+		out[i] = ClientStatus{Client: c, ConfigOutdated: configOutdated(st, c)}
 		if p, ok := peers[c.PublicKey.String()]; ok {
 			out[i].Peer = &p
 		}
@@ -313,11 +342,15 @@ func (s *Service) Clients(ctx context.Context) ([]ClientStatus, error) {
 
 // Client returns one client with its live status.
 func (s *Service) Client(ctx context.Context, ref store.Ref) (ClientStatus, error) {
+	st, err := s.Store.Settings(ctx)
+	if err != nil {
+		return ClientStatus{}, err
+	}
 	c, err := s.Store.Client(ctx, ref)
 	if err != nil {
 		return ClientStatus{}, err
 	}
-	cs := ClientStatus{Client: c}
+	cs := ClientStatus{Client: c, ConfigOutdated: configOutdated(st, c)}
 	if p, ok := s.peers(ctx)[c.PublicKey.String()]; ok {
 		cs.Peer = &p
 	}
@@ -424,7 +457,8 @@ func (s *Service) DeleteClient(ctx context.Context, ref store.Ref) (model.Client
 }
 
 // Config renders a client's WireGuard config. It holds the client's private key, so
-// each view is recorded (docs/PLAN.md §10).
+// each view is recorded (docs/PLAN.md §10). It also notes that this is the config the client
+// is being given, so a later change to the server's settings flags the client as outdated.
 func (s *Service) Config(ctx context.Context, ref store.Ref) (model.Client, string, error) {
 	st, err := s.Store.Settings(ctx)
 	if err != nil {
@@ -438,8 +472,29 @@ func (s *Service) Config(ctx context.Context, ref store.Ref) (model.Client, stri
 	if err != nil {
 		return model.Client{}, "", err
 	}
+	hash, err := clientconf.Fingerprint(st, c)
+	if err != nil {
+		return model.Client{}, "", err
+	}
+	if err := s.Store.MarkConfigDelivered(ctx, c.ID, hash); err != nil {
+		return model.Client{}, "", err
+	}
 	s.record(ctx, Event{Kind: "client.config_viewed", Client: &c})
 	return c, conf, nil
+}
+
+// RotateClientKeys gives a client a new key pair and preshared key and applies them. The old
+// keys stop working at once: the client is out of the tunnel until the admin hands it the new
+// config, which is flagged as outdated until they do.
+func (s *Service) RotateClientKeys(ctx context.Context, ref store.Ref) (model.Client, Applied, error) {
+	c, err := s.Store.RotateClientKeys(ctx, ref)
+	if err != nil {
+		return model.Client{}, Applied{}, err
+	}
+	s.record(ctx, Event{Kind: "client.keys_rotated", Client: &c, Data: map[string]string{
+		"public_key": c.PublicKey.String(),
+	}})
+	return c, s.apply(ctx, "the client's new keys"), nil
 }
 
 // Sync runs one reconcile, logging and recording any drift it corrected. The daemon

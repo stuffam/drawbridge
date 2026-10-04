@@ -5,6 +5,8 @@
 package clientconf
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -22,6 +24,39 @@ func Render(s model.Settings, c model.Client) (string, error) {
 	if c.PrivateKey == nil {
 		return "", ErrNoPrivateKey
 	}
+	psk := ""
+	if c.PresharedKey != ([32]byte{}) {
+		psk = c.PresharedKey.String()
+	}
+	return render(s, c, c.PrivateKey.String(), psk)
+}
+
+// Fingerprint returns a hash that changes whenever the config Render would produce changes,
+// for telling a client that holds an outdated config (docs/PLAN.md §6.1). It's the SHA-256
+// of the config with the client's public key where its private key goes, and only whether
+// there's a preshared key in place of the key: no secret goes into it, so it can sit in the
+// database unsealed, and it works for a client whose private key the server doesn't keep.
+// Rotating a client's keys changes its public key, so it changes the fingerprint, and a
+// preshared key can't change without the client's keys.
+//
+// Changing the config's format changes every fingerprint, which flags every client as
+// outdated; TestFingerprintGolden makes that a decision.
+func Fingerprint(s model.Settings, c model.Client) (string, error) {
+	psk := ""
+	if c.PresharedKey != ([32]byte{}) {
+		psk = "present"
+	}
+	conf, err := render(s, c, c.PublicKey.String(), psk)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256([]byte(conf))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// render writes the config with the given text where the client's private key goes, and where
+// the preshared key goes (no preshared key line when psk is empty).
+func render(s model.Settings, c model.Client, privateKey, psk string) (string, error) {
 	endpoint, err := s.Endpoint()
 	if err != nil {
 		return "", err
@@ -29,7 +64,7 @@ func Render(s model.Settings, c model.Client) (string, error) {
 
 	var b strings.Builder
 	b.WriteString("[Interface]\n")
-	fmt.Fprintf(&b, "PrivateKey = %s\n", c.PrivateKey)
+	fmt.Fprintf(&b, "PrivateKey = %s\n", privateKey)
 	addrs := []string{netip.PrefixFrom(c.IPv4, 32).String()}
 	if c.IPv6.IsValid() {
 		addrs = append(addrs, netip.PrefixFrom(c.IPv6, 128).String())
@@ -46,8 +81,8 @@ func Render(s model.Settings, c model.Client) (string, error) {
 
 	b.WriteString("\n[Peer]\n")
 	fmt.Fprintf(&b, "PublicKey = %s\n", s.PublicKey())
-	if c.PresharedKey != ([32]byte{}) {
-		fmt.Fprintf(&b, "PresharedKey = %s\n", c.PresharedKey)
+	if psk != "" {
+		fmt.Fprintf(&b, "PresharedKey = %s\n", psk)
 	}
 	fmt.Fprintf(&b, "Endpoint = %s\n", endpoint)
 	allowed := make([]string, len(s.ClientAllowedIPs))

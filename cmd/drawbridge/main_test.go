@@ -326,6 +326,69 @@ func TestClientCommands(t *testing.T) {
 		t.Fatalf("add --qr: %+v", r.stderr)
 	}
 
+	// The columns line up differently with and without a peer, so compare the words.
+	words := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+	// Handing out the config is what the list and show report on: it's current until the
+	// server changes, and then it's outdated until it's handed out again.
+	if r := runCLI("", "client", "show", "Alex's iPhone", sock); !strings.Contains(words(r.stdout), "Config: current, last handed out") {
+		t.Fatalf("show after the config was handed out:\n%s", r.stdout)
+	}
+	if r := runCLI("", "client", "list", sock); !strings.Contains(r.stdout, "current") {
+		t.Fatalf("list after the config was handed out:\n%s", r.stdout)
+	}
+	if r := runCLI("", "server", "set", "--mtu", "1380", sock); r.code != 0 {
+		t.Fatalf("server set --mtu: %+v", r)
+	}
+	if r := runCLI("", "client", "show", "Alex's iPhone", sock); !strings.Contains(words(r.stdout), "Config: outdated (last handed out") {
+		t.Fatalf("show after the MTU changed:\n%s", r.stdout)
+	}
+	if r := runCLI("", "client", "list", sock); !strings.Contains(r.stdout, "outdated") {
+		t.Fatalf("list after the MTU changed:\n%s", r.stdout)
+	}
+	// (laptop was added with --qr, which hands its config out; tablet wasn't.)
+	if r := runCLI("", "client", "add", "tablet", sock); r.code != 0 {
+		t.Fatalf("add: %+v", r)
+	}
+	if r := runCLI("", "client", "show", "tablet", sock); !strings.Contains(words(r.stdout), "Config: no record of it being handed out") {
+		t.Fatalf("show of a client that was never given a config:\n%s", r.stdout)
+	}
+	if r := runCLI("", "client", "delete", "tablet", "--yes", sock); r.code != 0 {
+		t.Fatalf("delete: %+v", r)
+	}
+
+	// rotate-keys asks first, like delete, and says what to do next.
+	before := runCLI("", "client", "show", "Alex's iPhone", sock).stdout
+	if r := runCLI("n\n", "client", "rotate-keys", "Alex's iPhone", sock); r.code != 1 || !strings.Contains(r.stdout, "Keys not rotated") {
+		t.Fatalf("declined rotation: %+v", r)
+	}
+	if runCLI("", "client", "show", "Alex's iPhone", sock).stdout != before {
+		t.Fatal("a declined rotation changed the client")
+	}
+	r = runCLI("y\n", "client", "rotate-keys", "Alex's iPhone", sock)
+	if r.code != 0 {
+		t.Fatalf("confirmed rotation: %+v", r)
+	}
+	for _, want := range []string{`Rotated the keys of client "Alex's iPhone"`, `drawbridge client qr 'Alex'\''s iPhone'`, "> Alex-s-iPhone.conf"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("rotate-keys output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if after := runCLI("", "client", "show", "Alex's iPhone", sock).stdout; after == before ||
+		!strings.Contains(words(after), "Config: outdated") {
+		t.Fatalf("show after the rotation:\n%s", after)
+	}
+	if r := runCLI("", "client", "rotate-keys", "laptop", "--yes", sock); r.code != 0 {
+		t.Fatalf("rotate-keys --yes: %+v", r)
+	}
+	if r := runCLI("", "client", "rotate-keys", "nobody", "--yes", sock); r.code != 1 || !strings.Contains(r.stderr, "no such client") {
+		t.Fatalf("rotating an unknown client: %+v", r)
+	}
+	// No answer is a no.
+	if r := runCLI("", "client", "rotate-keys", "laptop", sock); r.code != 1 || !strings.Contains(r.stdout, "Keys not rotated") {
+		t.Fatalf("rotating with no answer: %+v", r)
+	}
+
 	// delete asks first.
 	if r := runCLI("n\n", "client", "delete", "laptop", sock); r.code != 1 || !strings.Contains(r.stdout, "Not deleted") {
 		t.Fatalf("declined delete: %+v", r)
