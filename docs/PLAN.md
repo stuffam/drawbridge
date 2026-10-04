@@ -12,8 +12,8 @@ in the product name.
 > Status: **M0–M4 are built** (the tunnel, the CLI, the authenticated API, the web UI, and
 > monitoring and logging, which ends with the AdGuard Home integration). The kernel tests pass in
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
-> `drawbridge doctor`, the diagnostics page, and `drawbridge backup create|restore`, the first
-> slices of M5, are built too.
+> `drawbridge doctor`, the diagnostics page, `drawbridge backup create|restore`, the local
+> snapshots, and the backup download on the System page, slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -938,8 +938,9 @@ stateDiagram-v2
     chunks. Each chunk is bound to its position, and the last is marked, so a damaged, reordered,
     or cut-short file is refused. The payload is a gzipped tar of `manifest.json` (the format, the
     time, the Drawbridge version, and the schema version), `secret.key`, and `drawbridge.db`.
-  - `drawbridge backup create` (through the daemon) makes one. The web download is a later slice.
-    Making one is an event, `backup.created`, because the file holds every secret.
+  - `drawbridge backup create` (through the daemon) makes one, and so does the System page's
+    download (below). Making one is an event, `backup.created`, because the file holds every
+    secret.
   - **Restore is `sudo drawbridge backup restore FILE`, with the daemon stopped, and only there**
     (decided 2026-10-03). A web restore would let a hijacked session replace the whole database,
     the admin's password hash included, and the daemon can't write `secret.key` anyway. The
@@ -958,7 +959,27 @@ stateDiagram-v2
   - **Built (2026-10-03):** the file format and `drawbridge backup create|restore`
     (`internal/backup`), with the passphrase read from the terminal with no echo (the one new
     dependency is `golang.org/x/term`, for that), from `--passphrase-file`, or from standard
-    input. The web download isn't.
+    input.
+  - **Web download (built 2026-10-04):** the System page's Backup card calls
+    `POST /api/system/backup` with `{password, passphrase}` and saves the attachment it answers
+    with: the same file as `backup create`. Neither secret is ever in a URL, kept, or logged.
+    - **It takes the account's password again**, as making an API token does, because the file
+      holds every secret the server has, and a session alone (a hijacked one, a browser left
+      open) shouldn't be able to carry them off. A wrong password counts against the login limits
+      (429) and is an event, `auth.backup_failed`. A weak passphrase is refused first, so it
+      costs no attempt.
+    - **The whole file is made before any of it is sent**, in a private temporary directory that
+      is deleted when the response ends, so a failure is an error response and never a download
+      that stops partway. The length is announced, so a browser refuses one that is cut short,
+      and the page refuses a body that doesn't match it. Each piece of the download has its own
+      write deadline, and the daemon's shutdown ends it (ADR 0009).
+    - **The page asks for the passphrase twice**, because one typo makes a backup nobody can
+      open, and it says when the last backup was made (from the `backup.created` events).
+    - **An API token can't use it**, or the list below: a test names both routes.
+    - `GET /api/system/snapshots` lists the host's snapshots for the page: the kind, the time,
+      the size, and the directory. **They are listed, never downloadable**, because a snapshot
+      has no passphrase and the database has the admin's password hash in it. A backup is how a
+      copy leaves the host.
   - **Local snapshots (built 2026-10-04):** copies of the database alone (SQLite's `VACUUM INTO`),
     in `/var/lib/drawbridge/backups/` (0700, files 0600), sealed with the key that's already on the
     host. They protect against a bad change or a bad migration, not against a lost card.
@@ -1096,7 +1117,9 @@ POST   /api/server/apply/confirm         confirm a safe-apply change       (M5)
 POST   /api/clients/{id}/rotate-keys                                       (M5)
 GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
-POST   /api/system/backup                POST /api/system/restore          (M5)
+POST   /api/system/backup                download a backup: password + passphrase (M5; built)
+GET    /api/system/snapshots             the host's database snapshots     (M5; built)
+                                         (no restore route: restore is the root CLI, §6.6)
 ```
 
 ---
@@ -1323,8 +1346,9 @@ Each milestone ends in a usable, tested state.
   QR, server settings, DNS settings (public resolvers by default, with a check for a resolver on
   the host), and live status. *Built. Live status was polled every 5 seconds; the SSE stream
   (§6.4, ADR 0009) pushes it now, and a page polls only when the stream can't be had. The System
-  page (diagnostics, backup, TLS) is M5; M3's Account page covers the password and sessions. On
-  real hardware: docs/MANUAL_CHECKLIST.md §6.*
+  page is M5 (its diagnostics, backup download, and snapshot list are built, and its certificate
+  isn't); M3's Account page covers the password and sessions. On real hardware:
+  docs/MANUAL_CHECKLIST.md §6.*
 - The `.deb` carries both systemd units (the tunnel unit arrives in M1).
 - **Exit:**
   - Every requested capability (add, remove, pause, basic logs, FQDN, IPs, MTU, DNS, IPv4 and
@@ -1356,8 +1380,8 @@ Each milestone ends in a usable, tested state.
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
   built (§6.6). The dashboard doesn't show the warnings yet.* Of the backups, `backup
-  create|restore` and the local snapshots (nightly, and before a migration) are built; the web
-  download isn't.
+  create|restore`, the local snapshots (nightly, and before a migration), and the System page's
+  download and snapshot list are built.
 - **Exit:**
   - The security checklist passes.
   - Upgrading from v0.x keeps all data and keeps the tunnel up.
@@ -1428,7 +1452,7 @@ Each milestone ends in a usable, tested state.
 | DNS | Public resolvers by default; a resolver on the host (such as AdGuard Home) at the server's VPN addresses when a check finds one answering | D12: the wizard offers the host's resolver only when it works, and there's optional AdGuard Home name sync and per-client DNS logs (§6.3) |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
-| Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03) |
+| Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |
 | IPv6 endpoint | Supported when the router allows inbound UDP 51820 to the host's stable address | Verified on the reference platform with a real client (docs/MANUAL_CHECKLIST.md §2, 2026-09-28) |

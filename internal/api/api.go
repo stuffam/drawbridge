@@ -85,6 +85,8 @@ var routes = []route{
 	{"POST", "/api/integrations/adguard/test", false, (*handler).testAdGuard},
 	{"POST", "/api/integrations/adguard/sync", false, (*handler).syncAdGuard},
 	{"GET", "/api/system/health", false, (*handler).health},
+	{"POST", "/api/system/backup", false, (*handler).downloadBackup},
+	{"GET", "/api/system/snapshots", false, (*handler).snapshots},
 	{"GET", "/api/events", false, (*handler).events},
 	{"GET", "/api/stream", false, (*handler).stream},
 }

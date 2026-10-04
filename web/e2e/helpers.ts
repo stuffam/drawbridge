@@ -12,6 +12,14 @@ export function cli(...args: string[]): string {
 	});
 }
 
+/**
+ * Runs a drawbridge command that works on files and not on the test daemon, so it gets no control
+ * socket of this daemon's. A command that fails throws, and the error's `stderr` says why.
+ */
+export function cliOnFiles(...args: string[]): string {
+	return execFileSync(bin, args, { encoding: 'utf8' });
+}
+
 /** The pending setup token, from `drawbridge admin setup-token`. */
 export function setupToken(): string {
 	const m = cli('admin', 'setup-token').match(/Setup token: (\S+)/);

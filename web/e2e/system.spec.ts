@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { login, navigate, watchConsole } from './helpers';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { stateDir } from '../playwright.config';
+import { admin, cliOnFiles, login, navigate, watchConsole } from './helpers';
 
 // These share one daemon with app.spec.ts (playwright.config.ts: workers: 1), and run after its
 // setup test, so the admin account already exists.
@@ -98,4 +102,187 @@ test('the System page says so when the checks cannot run', async ({ page }) => {
 	const section = page.getByRole('region', { name: 'Diagnostics' });
 	await expect(section.getByRole('alert')).toContainText("can't run the diagnostics");
 	await expect(section.getByRole('listitem')).toHaveCount(0);
+});
+
+test('the System page downloads a backup that restores, and asks for the password again', async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	await login(page);
+	await navigate(page, 'System');
+	const section = page.getByRole('region', { name: 'Backup', exact: true });
+	const password = section.getByLabel('Your password', { exact: true });
+	const passphrase = section.getByLabel('Passphrase for the file', { exact: true });
+	const again = section.getByLabel('Passphrase again', { exact: true });
+	const submit = section.getByRole('button', { name: 'Download Backup' });
+	await expect(section.getByTestId('last-backup')).toContainText('No backup has been made yet.');
+
+	let asked = 0;
+	page.on('request', (r) => {
+		if (r.url().endsWith('/api/system/backup')) asked++;
+	});
+	const secret = 'a passphrase to keep safe';
+
+	// Typed twice differently, or too short: refused here, and nothing is sent.
+	await password.fill(admin.password);
+	await passphrase.fill(secret);
+	await again.fill(secret + 'x');
+	await submit.click();
+	await expect(section.getByRole('alert')).toContainText("passphrases don't match");
+	await passphrase.fill('short');
+	await again.fill('short');
+	await submit.click();
+	expect(asked).toBe(0);
+
+	// The wrong password gets no file, says so, and leaves what was typed for another try.
+	await passphrase.fill(secret);
+	await again.fill(secret);
+	await password.fill('not the password');
+	await submit.click();
+	await expect(section.getByRole('alert')).toContainText('password is wrong');
+	await expect(passphrase).toHaveValue(secret);
+	expect(asked).toBe(1);
+
+	// The right one downloads a file, and the page forgets all three secrets.
+	await password.fill(admin.password);
+	const downloaded = page.waitForEvent('download');
+	await submit.click();
+	const download = await downloaded;
+	expect(download.suggestedFilename()).toMatch(/^drawbridge-\d{8}-\d{6}\.backup$/);
+	await expect(section.getByRole('status')).toContainText(`Saved ${download.suggestedFilename()}`);
+	await expect(password).toHaveValue('');
+	await expect(passphrase).toHaveValue('');
+	await expect(again).toHaveValue('');
+	await expect(section.getByTestId('last-backup')).toContainText(
+		/Last backup: \d+ \w+ \d\d:\d\d:\d\d/
+	);
+
+	// What the browser saved is the whole file, encrypted, and the real restore command opens it
+	// with the passphrase and finds the daemon's own key in it. The daemon is left alone: the
+	// restore goes to scratch files, and is told no control socket to look for.
+	const file = await download.path();
+	expect(statSync(file).size).toBeGreaterThan(1000);
+	expect(readFileSync(file).subarray(0, 18).toString()).toBe('drawbridge-backup\n');
+	const scratch = mkdtempSync(join(tmpdir(), 'drawbridge-restore-'));
+	const restore = (pass: string) => {
+		const passFile = join(scratch, 'passphrase');
+		writeFileSync(passFile, pass, { mode: 0o600 });
+		return cliOnFiles(
+			'backup',
+			'restore',
+			file,
+			'--db',
+			join(scratch, 'drawbridge.db'),
+			'--secret-key',
+			join(scratch, 'secret.key'),
+			'--owner',
+			'none',
+			'--passphrase-file',
+			passFile,
+			'--control',
+			join(scratch, 'no-daemon.sock')
+		);
+	};
+	expect(() => restore('not the passphrase')).toThrow(/wrong passphrase/);
+	expect(restore(secret)).toContain('Restored the backup made');
+	expect(
+		readFileSync(join(scratch, 'secret.key')).equals(readFileSync(join(stateDir, 'secret.key')))
+	).toBe(true);
+
+	// It's in the log, with who made it, and neither secret is.
+	const events = await (await page.request.get('/api/events?limit=200')).text();
+	expect(events).toContain('"kind":"backup.created"');
+	expect(events).toContain('auth.backup_failed');
+	expect(events).not.toContain(secret);
+	expect(events).not.toContain(admin.password);
+	expect(problems).toEqual([]);
+});
+
+test('the System page says why a backup could not be made', async ({ page }) => {
+	await page.route('**/api/system/backup', (route) =>
+		route.fulfill({ status: 501, json: { error: "this daemon can't make backups" } })
+	);
+	await login(page);
+	await page.goto('/system');
+	const section = page.getByRole('region', { name: 'Backup', exact: true });
+	await section.getByLabel('Your password', { exact: true }).fill(admin.password);
+	await section.getByLabel('Passphrase for the file', { exact: true }).fill('a long enough one');
+	await section.getByLabel('Passphrase again', { exact: true }).fill('a long enough one');
+	await section.getByRole('button', { name: 'Download Backup' }).click();
+	await expect(section.getByRole('alert')).toContainText("can't make backups");
+});
+
+test('the System page lists the snapshots the host keeps, and says what they are for', async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	await page.route('**/api/system/snapshots', (route) =>
+		route.fulfill({
+			json: {
+				dir: '/var/lib/drawbridge/backups',
+				nightly: true,
+				snapshots: [
+					{
+						name: 'nightly-20261004-030000.db',
+						kind: 'nightly',
+						made_at: '2026-10-04T03:00:00Z',
+						size: 2_500_000
+					},
+					{
+						name: 'pre-migration-v4-20261002-101500.db',
+						kind: 'pre-migration',
+						schema: 4,
+						made_at: '2026-10-02T10:15:00Z',
+						size: 1_900_000
+					}
+				]
+			}
+		})
+	);
+	await login(page);
+	await page.goto('/system');
+	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	const rows = section.getByRole('listitem');
+	await expect(rows).toHaveCount(2);
+	await expect(rows.first()).toContainText('Nightly');
+	await expect(rows.first()).toContainText('nightly-20261004-030000.db');
+	await expect(rows.first()).toContainText('2.5 MB');
+	await expect(rows.last()).toContainText('Before an upgrade (database version 4)');
+	await expect(section).toContainText('/var/lib/drawbridge/backups');
+	await expect(section).toContainText('sudo drawbridge backup restore');
+	// They can't be downloaded: no link or button on a snapshot.
+	await expect(rows.getByRole('link')).toHaveCount(0);
+	await expect(rows.getByRole('button')).toHaveCount(0);
+	expect(problems).toEqual([]);
+});
+
+test('the System page says so when the nightly snapshot is off, or none are kept', async ({
+	page
+}) => {
+	await login(page);
+	await page.route('**/api/system/snapshots', (route) =>
+		route.fulfill({ json: { dir: '/var/lib/drawbridge/backups', nightly: false, snapshots: [] } })
+	);
+	await page.goto('/system');
+	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	await expect(section).toContainText('The nightly snapshot is off');
+	await expect(section).toContainText('None yet');
+
+	await page.unroute('**/api/system/snapshots');
+	await page.route('**/api/system/snapshots', (route) =>
+		route.fulfill({ json: { dir: '', nightly: false, snapshots: [] } })
+	);
+	await page.goto('/system');
+	await expect(section).toContainText('This daemon keeps no snapshots.');
+	await expect(section).not.toContainText('sudo drawbridge');
+});
+
+test('the System page shows the snapshots of the real daemon', async ({ page }) => {
+	const problems = watchConsole(page);
+	await login(page);
+	await page.goto('/system');
+	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	await expect(section).toContainText(/drawbridge-e2e\/backups|None yet|nightly-\d{8}-\d{6}\.db/);
+	await expect(section.getByRole('alert')).toHaveCount(0);
+	expect(problems).toEqual([]);
 });

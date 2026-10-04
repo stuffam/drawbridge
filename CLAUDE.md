@@ -62,7 +62,8 @@ setups.** What exists:
   root-only with the daemon stopped, checks everything before it changes anything, and keeps
   what it replaces. The host also keeps snapshots of the database alone (`internal/snapshot`, in
   `backups/` beside it): a nightly one, and one before a migration, which `restore` takes too. The
-  web download isn't built.
+  System page makes the same file (it takes the password again and the passphrase twice) and lists
+  the snapshots, which it never offers for download.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -326,7 +327,8 @@ These are the rules most likely to get silently broken.
 - **API tokens are read-only, and closed by default.** A token reaches only the GET routes in
   `tokenReadable` (`internal/api/tokens.go`): the status, the clients, and their traffic. Never
   add a client's config (it has the private key), its DNS log, the events, the stream, the
-  settings, the integrations, or anything under `/api/auth`. A test names them and caps the
+  settings, the integrations, the System routes (diagnostics, the backup, the snapshot list), or
+  anything under `/api/auth`. A test names them and caps the
   list, so adding to it is a decision you have to make out loud, and a test checks that the
   OpenAPI document (`security`) says the same. A request that carries a token is a token's
   request whatever else it has: a cookie doesn't widen it. Making a token takes the password
@@ -350,7 +352,11 @@ These are the rules most likely to get silently broken.
   decrypts into a temporary file and checks it (the file is intact, the schema isn't newer, SQLite's
   integrity check, and the key opens the database) before it moves anything, keeps what it
   replaces with a time in the name, and undoes its moves on a failure. The tests for each of those
-  are in `internal/backup/restore_test.go`. Each is a mutation check.
+  are in `internal/backup/restore_test.go`. Each is a mutation check. The web download
+  (`POST /api/system/backup`) takes the account's password again (`confirmPassword`, shared with
+  making an API token, so a wrong one counts against the login limits), makes the whole file
+  before it sends any of it, and writes each piece under its own deadline. Snapshots are listed
+  in the web UI and never downloadable: they have no passphrase.
 - **A migration needs its snapshot first.** `store.Open` with `WithMigrationSnapshots` (both
   units pass it) snapshots a database that has data before applying any migration to it, and
   returns an error without migrating when it can't. Don't make that a warning: a migration that

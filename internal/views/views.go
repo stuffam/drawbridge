@@ -93,6 +93,40 @@ type BackupRequest struct {
 	Passphrase string `json:"passphrase"`
 }
 
+// BackupDownloadRequest asks for a backup from the web UI. Password is the account's own, asked
+// for again because the file holds every secret the server has; Passphrase encrypts the file.
+type BackupDownloadRequest struct {
+	Password   string `json:"password"`
+	Passphrase string `json:"passphrase"`
+}
+
+// SnapshotView is one snapshot of the database on the host (GET /api/system/snapshots). Kind is
+// "nightly" or "pre-migration"; Schema is the database version a pre-migration one holds.
+type SnapshotView struct {
+	Name   string    `json:"name"`
+	Kind   string    `json:"kind"`
+	MadeAt time.Time `json:"made_at"`
+	Schema int       `json:"schema,omitempty"`
+	Size   int64     `json:"size"`
+}
+
+// SnapshotListView is the snapshots on the host, newest first. Dir is empty when the daemon
+// keeps none, and Nightly says whether it makes one a day.
+type SnapshotListView struct {
+	Dir       string         `json:"dir"`
+	Nightly   bool           `json:"nightly"`
+	Snapshots []SnapshotView `json:"snapshots"`
+}
+
+// NewSnapshotList converts the service's list.
+func NewSnapshotList(l service.SnapshotList) SnapshotListView {
+	v := SnapshotListView{Dir: l.Dir, Nightly: l.Nightly, Snapshots: make([]SnapshotView, 0, len(l.Items))}
+	for _, i := range l.Items {
+		v.Snapshots = append(v.Snapshots, SnapshotView{Name: i.Name, Kind: i.Kind, MadeAt: i.MadeAt, Schema: i.Schema, Size: i.Size})
+	}
+	return v
+}
+
 // DiagnosticCheck is one host diagnostic's result (`drawbridge doctor`). Status is "pass",
 // "warn", "fail", or "skip"; Hint says how to fix a warning or a failure.
 type DiagnosticCheck struct {

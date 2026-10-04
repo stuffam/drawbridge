@@ -11,6 +11,7 @@ import (
 
 	"github.com/stuffam/drawbridge/internal/backup"
 	"github.com/stuffam/drawbridge/internal/model"
+	"github.com/stuffam/drawbridge/internal/store"
 	"github.com/stuffam/drawbridge/internal/version"
 )
 
@@ -94,6 +95,24 @@ func (s *Service) CreateBackup(ctx context.Context, passphrase string) (*BackupF
 		Name:       "drawbridge-" + now.UTC().Format("20060102-150405") + ".backup",
 		Size:       info.Size(),
 	}, nil
+}
+
+// CreateBackupFor is CreateBackup for a logged-in account, the web UI's download. It takes the
+// account's password again, because the file holds every secret the server has, and a session
+// alone (a hijacked one, a browser left open) mustn't be able to carry them off. A wrong password
+// counts against the same limits as a login. The passphrase is checked first, so a short one
+// costs the account nothing.
+func (s *Service) CreateBackupFor(ctx context.Context, u store.User, password, passphrase string) (*BackupFile, error) {
+	if s.SecretKeyPath == "" {
+		return nil, ErrNoBackup
+	}
+	if _, err := backup.Check(passphrase); err != nil {
+		return nil, &model.InvalidError{Err: err}
+	}
+	if err := s.confirmPassword(ctx, u, password, "auth.backup_failed"); err != nil {
+		return nil, err
+	}
+	return s.CreateBackup(ctx, passphrase)
 }
 
 // removeOnClose deletes the directory holding a file when the file's closed.

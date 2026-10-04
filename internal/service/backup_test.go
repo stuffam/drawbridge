@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -137,5 +138,89 @@ func TestCreateBackupRefusals(t *testing.T) {
 	}
 	if got := kinds(t, svc); len(got) != len(before) {
 		t.Errorf("events went from %v to %v: a refused backup was recorded", before, got)
+	}
+}
+
+// The web's download takes the account's password again, because a session alone (a hijacked one)
+// mustn't be able to carry off every secret the server has. A wrong one makes no file, is an event
+// of its own, and counts against the login limits, the same ones a token's creation counts against.
+func TestCreateBackupForNeedsThePassword(t *testing.T) {
+	s, _, ctx, login, password := tokenEnv(t)
+	withKeyFile(t, s)
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+
+	for _, wrong := range []string{"not the password", ""} {
+		b, err := s.CreateBackupFor(ctx, login.User, wrong, backupPassphrase)
+		if !errors.Is(err, ErrWrongPassword) || !model.IsInvalid(err) || b != nil {
+			t.Fatalf("password %q: err = %v, backup %v", wrong, err, b)
+		}
+	}
+	got := kinds(t, s)
+	if got[len(got)-1] != "auth.backup_failed" || slices.Contains(got, "backup.created") {
+		t.Errorf("events %v: want the failure, and no backup", got)
+	}
+	if left, _ := os.ReadDir(tmp); len(left) != 0 {
+		t.Errorf("a refused backup left %d files in the temp directory", len(left))
+	}
+
+	b, err := s.CreateBackupFor(ctx, login.User, password, backupPassphrase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var db bytes.Buffer
+	data, _ := io.ReadAll(b)
+	if _, _, err := backup.Read(bytes.NewReader(data), backupPassphrase, &db); err != nil || db.Len() == 0 {
+		t.Errorf("the backup doesn't open with its passphrase: %v", err)
+	}
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+	events, _ := s.Events(ctx, store.EventFilter{Kind: "backup.created"})
+	if len(events) != 1 || events[0].Actor != "admin" || events[0].Via != "web" {
+		t.Errorf("events %+v", events)
+	}
+}
+
+// The wrong password counts against the same limits as a login: five failures are free, and after
+// the sixth the right password has to wait too.
+func TestCreateBackupForIsRateLimited(t *testing.T) {
+	s, _, ctx, login, password := tokenEnv(t)
+	withKeyFile(t, s)
+	for range 6 {
+		_, _ = s.CreateBackupFor(ctx, login.User, "wrong", backupPassphrase)
+	}
+	_, err := s.CreateBackupFor(ctx, login.User, password, backupPassphrase)
+	var limited *RateLimitedError
+	if !errors.As(err, &limited) || limited.Wait <= 0 {
+		t.Fatalf("after 6 wrong passwords: err = %v, want a RateLimitedError, even for the right one", err)
+	}
+	// It's one limit for the account, whatever it's asked for: a token can't be made either.
+	if _, _, err := s.CreateAPIToken(ctx, login.User, password, "Homepage"); !errors.As(err, &limited) {
+		t.Errorf("making a token while rate limited: err = %v", err)
+	}
+}
+
+// A weak passphrase is refused before the password is looked at, so it costs the account none of
+// its attempts, and a daemon that can't make backups says so without touching either.
+func TestCreateBackupForRefusals(t *testing.T) {
+	s, _, ctx, login, password := tokenEnv(t)
+	if _, err := s.CreateBackupFor(ctx, login.User, password, backupPassphrase); !errors.Is(err, ErrNoBackup) {
+		t.Errorf("with no key file configured: err %v, want ErrNoBackup", err)
+	}
+	withKeyFile(t, s)
+	for range 10 {
+		_, err := s.CreateBackupFor(ctx, login.User, "wrong", "short")
+		if !errors.Is(err, backup.ErrWeakPassphrase) || !model.IsInvalid(err) {
+			t.Fatalf("a short passphrase: err %v", err)
+		}
+	}
+	if b, err := s.CreateBackupFor(ctx, login.User, password, backupPassphrase); err != nil {
+		t.Errorf("the account was limited by refused passphrases: %v", err)
+	} else {
+		_ = b.Close()
+	}
+	if got := kinds(t, s); slices.Contains(got, "auth.backup_failed") {
+		t.Errorf("events %v: a weak passphrase was counted as a wrong password", got)
 	}
 }
