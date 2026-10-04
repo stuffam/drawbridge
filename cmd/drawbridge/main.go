@@ -53,6 +53,9 @@ Commands:
   client qr NAME       Show a client's config as a QR code for the WireGuard app.
   events               Show the event log: changes, logins, and corrected drift.
   doctor               Check the host and network for problems that stop the VPN working.
+  tls show|install|reset
+                       Show the web UI's TLS certificate, serve your own instead of the
+                       self-signed one, or go back to it.
   backup create        Make an encrypted backup of the database and its key.
   backup restore FILE  Put a backup in place of this host's database and key (as root,
                        with the daemon stopped).
@@ -62,7 +65,7 @@ Commands:
   version              Print the version.
   help                 Show this help.
 
-The server, apply, client, events, doctor, backup create, and admin commands talk to the daemon, so run
+The server, apply, client, events, doctor, tls, backup create, and admin commands talk to the daemon, so run
 them as root (sudo) or as a member of the drawbridge group. Run "drawbridge <command> -h" for a
 command's flags.
 `
@@ -94,6 +97,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		return doctorCmd(ctx, args[1:], stdout, stderr)
 	case "apply":
 		return applyCmd(ctx, args[1:], stdout, stderr)
+	case "tls":
+		return tlsCmd(ctx, args[1:], stdout, stderr)
 	case "backup":
 		return backupCmd(ctx, args[1:], stdin, stdout, stderr)
 	case "admin":

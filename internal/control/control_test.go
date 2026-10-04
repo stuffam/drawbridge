@@ -82,7 +82,7 @@ func newTestEnv(t *testing.T, tunnelUp bool) *testEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := NewServer(svc, log, "AB:CD")
+	srv := NewServer(svc, log)
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
 	return &testEnv{key: bytes.Repeat([]byte{3}, keys.SecretSize), client: NewClient(sock), wg: backend, rec: rec, socket: sock}

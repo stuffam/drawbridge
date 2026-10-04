@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { X509Certificate } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stateDir } from '../playwright.config';
+import { connect } from 'node:tls';
+import { port, stateDir } from '../playwright.config';
 import { admin, cli, cliOnFiles, login, navigate, watchConsole } from './helpers';
 
 // These share one daemon with app.spec.ts (playwright.config.ts: workers: 1), and run after its
@@ -216,6 +219,123 @@ test('the dashboard says nothing about checks that cannot run', async ({ page })
 	expect((await asked).status()).toBe(501);
 	await expect(page.getByTestId('diagnostics-warning')).toHaveCount(0);
 	await expect(page.getByRole('alert')).toHaveCount(0); // that is the System page's to say
+});
+
+/** A throwaway certificate for 127.0.0.1 and drawbridge.test, and its key, made by openssl. */
+function makeCertificate(): { crt: string; key: string; fingerprint: string } {
+	const dir = mkdtempSync(join(tmpdir(), 'drawbridge-cert-'));
+	const crt = join(dir, 'fullchain.pem');
+	const key = join(dir, 'privkey.pem');
+	execFileSync(
+		'openssl',
+		['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes']
+			.concat(['-keyout', key, '-out', crt, '-days', '90', '-subj', '/CN=drawbridge.test'])
+			.concat(['-addext', 'subjectAltName=DNS:drawbridge.test,IP:127.0.0.1']),
+		{ stdio: 'ignore' }
+	);
+	return { crt, key, fingerprint: new X509Certificate(readFileSync(crt)).fingerprint256 };
+}
+
+/** The SHA-256 fingerprint of the certificate the daemon presents to a new connection right now. */
+function served(): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const socket = connect({ host: '127.0.0.1', port, rejectUnauthorized: false }, () => {
+			resolve(socket.getPeerCertificate().fingerprint256);
+			socket.end();
+		});
+		socket.on('error', reject);
+	});
+}
+
+test('the System page installs your own certificate, which the next connection is shown, and goes back', async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	const mine = makeCertificate();
+	await login(page);
+	await navigate(page, 'System');
+	const section = page.getByRole('region', { name: 'Web UI Certificate' });
+	const source = section.getByTestId('certificate-source');
+	const fingerprint = section.getByTestId('certificate-fingerprint');
+	await expect(source).toHaveText('Self-signed by Drawbridge');
+	const self = (await fingerprint.innerText()).trim();
+	expect(await served()).toBe(self);
+	await expect(
+		section.getByRole('button', { name: 'Use the Self-Signed Certificate' })
+	).toHaveCount(0);
+
+	// The fields tell a swap at once, before anything is sent.
+	const certField = section.getByRole('textbox', { name: 'Certificate' });
+	const keyField = section.getByRole('textbox', { name: 'Private key' });
+	await certField.fill(readFileSync(mine.key, 'utf8'));
+	await expect(section).toContainText('That is a private key');
+	await certField.fill('');
+
+	// The certificate from a file, the key pasted; a wrong password installs nothing.
+	await section.getByLabel('Choose a certificate file').setInputFiles(mine.crt);
+	await expect(certField).toHaveValue(/BEGIN CERTIFICATE/);
+	await keyField.fill(readFileSync(mine.key, 'utf8'));
+	await section.getByLabel('Your password').fill('not the password');
+	await section.getByRole('button', { name: 'Install Certificate' }).click();
+	await expect(section.getByRole('alert')).toContainText(/password/i);
+	await expect(source).toHaveText('Self-signed by Drawbridge');
+	expect(await served()).toBe(self);
+
+	// The right one does, and a connection made now is shown it, with no restart.
+	await section.getByLabel('Your password').fill(admin.password);
+	await section.getByRole('button', { name: 'Install Certificate' }).click();
+	await expect(section.getByRole('status').filter({ hasText: 'Installed.' })).toBeVisible();
+	await expect(source).toHaveText('Installed by you');
+	await expect(fingerprint).toHaveText(mine.fingerprint);
+	await expect(section.getByTestId('certificate-details')).toContainText(
+		'drawbridge.test, 127.0.0.1'
+	);
+	expect(await served()).toBe(mine.fingerprint);
+	// Nothing secret stays in the page, and the certificate covers none of the host's names.
+	await expect(certField).toHaveValue('');
+	await expect(keyField).toHaveValue('');
+	await expect(section.getByLabel('Your password')).toHaveValue('');
+	await expect(section.getByTestId('certificate-note')).toContainText('covers none of the names');
+
+	// The page still works over the new certificate, and the doctor and the log know about it.
+	await page.reload();
+	await expect(section.getByTestId('certificate-source')).toHaveText('Installed by you');
+	await expect(
+		page.getByRole('region', { name: 'Diagnostics' }).getByRole('listitem').last()
+	).toContainText('uploaded certificate is valid until');
+	const events = await (await page.request.get('/api/events?limit=50')).text();
+	expect(events).toContain('"kind":"tls.certificate_installed"');
+	expect(events).toContain('auth.certificate_failed');
+	expect(events).not.toContain('PRIVATE KEY');
+
+	// Going back.
+	await section.getByRole('button', { name: 'Use the Self-Signed Certificate' }).click();
+	await expect(
+		section.getByRole('status').filter({ hasText: 'Back on the self-signed' })
+	).toBeVisible();
+	await expect(source).toHaveText('Self-signed by Drawbridge');
+	await expect(fingerprint).toHaveText(self);
+	expect(await served()).toBe(self);
+
+	expect(problems).toEqual([]);
+});
+
+test('the command line installs and removes a certificate the same way', async ({ page }) => {
+	const mine = makeCertificate();
+	await login(page);
+	const out = cli('tls', 'install', '--cert', mine.crt, '--key', mine.key);
+	expect(out).toContain('now serves your certificate');
+	expect(out).toContain(`SHA-256:     ${mine.fingerprint}`);
+	expect(await served()).toBe(mine.fingerprint);
+	try {
+		await navigate(page, 'System');
+		await expect(page.getByTestId('certificate-source')).toHaveText('Installed by you');
+		expect(cli('tls', 'show')).toContain(mine.fingerprint);
+	} finally {
+		cli('tls', 'reset');
+	}
+	expect(cli('tls', 'show')).toContain('self-signed by Drawbridge');
+	expect(await served()).not.toBe(mine.fingerprint);
 });
 
 test('the System page downloads a backup that restores, and asks for the password again', async ({

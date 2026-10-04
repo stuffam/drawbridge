@@ -197,6 +197,17 @@ const eventTypes: { kind: string; category: DrawbridgeEvent['category']; label: 
 		category: 'admin',
 		label: 'Failed to make a backup (wrong password)'
 	},
+	{
+		kind: 'auth.certificate_failed',
+		category: 'admin',
+		label: 'Failed to install a TLS certificate (wrong password)'
+	},
+	{ kind: 'tls.certificate_installed', category: 'admin', label: 'Installed a TLS certificate' },
+	{
+		kind: 'tls.certificate_reset',
+		category: 'admin',
+		label: 'Went back to the self-signed TLS certificate'
+	},
 	{ kind: 'backup.created', category: 'admin', label: 'Made a backup' },
 	{ kind: 'backup.restored', category: 'admin', label: 'Restored from a backup' },
 	{

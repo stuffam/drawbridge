@@ -51,6 +51,9 @@
 	.alert-success {
 		@apply rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200;
 	}
+	.file-input {
+		@apply file:mr-2 file:cursor-pointer file:rounded-lg file:border file:border-neutral-300 file:bg-white file:px-2 file:py-1 file:text-xs file:text-neutral-900 hover:file:bg-neutral-50 dark:file:border-neutral-700 dark:file:bg-neutral-900 dark:file:text-neutral-100 dark:hover:file:bg-neutral-800;
+	}
 	.mono {
 		@apply font-mono text-xs break-all;
 	}

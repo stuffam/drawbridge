@@ -55,6 +55,9 @@ type Host struct {
 	StateDir string
 	// CertNotAfter is when the web UI's TLS certificate expires; zero when there's none.
 	CertNotAfter time.Time
+	// CertUploaded says the certificate is one the admin installed, which nothing renews, and
+	// not the self-signed one the daemon renews whenever it starts.
+	CertUploaded bool
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 	// Statfs returns the free and total bytes of the filesystem holding path.

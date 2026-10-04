@@ -1963,6 +1963,142 @@
           "system"
         ]
       }
+    },
+    "/api/system/certificate": {
+      "get": {
+        "summary": "The web UI's TLS certificate",
+        "description": "Describes the certificate this server presents to browsers: the self-signed one the daemon makes, or one the admin installed. Includes its SHA-256 fingerprint (what a browser shows), the names it covers, and when it expires. `notes` are warnings about an installed certificate that aren't reasons to refuse it: it expires soon (nothing renews one), it covers none of the host's names, or it comes without its intermediate certificates. The key is never returned. Read-only, and not readable with an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "501": {
+            "description": "This daemon can't change its certificate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The certificate in use.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Certificate"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "system"
+        ]
+      },
+      "put": {
+        "summary": "Install a TLS certificate",
+        "description": "Makes the admin's own certificate the web UI's, instead of the self-signed one. Send the chain (the server's own certificate first, then its intermediates) and the private key as PEM text; a file with both in it works for either field. A key in PKCS#1, SEC1, or PKCS#8 form is accepted, and one protected by a passphrase is refused. Both are checked first, and nothing changes if either is refused (400): the key must belong to the first certificate, which must be valid now, name at least one host or address, allow server authentication, and not use an RSA key under 2048 bits. It takes the account's password again even in a logged-in session, because a hijacked session could otherwise put in front of the admin's next login a certificate whose key it holds (wrong attempts count against the login limits, 429; recorded as `auth.certificate_failed`). The daemon uses the new certificate for the next connection, without a restart; connections already open keep the old one, so the next page load may bring the browser's trust warning. It's kept in the daemon's TLS directory (mode 0600) and survives a restart, but it isn't in a backup. A certificate that is installed stays in use after it expires: nothing renews it. Recorded as a `tls.certificate_installed` event with the old and new fingerprints, never the key. Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "501": {
+            "description": "This daemon can't change its certificate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The certificate in use now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Certificate"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "system"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateInstallRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Go back to the self-signed certificate",
+        "description": "Forgets the installed certificate and its key, and serves the self-signed certificate the daemon makes (a new one if it had run out). Takes effect for the next connection. It needs no password: it gives the admin's browser a warning and gives no one a way in. Answers 409 when the self-signed certificate is already in use. Recorded as a `tls.certificate_reset` event. Not available to an API token.",
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/NotLoggedIn"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "501": {
+            "description": "This daemon can't change its certificate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The self-signed certificate, now in use.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Certificate"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "system"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3399,6 +3535,96 @@
             "items": {
               "$ref": "#/components/schemas/Snapshot"
             }
+          }
+        }
+      },
+      "Certificate": {
+        "type": "object",
+        "required": [
+          "source",
+          "subject",
+          "issuer",
+          "names",
+          "not_before",
+          "not_after",
+          "fingerprint",
+          "chain",
+          "self_issued",
+          "notes"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "self-signed",
+              "uploaded"
+            ],
+            "description": "`self-signed` is the certificate the daemon makes for this host and renews when it starts; `uploaded` is the admin's own."
+          },
+          "subject": {
+            "type": "string",
+            "description": "The certificate's subject, such as `CN=vpn.example.com`."
+          },
+          "issuer": {
+            "type": "string",
+            "description": "Who issued it. The same as the subject for a certificate that signed itself."
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the certificate is valid for: its DNS names (a wildcard is shown as it is), then its IP addresses."
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When it expires."
+          },
+          "fingerprint": {
+            "type": "string",
+            "description": "The SHA-256 fingerprint as a browser shows it: uppercase hex pairs separated by colons."
+          },
+          "chain": {
+            "type": "integer",
+            "description": "How many certificates the daemon serves, the server's own included."
+          },
+          "self_issued": {
+            "type": "boolean",
+            "description": "Whether the certificate signed itself, so no certificate authority vouches for it."
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Warnings about an uploaded certificate that aren't reasons to refuse it. Empty for the self-signed one."
+          }
+        }
+      },
+      "CertificateInstallRequest": {
+        "type": "object",
+        "required": [
+          "password",
+          "certificate",
+          "private_key"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "The account's current password."
+          },
+          "certificate": {
+            "type": "string",
+            "description": "The certificate chain as PEM text, the server's own certificate first. A file that also holds the key is fine."
+          },
+          "private_key": {
+            "type": "string",
+            "description": "The private key as PEM text, without a passphrase. It is checked, kept in the daemon's TLS directory (mode 0600), and never returned or logged."
           }
         }
       }
