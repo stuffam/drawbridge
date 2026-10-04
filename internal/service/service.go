@@ -223,6 +223,12 @@ type Status struct {
 	Paused   int
 	// Online counts clients with a handshake within OnlineWithin.
 	Online int
+	// ReceiveBytes and SendBytes add up the peers' counters, counted at the server: what the
+	// clients now in the tunnel have sent up and been sent. A peer's counters run from when it
+	// joined the tunnel (the tunnel starting, or the client being resumed), so the sums fall when
+	// a client is paused or deleted, and start over when the tunnel restarts. TrafficTotal
+	// survives a pause and a restart.
+	ReceiveBytes, SendBytes int64
 	// AdGuardWarning is a line for the admin when the AdGuard Home name sync needs them, or ""
 	// (adguardsync.go).
 	AdGuardWarning string
@@ -259,6 +265,10 @@ func (s *Service) Snapshot(ctx context.Context) (Status, []ClientStatus, error) 
 		}
 		if c.Peer != nil && !c.Peer.LastHandshake.IsZero() && now.Sub(c.Peer.LastHandshake) < OnlineWithin {
 			out.Online++
+		}
+		if c.Peer != nil {
+			out.ReceiveBytes += c.Peer.ReceiveBytes
+			out.SendBytes += c.Peer.SendBytes
 		}
 	}
 	return out, clients, nil

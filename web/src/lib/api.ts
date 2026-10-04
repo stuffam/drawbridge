@@ -62,6 +62,13 @@ export interface ServerStatus {
 	clients: number;
 	paused: number;
 	online: number;
+	/**
+	 * Bytes the server has received from, and sent to, the clients in the tunnel now: the sum of
+	 * their counters. A client's counters start over when it's resumed, so these fall when one is
+	 * paused or deleted, and start over when the tunnel restarts.
+	 */
+	receive_bytes: number;
+	send_bytes: number;
 	/** Set when the AdGuard Home name sync needs the admin; absent when all is well. */
 	adguard_warning?: string;
 }

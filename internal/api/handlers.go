@@ -335,6 +335,26 @@ func (h *handler) totalTraffic(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, views.NewTrafficSamples(samples))
 }
 
+// trafficTotal adds up every client's stored traffic over a range, for a dashboard that can show
+// a number and can't add up a list.
+func (h *handler) trafficTotal(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("range")
+	resolution, lookback, err := views.ParseTrafficRange(name)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	if name == "" {
+		name = "24h"
+	}
+	total, err := h.svc.TrafficTotal(r.Context(), resolution, lookback)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewTrafficTotal(name, total))
+}
+
 func (h *handler) clientSessions(w http.ResponseWriter, r *http.Request) {
 	before, limit, err := views.ParseSessionHistoryFilter(r.URL.Query())
 	if err != nil {

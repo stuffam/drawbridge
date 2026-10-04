@@ -473,3 +473,51 @@ func TestAdminAllowedIsValidatedNormalizedAndRecorded(t *testing.T) {
 		t.Fatalf("got %v", got.AdminAllowed)
 	}
 }
+
+// The status carries one received and one sent number, the sum of the counters of the peers in
+// the tunnel. A dashboard that can't add up a list can show it. The sum is of what's in the
+// tunnel now, so it says so when a client leaves it.
+func TestStatusAddsUpThePeerCounters(t *testing.T) {
+	s, clk := newTestService(t)
+	ctx := context.Background()
+	for _, name := range []string{"phone", "laptop", "tablet"} {
+		if _, _, err := s.AddClient(ctx, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fake := s.WG.(*wg.Fake)
+	counters := map[string][2]int64{"phone": {100, 7}, "laptop": {2000, 30}, "tablet": {30000, 400}}
+	for name, c := range counters {
+		cs, _ := s.Client(ctx, store.ByName(name))
+		fake.SetHandshake("wg0", cs.PublicKey, wg.Peer{LastHandshake: clk.t, ReceiveBytes: c[0], SendBytes: c[1]})
+	}
+	st, err := s.Status(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.ReceiveBytes != 32100 || st.SendBytes != 437 {
+		t.Fatalf("received %d and sent %d, want 32100 and 437", st.ReceiveBytes, st.SendBytes)
+	}
+
+	// A paused client has no peer, so its counters aren't in it; resumed, it starts at zero.
+	if _, _, err := s.SetEnabled(ctx, store.ByName("tablet"), false); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ = s.Status(ctx); st.ReceiveBytes != 2100 || st.SendBytes != 37 {
+		t.Errorf("with the tablet paused: received %d and sent %d, want 2100 and 37", st.ReceiveBytes, st.SendBytes)
+	}
+	if _, _, err := s.SetEnabled(ctx, store.ByName("tablet"), true); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ = s.Status(ctx); st.ReceiveBytes != 2100 || st.SendBytes != 37 {
+		t.Errorf("with the tablet resumed: received %d and sent %d, want 2100 and 37 (its peer is new)", st.ReceiveBytes, st.SendBytes)
+	}
+
+	// With the tunnel down there are no peers, and so no bytes.
+	if err := s.WG.Delete("wg0"); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ = s.Status(ctx); st.ReceiveBytes != 0 || st.SendBytes != 0 {
+		t.Errorf("with the tunnel down: received %d and sent %d, want 0", st.ReceiveBytes, st.SendBytes)
+	}
+}

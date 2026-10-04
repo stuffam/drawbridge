@@ -550,3 +550,8 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   migrated (the upgrade half of the matrix, until that has its own tests).
 - `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
   and an API token made before the backup still works.
+- `[UNVERIFIED]` Homepage shows the totals (docs/api-tokens.md, "Traffic totals"): a widget on
+  `/api/server/status` with `receive_bytes` and `send_bytes` (format `bytes`) shows numbers that
+  grow while a client moves traffic, and fall when that client is paused. A widget on
+  `/api/traffic/total?range=24h` shows what the charts' 24 h range adds up to, within the last
+  minute or so, and the same token that reads the status reads it.

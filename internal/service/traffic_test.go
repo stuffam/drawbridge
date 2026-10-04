@@ -560,3 +560,69 @@ func TestClientAndTotalTrafficEndAtTheLastSettledBucket(t *testing.T) {
 		t.Fatalf("hourly total: %v, err %v, want [100]", rx(all.Samples), err)
 	}
 }
+
+// The total is the stored history added up, over the range asked for and no further than the last
+// settled bucket: the same samples /api/traffic shows, as one number each way.
+func TestTrafficTotalAddsUpTheSettledHistory(t *testing.T) {
+	s, clk := newTestService(t)
+	ctx := context.Background()
+	for _, name := range []string{"phone", "laptop"} {
+		if _, _, err := s.AddClient(ctx, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	phone, _ := s.Client(ctx, store.ByName("phone"))
+	laptop, _ := s.Client(ctx, store.ByName("laptop"))
+	clk.t = time.Date(2026, 9, 26, 12, 34, 7, 0, time.UTC)
+	at := func(h, m int) time.Time { return time.Date(2026, 9, 26, h, m, 0, 0, time.UTC) }
+	sample := func(c ClientStatus, h, m int, rx, tx int64) store.TrafficSample {
+		return store.TrafficSample{ClientID: c.ID, Resolution: store.ResolutionRaw, BucketStart: at(h, m), RxBytes: rx, TxBytes: tx}
+	}
+	if err := s.Store.InsertTraffic(ctx, []store.TrafficSample{
+		sample(phone, 12, 31, 1, 100), sample(laptop, 12, 31, 10, 1000),
+		sample(phone, 12, 32, 2, 200), sample(laptop, 12, 32, 20, 2000),
+		sample(phone, 12, 33, 4, 400), sample(laptop, 12, 33, 40, 4000), // ended seven seconds ago: not settled
+		sample(phone, 11, 10, 8, 800), // before the last hour
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// An hour back from 12:33 is 11:33, so the 11:10 sample is out, and the 12:33 bucket isn't in yet.
+	got, err := s.TrafficTotal(ctx, store.ResolutionRaw, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RxBytes != 33 || got.TxBytes != 3300 || !got.Until.Equal(at(12, 33)) || !got.Since.Equal(at(11, 33)) {
+		t.Fatalf("an hour: %+v, want 33 received, 3300 sent, from 11:33 to 12:33", got)
+	}
+	// Ten seconds on, the bucket is in, and the total moves with the same samples as the series.
+	clk.advance(10 * time.Second)
+	got, _ = s.TrafficTotal(ctx, store.ResolutionRaw, time.Hour)
+	series, _ := s.TotalTraffic(ctx, store.ResolutionRaw, time.Hour)
+	var rx, tx int64
+	for _, sm := range series.Samples {
+		rx += sm.RxBytes
+		tx += sm.TxBytes
+	}
+	if got.RxBytes != 77 || got.TxBytes != 7700 || got.RxBytes != rx || got.TxBytes != tx {
+		t.Fatalf("after the margin: %+v, want 77 and 7700, the series' sums %d and %d", got, rx, tx)
+	}
+	// A longer range at the same resolution takes in the 11:10 sample too.
+	if got, _ = s.TrafficTotal(ctx, store.ResolutionRaw, 2*time.Hour); got.RxBytes != 85 || got.TxBytes != 8500 {
+		t.Errorf("two hours: %+v, want 85 and 8500", got)
+	}
+
+	// A client's history goes with the client, so the total falls by its share.
+	if _, _, err := s.DeleteClient(web(ctx, "admin"), store.ByName("laptop")); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ = s.TrafficTotal(ctx, store.ResolutionRaw, 2*time.Hour); got.RxBytes != 15 || got.TxBytes != 1500 {
+		t.Errorf("after deleting the laptop: %+v, want 15 and 1500", got)
+	}
+
+	// With no history it's zero, and still has its window.
+	empty, _ := newTestService(t)
+	if got, err = empty.TrafficTotal(ctx, store.ResolutionHourly, 7*24*time.Hour); err != nil || got.RxBytes != 0 || got.TxBytes != 0 || got.Since.IsZero() || got.Until.IsZero() {
+		t.Errorf("no history: %+v, %v", got, err)
+	}
+}

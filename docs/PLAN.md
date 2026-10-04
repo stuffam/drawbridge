@@ -715,6 +715,12 @@ stateDiagram-v2
     the cursor with both and their total. A client's page adds a cumulative chart of the same two
     lines as running totals. `GET /api/traffic` and `GET /api/clients/{id}/traffic` return the
     same window as the per-client route: `step_seconds`, `until`, and `samples`.
+  - **A total for a dashboard that can't add** (Homepage): `GET /api/traffic/total` adds the same
+    samples into `receive_bytes` and `send_bytes`, with the window (`since`, `until`) and the range
+    it answered for. It reads the stored history, so a restart or a pause doesn't take anything out
+    of it, and deleting a client does (the client's history cascades). `GET /api/server/status`
+    also has `receive_bytes` and `send_bytes`: the sum of the peers' counters, which is the number
+    since the tunnel last started, and falls when a client is paused or deleted.
   - **The x axis** is labeled by range: every 15 s for 1m (to the second), every 5 min for 1h,
     every hour for 12h, every 3 h for 24h, every day for 1w, every 3 days for 30d, and every week
     for 90d. Under a week it shows times only, from a week up dates only, and never a year. The
@@ -867,11 +873,12 @@ stateDiagram-v2
   - A token is `dbt_` and 256 random bits. It's shown once, when it's made, and only its SHA-256
     hash is stored, as for a session. The first 8 characters are kept to tell tokens apart.
   - **It reads a short, fixed list of GET routes and nothing else**: the status, the clients, and
-    their traffic. The list is in the code (`tokenReadable`, `internal/api/tokens.go`) and is
-    closed by default, so a new route can't be reached by a token until someone adds it, and a
-    test names what can never be on it: a client's config (its private key), its DNS log, the
-    event log, the settings, the integrations, and the account routes, tokens' own included. A
-    token can't change anything, and can't make, list, or revoke tokens.
+    their traffic, including the totals (`/api/traffic/total`, added 2026-10-04: two numbers, and
+    nothing that says whose). The list is in the code (`tokenReadable`, `internal/api/tokens.go`)
+    and is closed by default, so a new route can't be reached by a token until someone adds it,
+    and a test names what can never be on it: a client's config (its private key), its DNS log,
+    the event log, the settings, the integrations, and the account routes, tokens' own included.
+    A token can't change anything, and can't make, list, or revoke tokens.
   - **Making one takes the password again**, even in a logged-in session, because a token
     outlives the session and a password change; a hijacked session mustn't be able to leave one
     behind. Wrong passwords count against the login limits. An account has at most 20, with names
@@ -1049,6 +1056,9 @@ GET    /api/events?client=&category=&kind=&from=&to=&before=&limit=&format=json|
 GET    /api/clients/{id}/traffic?range=1m|1h|12h|24h|7d|30d|90d            (M4)
 GET    /api/traffic?range=1m|1h|12h|24h|7d|30d|90d   summed across clients (M4)
 GET    /api/traffic/clients?range=1m|1h|12h|24h|7d|30d|90d   one series per client (M4)
+GET    /api/traffic/total?range=1m|1h|12h|24h|7d|30d|90d   the total, added up: receive_bytes and
+                                         send_bytes over the range, for a dashboard that can't
+                                         add up a list (M4; a token may read it)
 GET    /api/clients/{id}/sessions?before=&limit=                           (M4)
 GET    /api/stream                       SSE: status every poll + live events (M4)
 GET    /api/integrations/adguard         PUT /api/integrations/adguard     (M4)
