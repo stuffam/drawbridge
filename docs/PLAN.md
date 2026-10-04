@@ -958,10 +958,26 @@ stateDiagram-v2
   - **Built (2026-10-03):** the file format and `drawbridge backup create|restore`
     (`internal/backup`), with the passphrase read from the terminal with no echo (the one new
     dependency is `golang.org/x/term`, for that), from `--passphrase-file`, or from standard
-    input. The web download, the nightly snapshots, and the snapshot before a migration aren't.
-  - Nightly local snapshots with rotation, and the snapshot before a migration (§7), are a later
-    slice. They hold the database only, in the daemon's own directory, and protect against a
-    bad change or a bad migration, not against a lost card.
+    input. The web download isn't.
+  - **Local snapshots (built 2026-10-04):** copies of the database alone (SQLite's `VACUUM INTO`),
+    in `/var/lib/drawbridge/backups/` (0700, files 0600), sealed with the key that's already on the
+    host. They protect against a bad change or a bad migration, not against a lost card.
+    - **Nightly:** the daemon makes one when the newest is a day old (`--snapshot-interval`, 0
+      turns them off) and keeps the newest seven (`--snapshot-keep`). It looks at the files, not a
+      timer, so a restart doesn't make an extra one and a host that was off makes one when it's
+      back. It's a few megabytes written once a day, and nothing in the live database.
+    - **Before a migration:** when opening the database would apply a migration to one that has
+      data, the store snapshots it first (`pre-migration-v<schema>-<time>.db`, the newest three
+      kept), and **refuses to migrate if it can't**, leaving the database as it was. Whichever of
+      the tunnel unit and the daemon opens it first after an upgrade does it. A new database has
+      nothing to save, so none is made.
+    - **Restore:** `sudo drawbridge backup restore FILE` accepts one of them (it recognizes a plain
+      SQLite file), with no passphrase. It goes back as the database alone, opened with the host's
+      own key, which stays; the other checks and the aside files are the same, and an older
+      snapshot is migrated forward.
+    - Making one isn't an event: it changes nothing the admin manages, and the journal has a line
+      for it. The `snapshot` package names, lists, and prunes them, and touches only files whose
+      names it made.
 - **TLS:** the daemon creates a self-signed ECDSA certificate on first start, with SANs for the
   hostname (and `.local`), loopback, and the LAN and VPN addresses, and replaces it 30 days before
   it expires. It lasts 800 days, under the 825 days Apple's platforms accept. Its SHA-256
@@ -1020,7 +1036,7 @@ schema_migrations   version, applied_at
 - Every `*_enc` column is encrypted with XChaCha20-Poly1305 using `/etc/drawbridge/secret.key`. This
   protects DB copies and backups. It doesn't protect against a full compromise of the host.
 - Migrations are embedded in the binary. They run at startup after an automatic pre-migration
-  snapshot.
+  snapshot (§6.6), and don't run if it can't be made.
 
 ---
 
@@ -1340,8 +1356,8 @@ Each milestone ends in a usable, tested state.
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
   built (§6.6). The dashboard doesn't show the warnings yet.* Of the backups, `backup
-  create|restore` are built; the web download, the nightly snapshots, and the pre-migration
-  snapshot aren't.
+  create|restore` and the local snapshots (nightly, and before a migration) are built; the web
+  download isn't.
 - **Exit:**
   - The security checklist passes.
   - Upgrading from v0.x keeps all data and keeps the tunnel up.

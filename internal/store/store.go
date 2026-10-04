@@ -49,10 +49,45 @@ type Store struct {
 	db     *sql.DB
 	sealer *keys.Sealer
 	now    func() time.Time
+
+	// snapshotDir and snapshotKeep are where a snapshot is made before a migration, and how many
+	// of those are kept (WithMigrationSnapshots). An empty dir means none is made.
+	snapshotDir  string
+	snapshotKeep int
+	// migration is what Open did to the schema, if anything.
+	migration *Migration
 }
 
+// Option changes how Open opens the database.
+type Option func(*Store)
+
+// WithMigrationSnapshots makes Open snapshot the database into dir before it applies any
+// migration to a database that already has data, and keep the newest keep of those (the
+// snapshot package's default when keep isn't positive). The snapshot is made first, and if it
+// can't be, Open fails and the database is left as it was: a migration that goes wrong has
+// nothing to go back to otherwise (docs/PLAN.md §7).
+func WithMigrationSnapshots(dir string, keep int) Option {
+	return func(s *Store) {
+		s.snapshotDir = dir
+		s.snapshotKeep = keep
+	}
+}
+
+// Migration says what Open did to the schema.
+type Migration struct {
+	// From is the schema version the database was at, 0 for a new one, and To the version it's at
+	// now.
+	From, To int
+	// Snapshot is the path of the snapshot made first; empty when none was (a new database, or
+	// no WithMigrationSnapshots).
+	Snapshot string
+}
+
+// Migration returns what Open did to the schema, or nil when it was already current.
+func (s *Store) Migration() *Migration { return s.migration }
+
 // Open opens (creating if needed) the database at path and brings its schema up to date.
-func Open(ctx context.Context, path string, sealer *keys.Sealer) (*Store, error) {
+func Open(ctx context.Context, path string, sealer *keys.Sealer, opts ...Option) (*Store, error) {
 	q := url.Values{}
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
@@ -68,6 +103,9 @@ func Open(ctx context.Context, path string, sealer *keys.Sealer) (*Store, error)
 	// One connection serializes access within the process; the load is tiny.
 	db.SetMaxOpenConns(1)
 	s := &Store{db: db, sealer: sealer, now: time.Now}
+	for _, opt := range opts {
+		opt(s)
+	}
 	if err := s.migrate(ctx); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("opening %s: %w", path, err)
@@ -96,6 +134,19 @@ func (s *Store) migrate(ctx context.Context) error {
 		return err
 	}
 	sort.Strings(names)
+	target := LatestSchema()
+	if target > current {
+		// A database with data is snapshotted first; a new one has nothing to lose.
+		m := &Migration{From: current, To: target}
+		if current > 0 && s.snapshotDir != "" {
+			path, err := s.snapshotBeforeMigrating(ctx, current)
+			if err != nil {
+				return fmt.Errorf("snapshotting the database before migrating it from schema %d to %d: %w", current, target, err)
+			}
+			m.Snapshot = path
+		}
+		s.migration = m
+	}
 	for _, name := range names {
 		base := strings.TrimPrefix(name, "migrations/")
 		version, err := strconv.Atoi(strings.SplitN(base, "_", 2)[0])

@@ -31,6 +31,9 @@ const backupUsage = `Usage: drawbridge backup <command> [flags]
         Put a backup in place of this host's database and key. Run it as root, with the
         daemon stopped (sudo systemctl stop drawbridge.service). Nothing is changed until
         the backup has been checked, and what it replaces is kept beside it.
+        FILE can also be one of the snapshots the host keeps in /var/lib/drawbridge/backups
+        (a nightly one, or the one made before an upgrade). A snapshot needs no passphrase,
+        and goes back as the database alone: this host's own key stays.
 
 Flags:
 `
@@ -203,9 +206,16 @@ func restoreBackup(ctx context.Context, file string, fl restoreFlags, stdin io.R
 		actor = u.Username
 	}
 
-	pass, err := readPassphrase(stdin, stderr, fl.passFile, false)
+	// A snapshot is a plain database file, so there's nothing to decrypt and nothing to ask.
+	snap, err := backup.IsSnapshot(file)
 	if err != nil {
 		return fail(err)
+	}
+	pass := ""
+	if !snap {
+		if pass, err = readPassphrase(stdin, stderr, fl.passFile, false); err != nil {
+			return fail(err)
+		}
 	}
 	res, err := backup.Restore(ctx, backup.RestoreOptions{File: file, Passphrase: pass, DBPath: fl.db, KeyPath: fl.secret, Chown: chown, Actor: actor})
 	if err != nil {
@@ -213,12 +223,17 @@ func restoreBackup(ctx context.Context, file string, fl restoreFlags, stdin io.R
 	}
 
 	m := res.Manifest
-	fmt.Fprintf(stdout, "Restored the backup made %s", m.CreatedAt.UTC().Format("2 Jan 2006 15:04 UTC"))
-	if m.Version != "" {
-		fmt.Fprintf(stdout, " by Drawbridge v%s", m.Version)
+	if res.Snapshot {
+		fmt.Fprintf(stdout, "Restored the snapshot made %s.\n", m.CreatedAt.UTC().Format("2 Jan 2006 15:04 UTC"))
+		fmt.Fprintf(stdout, "  Database: %s\n  Key:      %s, unchanged: a snapshot opens with this host's own key\n", fl.db, fl.secret)
+	} else {
+		fmt.Fprintf(stdout, "Restored the backup made %s", m.CreatedAt.UTC().Format("2 Jan 2006 15:04 UTC"))
+		if m.Version != "" {
+			fmt.Fprintf(stdout, " by Drawbridge v%s", m.Version)
+		}
+		fmt.Fprintln(stdout, ".")
+		fmt.Fprintf(stdout, "  Database: %s\n  Key:      %s\n", fl.db, fl.secret)
 	}
-	fmt.Fprintln(stdout, ".")
-	fmt.Fprintf(stdout, "  Database: %s\n  Key:      %s\n", fl.db, fl.secret)
 	if res.Migrated {
 		fmt.Fprintln(stdout, "  The database was from an older Drawbridge, and has been brought up to date.")
 	}
@@ -233,7 +248,11 @@ func restoreBackup(ctx context.Context, file string, fl restoreFlags, stdin io.R
 		if res.KeyAside != "" {
 			fmt.Fprintf(stdout, "  %s\n", res.KeyAside)
 		}
-		fmt.Fprintln(stdout, "Delete them once you've checked that everything works: the old key is in there.")
+		if res.KeyAside != "" {
+			fmt.Fprintln(stdout, "Delete them once you've checked that everything works: the old key is in there.")
+		} else {
+			fmt.Fprintln(stdout, "Delete it once you've checked that everything works.")
+		}
 	}
 	fmt.Fprintln(stdout, "Now start Drawbridge on the restored data:")
 	fmt.Fprintln(stdout, "  sudo systemctl restart drawbridge-tunnel.service drawbridge.service")

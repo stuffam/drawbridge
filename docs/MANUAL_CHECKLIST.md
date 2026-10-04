@@ -554,3 +554,17 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   migrated (the upgrade half of the matrix, until that has its own tests).
 - `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
   and an API token made before the backup still works.
+- `[UNVERIFIED]` Nightly snapshots: a minute after the daemon starts on a host with none, one
+  appears in `/var/lib/drawbridge/backups/` (0600, in a 0700 directory, owned by `drawbridge`), and
+  a restart doesn't make another. With `--snapshot-interval 1m` (a scratch run), a new one comes
+  every few minutes and only the newest `--snapshot-keep` stay. (Seen in a container with the fake
+  backend: the daemon made one 60 seconds after it started, mode 0600 in a 0700 directory, a restart
+  made no second one, and `backup restore` took it. Not on the Pi.)
+- `[UNVERIFIED]` An upgrade that adds a migration (the next release that does) leaves a
+  `pre-migration-v<n>-*.db` before the schema changes, made by `drawbridge-tunnel.service` or the
+  daemon, whichever opened the database first, and the journal says "upgraded the database". With
+  the directory made unwritable, the upgrade is refused with a message that says the snapshot
+  failed, and the old version of the database is untouched.
+- `[UNVERIFIED]` `sudo drawbridge backup restore` of a nightly snapshot, with the daemon stopped,
+  asks for no passphrase, keeps the host's key, and brings the clients back as they were when it
+  was made; a client added since is gone.

@@ -1,9 +1,12 @@
 package backup
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -33,9 +36,14 @@ type RestoreOptions struct {
 
 // Restored is what a restore did.
 type Restored struct {
-	// Manifest is what the backup said about itself.
+	// Manifest is what the backup said about itself. For a snapshot, which says nothing, it has
+	// the file's time and nothing else.
 	Manifest Manifest
+	// Snapshot is true when what was restored was a snapshot, a plain database file, and the
+	// host's own key stayed in place.
+	Snapshot bool
 	// DBAside and KeyAside are where the files it replaced went, empty when there weren't any.
+	// A snapshot restore leaves the key where it is, so KeyAside is empty.
 	DBAside, KeyAside string
 	// SessionsEnded is how many logins the backup held, all of which were ended.
 	SessionsEnded int64
@@ -43,15 +51,33 @@ type Restored struct {
 	Migrated bool
 }
 
-// Restore puts a backup in place of the database and the secret key. The daemon must not be
-// running: nothing here can stop it from writing to the database it's about to lose.
+var sqliteMagic = []byte("SQLite format 3\x00")
+
+// IsSnapshot says whether the file is a snapshot (a plain SQLite database, like the ones the
+// host keeps in its backups directory) and not an encrypted backup, so a caller knows whether to
+// ask for a passphrase.
+func IsSnapshot(path string) (bool, error) {
+	f, err := os.Open(path) //nolint:gosec // G304: the file the admin named.
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	head := make([]byte, len(sqliteMagic))
+	n, _ := io.ReadFull(f, head)
+	return n == len(head) && bytes.Equal(head, sqliteMagic), nil
+}
+
+// Restore puts a backup in place of the database and the secret key, or a snapshot in place of
+// the database alone. The daemon must not be running: nothing here can stop it from writing to
+// the database it's about to lose.
 //
 // Everything is checked before anything is touched. The backup is decrypted into a temporary
 // file beside the database, and that file has to be intact, no newer than this Drawbridge
-// understands, free of SQLite integrity problems, and open with the key that came with it.
-// Then the logins in it are ended, and the restore is recorded in its event log. Only then are
-// the current files moved aside (with a time in their names, so an earlier restore's are never
-// overwritten) and the new ones moved in. A failure while moving puts the old ones back.
+// understands, free of SQLite integrity problems, and open with the key that came with it (a
+// snapshot is a copy of the file, and has to open with the host's own key). Then the logins in
+// it are ended, and the restore is recorded in its event log. Only then are the current files
+// moved aside (with a time in their names, so an earlier restore's are never overwritten) and
+// the new ones moved in. A failure while moving puts the old ones back.
 func Restore(ctx context.Context, o RestoreOptions) (Restored, error) {
 	now := time.Now
 	if o.Now != nil {
@@ -64,6 +90,10 @@ func Restore(ctx context.Context, o RestoreOptions) (Restored, error) {
 		return Restored{}, err
 	}
 	defer f.Close()
+	snap, err := IsSnapshot(o.File)
+	if err != nil {
+		return Restored{}, err
+	}
 	tmp, err := os.CreateTemp(dir, ".restore-*.db")
 	if err != nil {
 		return Restored{}, fmt.Errorf("making a file beside the database: %w", err)
@@ -71,39 +101,74 @@ func Restore(ctx context.Context, o RestoreOptions) (Restored, error) {
 	tmpDB := tmp.Name()
 	defer removeDB(tmpDB)
 
-	man, key, err := Read(f, o.Passphrase, tmp)
-	if cerr := tmp.Close(); err == nil {
-		err = cerr
+	var (
+		res    = Restored{Snapshot: snap}
+		key    []byte
+		sealer *keys.Sealer
+		whose  = "the backup's key"
+	)
+	if snap {
+		// The snapshot is copied, so the file the admin gave stays as it is.
+		_, err = io.Copy(tmp, f)
+		if cerr := tmp.Close(); err == nil {
+			err = cerr
+		}
+		if err != nil {
+			return Restored{}, err
+		}
+		if fi, err := f.Stat(); err == nil {
+			res.Manifest.CreatedAt = fi.ModTime()
+		}
+		if res.Manifest.Schema, err = schemaOf(tmpDB); err != nil {
+			return Restored{}, fmt.Errorf("%w: %w", ErrNotABackup, err)
+		}
+		hostKey, err := os.ReadFile(o.KeyPath)
+		if err != nil {
+			return Restored{}, fmt.Errorf("a snapshot opens with the host's own key, and reading it failed: %w", err)
+		}
+		if sealer, err = keys.NewSealer(hostKey); err != nil {
+			return Restored{}, fmt.Errorf("the host's secret key is unusable: %w", err)
+		}
+		whose = "this host's key"
+	} else {
+		man, k, err := Read(f, o.Passphrase, tmp)
+		if cerr := tmp.Close(); err == nil {
+			err = cerr
+		}
+		if err != nil {
+			return Restored{}, err
+		}
+		res.Manifest, key = man, k
+		if sealer, err = keys.NewSealer(key); err != nil {
+			return Restored{}, fmt.Errorf("%w: its key is the wrong size", ErrNotABackup)
+		}
 	}
-	if err != nil {
-		return Restored{}, err
-	}
-	if man.Schema > store.LatestSchema() {
+	if res.Manifest.Schema > store.LatestSchema() {
 		return Restored{}, ErrSchemaNewer
 	}
-	sealer, err := keys.NewSealer(key)
-	if err != nil {
-		return Restored{}, fmt.Errorf("%w: its key is the wrong size", ErrNotABackup)
-	}
-
-	res := Restored{Manifest: man}
-	if err := prepare(ctx, tmpDB, sealer, o, now(), &res); err != nil {
+	if err := prepare(ctx, tmpDB, sealer, whose, o, now(), &res); err != nil {
 		return Restored{}, err
 	}
 
-	// The key goes to a file beside the old one, mode 0640 like the package makes it.
-	tmpKey := o.KeyPath + ".restore"
-	_ = os.Remove(tmpKey)
-	if err := os.WriteFile(tmpKey, key, 0o640); err != nil { //nolint:gosec // G306: root:drawbridge 0640, as the package installs it.
-		return Restored{}, fmt.Errorf("writing the secret key: %w", err)
-	}
-	defer func() { _ = os.Remove(tmpKey) }()
-	if err := os.Chmod(tmpKey, 0o640); err != nil { //nolint:gosec // G302, see above.
-		return Restored{}, err
+	// The key goes to a file beside the old one, mode 0640 like the package makes it. A
+	// snapshot has none: the host's stays.
+	tmpKey := ""
+	if !snap {
+		tmpKey = o.KeyPath + ".restore"
+		_ = os.Remove(tmpKey)
+		if err := os.WriteFile(tmpKey, key, 0o640); err != nil { //nolint:gosec // G306: root:drawbridge 0640, as the package installs it.
+			return Restored{}, fmt.Errorf("writing the secret key: %w", err)
+		}
+		defer func() { _ = os.Remove(tmpKey) }()
+		if err := os.Chmod(tmpKey, 0o640); err != nil { //nolint:gosec // G302, see above.
+			return Restored{}, err
+		}
 	}
 	if o.Chown != nil {
-		if err := o.Chown(tmpKey, true); err != nil {
-			return Restored{}, err
+		if tmpKey != "" {
+			if err := o.Chown(tmpKey, true); err != nil {
+				return Restored{}, err
+			}
 		}
 		if err := o.Chown(tmpDB, false); err != nil {
 			return Restored{}, err
@@ -120,13 +185,15 @@ func Restore(ctx context.Context, o RestoreOptions) (Restored, error) {
 			return Restored{}, err
 		}
 	}
-	if err := sw.aside(o.KeyPath, o.KeyPath+suffix); err != nil {
-		sw.undo()
-		return Restored{}, err
-	}
-	if err := sw.move(tmpKey, o.KeyPath); err != nil {
-		sw.undo()
-		return Restored{}, err
+	if tmpKey != "" {
+		if err := sw.aside(o.KeyPath, o.KeyPath+suffix); err != nil {
+			sw.undo()
+			return Restored{}, err
+		}
+		if err := sw.move(tmpKey, o.KeyPath); err != nil {
+			sw.undo()
+			return Restored{}, err
+		}
 	}
 	if err := sw.move(tmpDB, o.DBPath); err != nil {
 		sw.undo()
@@ -142,9 +209,23 @@ func Restore(ctx context.Context, o RestoreOptions) (Restored, error) {
 	return res, nil
 }
 
+// schemaOf reads the schema version of the SQLite file at path without migrating it.
+func schemaOf(path string) (int, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	var v int
+	if err := db.QueryRow(`SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&v); err != nil {
+		return 0, err
+	}
+	return v, nil
+}
+
 // prepare opens the restored database as the key says, brings it up to date, checks it, ends
 // its logins, and records the restore in its log.
-func prepare(ctx context.Context, path string, sealer *keys.Sealer, o RestoreOptions, now time.Time, res *Restored) error {
+func prepare(ctx context.Context, path string, sealer *keys.Sealer, whose string, o RestoreOptions, now time.Time, res *Restored) error {
 	st, err := store.Open(ctx, path, sealer)
 	if err != nil {
 		return fmt.Errorf("opening the backup's database: %w", err)
@@ -169,14 +250,17 @@ func prepare(ctx context.Context, path string, sealer *keys.Sealer, o RestoreOpt
 	// The server's private key is the first thing the database seals. If the key that came with
 	// the backup opens it, the rest were sealed with the same one.
 	if _, err := st.Settings(ctx); err != nil {
-		return fmt.Errorf("the backup's key doesn't open its database: %w", err)
+		return fmt.Errorf("%s doesn't open its database: %w", whose, err)
 	}
 	if res.SessionsEnded, err = st.DeleteAllSessions(ctx); err != nil {
 		return err
 	}
-	data := map[string]string{
-		"made":    res.Manifest.CreatedAt.UTC().Format(time.RFC3339),
-		"version": res.Manifest.Version,
+	data := map[string]string{"made": res.Manifest.CreatedAt.UTC().Format(time.RFC3339)}
+	if res.Manifest.Version != "" {
+		data["version"] = res.Manifest.Version
+	}
+	if res.Snapshot {
+		data["source"] = "snapshot"
 	}
 	if res.SessionsEnded > 0 {
 		data["sessions_ended"] = fmt.Sprint(res.SessionsEnded)
