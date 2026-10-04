@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/stuffam/drawbridge/internal/model"
 	"github.com/stuffam/drawbridge/internal/store"
 )
@@ -45,6 +47,7 @@ func TestNeedsConfirmation(t *testing.T) {
 	}{
 		"nothing":                 {func(*model.Settings) {}, false},
 		"listen port":             {func(s *model.Settings) { s.ListenPort = 51999 }, true},
+		"the server's key":        {func(s *model.Settings) { s.PrivateKey = wgtypes.Key{1} }, true},
 		"an admin source removed": {func(s *model.Settings) { s.AdminAllowed = s.AdminAllowed[:1] }, true},
 		"every admin source gone": {func(s *model.Settings) { s.AdminAllowed = nil }, true},
 		"one swapped for another": {func(s *model.Settings) {

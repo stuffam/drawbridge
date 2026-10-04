@@ -47,7 +47,8 @@ setups.** What exists:
   (AdGuard Home integration: the API client `internal/adguard`, the connection saved and tested
   from Settings, client name sync, `internal/service/adguardsync.go`, and a client's DNS log,
   `internal/service/dnslog.go`, are all built).
-- The CLI, which talks to the daemon over the control socket: `server show|set`,
+- The CLI, which talks to the daemon over the control socket:
+  `server show|set|rotate-key|confirm|revert`,
   `client list|add|show|pause|resume|rename|delete|config|qr|rotate-keys`, `events`, `doctor`, and
   `admin setup-token|create|reset-password`.
 - `drawbridge doctor`, the first slice of M5 (2026-09-29): 13 host and network checks, each with
@@ -70,15 +71,21 @@ setups.** What exists:
   flagged `config_outdated` in the list, on its page, in the dashboard's Outdated count, and in
   `client list`. `client rotate-keys` (and `POST /api/clients/{id}/rotate-keys`, and a button on
   the client's page) gives a client new keys, which cuts the old config off at once. Left in M5:
-  TOTP 2FA, rotating the server's key, uploading a certificate, the dashboard's diagnostics
-  warnings, the upgrade matrix, and the docs.
+  TOTP 2FA, uploading a certificate, the dashboard's diagnostics warnings, the upgrade matrix, and
+  the docs.
 - Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
-  cut the admin off (the listen port, removing an admin-UI source) is applied at once from the web
-  UI and undone after 60 s unless it's kept, by a bar on every page (**Keep changes** / **Undo
-  now**). The held change is in the database (`pending_apply`), so a restart or a reboot undoes it
-  too. `drawbridge server set --safe`, `server confirm`, and `server revert` do the same from the
-  CLI, which otherwise applies at once; `drawbridge apply [--dry-run]` reconciles once and lists
-  what changed (or would).
+  cut the admin off (the listen port, removing an admin-UI source, rotating the server's key) is
+  applied at once from the web UI and undone after 60 s unless it's kept, by a bar on every page
+  (**Keep changes** / **Undo now**). The held change is in the database (`pending_apply`), so a
+  restart or a reboot undoes it too. `drawbridge server set --safe`, `server confirm`, and
+  `server revert` do the same from the CLI, which otherwise applies at once; `drawbridge apply
+  [--dry-run]` reconciles once and lists what changed (or would).
+- Rotating the server's key (2026-10-04), the fifth slice of M5 (docs/PLAN.md §6.2).
+  `drawbridge server rotate-key [--safe] [--yes]`, `POST /api/server/rotate-key`, and a **Rotate
+  the key…** button in Settings give the server a new key pair. Every client's config holds the
+  old public key, so every client stops until it has its new config (the ones that were handed a
+  config show as outdated). The web UI always puts it on safe apply, because the admin on the VPN
+  is cut off by it.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -287,6 +294,9 @@ These are the rules most likely to get silently broken.
   key is sealed apart, never in the JSON): a field added to `model.Settings` must be added there,
   and `TestSnapshotCarriesEveryField` fails until it is. Something that can lock the admin out and
   isn't on that list applies at once and can't be undone, so a new setting like that goes on it.
+  The server's key is on it (`Service.RotateServerKey`). A change's description
+  (`settingsChanges`, which the event log and the web bar show) carries the server's public key
+  and never the private one.
 - **Free text never reaches a rendered file.**
   - Client names and notes stay out of nftables rulesets and WireGuard configs.
   - Keys, CIDRs, ports, and MTUs are parsed and validated (`net/netip` and range checks) before

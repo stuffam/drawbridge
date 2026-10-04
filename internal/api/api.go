@@ -65,6 +65,7 @@ var routes = []route{
 	{"PATCH", "/api/server", false, (*handler).patchServer},
 	{"GET", "/api/server/status", false, (*handler).serverStatus},
 	{"GET", "/api/server/dns-check", false, (*handler).dnsCheck},
+	{"POST", "/api/server/rotate-key", false, (*handler).rotateServerKey},
 	{"GET", "/api/server/apply", false, (*handler).applyState},
 	{"POST", "/api/server/apply/confirm", false, (*handler).confirmChange},
 	{"POST", "/api/server/apply/revert", false, (*handler).revertChange},

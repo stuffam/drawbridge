@@ -1196,6 +1196,91 @@ func TestServerSafeCommands(t *testing.T) {
 	}
 }
 
+func TestServerRotateKeyCommand(t *testing.T) {
+	env := newFakeEnv(t)
+	startDaemon(t, env)
+	sock := "--control=" + env.socket
+	publicKey := func() string {
+		m := regexp.MustCompile(`Public key:\s+(\S+)`).FindStringSubmatch(runCLI("", "server", "show", sock).stdout)
+		if m == nil {
+			t.Fatal("no public key in server show")
+		}
+		return m[1]
+	}
+	if r := runCLI("", "server", "set", "--endpoint", "vpn.example.com", sock); r.code != 0 {
+		t.Fatalf("set endpoint: %+v", r)
+	}
+	if r := runCLI("", "client", "add", "phone", "--qr", sock); r.code != 0 { // --qr hands its config out
+		t.Fatalf("add: %+v", r)
+	}
+	old := publicKey()
+
+	// It asks first, because every client stops working, and no answer is a no.
+	if r := runCLI("n\n", "server", "rotate-key", sock); r.code != 1 || !strings.Contains(r.stdout, "The key was not rotated") {
+		t.Fatalf("declined: %+v", r)
+	}
+	if r := runCLI("", "server", "rotate-key", sock); r.code != 1 || !strings.Contains(r.stdout, "The key was not rotated") {
+		t.Fatalf("no answer: %+v", r)
+	}
+	if publicKey() != old {
+		t.Fatal("a declined rotation changed the key")
+	}
+
+	// Confirmed, it applies at once (the person at the host can't be cut off by it), says what
+	// the new key is, and how many clients need a new config.
+	r := runCLI("y\n", "server", "rotate-key", sock)
+	if r.code != 0 {
+		t.Fatalf("confirmed: %+v", r)
+	}
+	now := publicKey()
+	if now == old {
+		t.Fatal("the key didn't change")
+	}
+	for _, want := range []string{"The server has a new key.", "Public key: " + now, "1 of the clients hold a config with the old key", "drawbridge client config NAME"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("rotate-key output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if strings.Contains(r.stdout, "Waiting to be kept") {
+		t.Errorf("a rotation without --safe waits:\n%s", r.stdout)
+	}
+	if r := runCLI("", "client", "list", sock); !strings.Contains(r.stdout, "outdated") {
+		t.Fatalf("the client isn't flagged:\n%s", r.stdout)
+	}
+
+	// --safe puts it on probation, and `server revert` brings the old key back.
+	r = runCLI("", "server", "rotate-key", "--yes", "--safe", sock)
+	if r.code != 0 {
+		t.Fatalf("--safe: %+v", r)
+	}
+	safeKey := publicKey()
+	if safeKey == now {
+		t.Fatal("the key didn't change")
+	}
+	for _, want := range []string{"Waiting to be kept", "server public key: " + now + " → " + safeKey, "drawbridge server confirm", "drawbridge server revert"} {
+		if !strings.Contains(r.stdout, want) {
+			t.Errorf("rotate-key --safe output lacks %q:\n%s", want, r.stdout)
+		}
+	}
+	if r := runCLI("", "server", "rotate-key", "--yes", sock); r.code != 1 || !strings.Contains(r.stderr, "waiting to be kept") || !strings.Contains(r.stderr, "drawbridge server confirm") {
+		t.Fatalf("rotating while a change waits: %+v", r)
+	}
+	if r := runCLI("", "server", "revert", sock); r.code != 0 {
+		t.Fatalf("revert: %+v", r)
+	}
+	if got := publicKey(); got != now {
+		t.Fatalf("after revert the key is %s, want %s", got, now)
+	}
+
+	// Nothing else is accepted along with it.
+	if r := runCLI("", "server", "rotate-key", "extra", sock); r.code != 2 || !strings.Contains(r.stderr, `unexpected argument "extra"`) {
+		t.Fatalf("rotate-key extra: %+v", r)
+	}
+	if r := runCLI("", "events", "--limit", "20", sock); !strings.Contains(r.stdout, "server.key_rotated") {
+		t.Fatalf("no key_rotated event:\n%s", r.stdout)
+	}
+}
+
 func TestApplyCommand(t *testing.T) {
 	env := newFakeEnv(t)
 	startDaemon(t, env)

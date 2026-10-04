@@ -110,3 +110,84 @@ test('a change made with the CLI waits for the web UI too', async ({ page }) => 
 	expect(listenPort()).toBe(before);
 	expect(problems).toEqual([]);
 });
+
+/** The server's public key now, from the CLI. */
+function serverKey(): string {
+	const m = cli('server', 'show').match(/Public key:\s+(\S+)/);
+	if (!m) throw new Error('no public key');
+	return m[1];
+}
+
+test("rotating the server's key asks first, waits to be kept, and Undo now brings the old key back", async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	await login(page);
+	await page.goto('/settings');
+	const shown = page.getByTestId('server-public-key');
+	const before = serverKey();
+	await expect(shown).toHaveText(before);
+
+	// Cancel changes nothing.
+	await page.getByRole('button', { name: 'Rotate the key…' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Rotate the Server Key' });
+	await expect(dialog).toContainText('Every client stops working');
+	await dialog.getByRole('button', { name: 'Cancel' }).click();
+	await expect(dialog).toBeHidden();
+	expect(serverKey()).toBe(before);
+
+	await page.getByRole('button', { name: 'Rotate the key…' }).click();
+	await dialog.getByRole('button', { name: 'Rotate the key' }).click();
+	await expect(dialog).toBeHidden();
+	const after = serverKey();
+	expect(after).not.toBe(before);
+	await expect(shown).toHaveText(after);
+	await expect(page.getByText(/could lock you out, so it is undone in \d+ seconds/)).toBeVisible();
+	// The bar shows both keys, so the admin can tell what is waiting.
+	await expect(bar(page)).toContainText(`Server public key: ${before} → ${after}`);
+
+	await bar(page).getByRole('button', { name: 'Undo now' }).click();
+	await expect(bar(page)).toBeHidden();
+	expect(serverKey()).toBe(before);
+	await expect(shown).toHaveText(before);
+	await expect(page.getByText(/could lock you out/)).toHaveCount(0);
+	expect(problems).toEqual([]);
+});
+
+test("a kept rotation of the server's key flags the clients that were handed a config", async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	cli('client', 'add', 'Key Probe');
+	cli('client', 'config', 'Key Probe'); // hands its config out
+	await login(page);
+	await navigate(page, 'Clients');
+	const row = page.getByRole('listitem').filter({ hasText: 'Key Probe' });
+	await expect(row).toBeVisible();
+	await expect(row).not.toContainText('Config outdated');
+
+	const before = serverKey();
+	await page.goto('/settings');
+	await page.getByRole('button', { name: 'Rotate the key…' }).click();
+	await page
+		.getByRole('dialog', { name: 'Rotate the Server Key' })
+		.getByRole('button', { name: 'Rotate the key' })
+		.click();
+	await expect(bar(page)).toBeVisible();
+	await bar(page).getByRole('button', { name: 'Keep changes' }).click();
+	await expect(bar(page)).toBeHidden();
+	const after = serverKey();
+	expect(after).not.toBe(before);
+	await expect(page.getByTestId('server-public-key')).toHaveText(after);
+
+	// The client's config names the old key, so it's flagged until it's handed out again.
+	await navigate(page, 'Clients');
+	await expect(row).toContainText('Config outdated');
+	expect(cli('client', 'config', 'Key Probe')).toContain(`PublicKey = ${after}`);
+	await expect(row).not.toContainText('Config outdated', { timeout: 10_000 });
+
+	// The log says it, with both keys.
+	expect(cli('events', '--limit', '10')).toContain('server.key_rotated');
+	cli('client', 'delete', '--yes', 'Key Probe');
+	expect(problems).toEqual([]);
+});

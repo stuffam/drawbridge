@@ -474,10 +474,16 @@ func (c *client) setPeer(cfg clientConfig) {
 	for _, p := range cfg.allowedIPs {
 		peer.AllowedIPs = append(peer.AllowedIPs, wg.IPNet(p))
 	}
-	err := c.wg.Configure("wgc", wgtypes.Config{
-		PrivateKey: &cfg.privateKey,
-		Peers:      []wgtypes.PeerConfig{{PublicKey: cfg.peerKey, Remove: true}, peer},
-	})
+	// A config for a server with another key replaces the old one, as importing it does.
+	peers := []wgtypes.PeerConfig{{PublicKey: cfg.peerKey, Remove: true}, peer}
+	if dev, err := c.wg.Device("wgc"); err == nil {
+		for _, p := range dev.Peers {
+			if p.PublicKey != cfg.peerKey {
+				peers = append(peers, wgtypes.PeerConfig{PublicKey: p.PublicKey, Remove: true})
+			}
+		}
+	}
+	err := c.wg.Configure("wgc", wgtypes.Config{PrivateKey: &cfg.privateKey, Peers: peers})
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -695,6 +701,105 @@ func TestEndToEnd(t *testing.T) {
 		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
 			t.Fatalf("handing out the new config left the client flagged:\n%s", show)
 		}
+	})
+
+	t.Run("rotating the server's key cuts every client off until it has the new config", func(t *testing.T) {
+		before, err := srv.device()
+		if err != nil || len(before.Peers) != 1 {
+			t.Fatalf("before the rotation: %+v, %v", before.Peers, err)
+		}
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
+			t.Fatalf("before the rotation:\n%s", show)
+		}
+		out := srv.cli("server", "rotate-key", "--yes")
+
+		// The kernel runs with the new key, and the peers are as they were.
+		dev, err := srv.device()
+		if err != nil {
+			t.Fatal(err)
+		}
+		newKey := dev.PrivateKey.PublicKey()
+		if dev.PrivateKey == before.PrivateKey {
+			t.Fatal("the kernel still has the old private key")
+		}
+		if !strings.Contains(out, "Public key: "+newKey.String()) || strings.Contains(out, "Waiting to be kept") {
+			t.Fatalf("server rotate-key:\n%s", out)
+		}
+		if len(dev.Peers) != 1 || dev.Peers[0].PublicKey != before.Peers[0].PublicKey {
+			t.Fatalf("the peers changed: %+v", dev.Peers)
+		}
+		// The client holds the old public key: its session is gone and it can't handshake again.
+		if got, err := cl.get(web4); err == nil {
+			t.Fatalf("the old config still fetched through the tunnel (source %s)", got)
+		}
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "outdated (last handed out") {
+			t.Fatalf("the client isn't flagged after the rotation:\n%s", show)
+		}
+
+		// The device imports the new config, which names the new server key, and is back.
+		fresh := parseConfig(t, srv.cli("client", "config", "phone"))
+		if fresh.peerKey != newKey || fresh.peerKey == before.PrivateKey.PublicKey() {
+			t.Fatalf("the new config names the server key %s, want %s", fresh.peerKey, newKey)
+		}
+		cl.setPeer(fresh)
+		wantSource(t, cl, web4, srvAddr4)
+		wantSource(t, cl, web6, srvAddr6)
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
+			t.Fatalf("handing out the new config left the client flagged:\n%s", show)
+		}
+	})
+
+	t.Run("a server key rotation that is not kept is undone, and the clients it cut off are back", func(t *testing.T) {
+		before, err := srv.device()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := srv.cli("server", "rotate-key", "--yes", "--safe")
+		if !strings.Contains(out, "Waiting to be kept") || !strings.Contains(out, "drawbridge server confirm") {
+			t.Fatalf("server rotate-key --safe:\n%s", out)
+		}
+		during, err := srv.device()
+		if err != nil || during.PrivateKey == before.PrivateKey {
+			t.Fatalf("the kernel's key didn't change at once (err %v)", err)
+		}
+		// The client holds the key from before, so it is cut off: the admin on the VPN
+		// couldn't confirm, which is the case safe apply is for.
+		if got, err := cl.get(web4); err == nil {
+			t.Fatalf("the client fetched through the tunnel after the key changed (source %s)", got)
+		}
+
+		// Nobody keeps it. The daemon puts the old key back within the window, and the client,
+		// which was never touched, reconnects with the config it has.
+		eventually(t, 20*time.Second, "the daemon to undo the rotation", func() error {
+			dev, err := srv.device()
+			if err != nil {
+				return err
+			}
+			if dev.PrivateKey != before.PrivateKey {
+				return fmt.Errorf("the server still has the new key")
+			}
+			return nil
+		})
+		wantSource(t, cl, web4, srvAddr4)
+		wantSource(t, cl, web6, srvAddr6)
+		if show := srv.cli("client", "show", "phone"); !strings.Contains(show, "current, last handed out") {
+			t.Fatalf("the undo left the client flagged:\n%s", show)
+		}
+		if events := srv.cli("events", "--limit", "10"); !strings.Contains(events, "server.settings_expired") {
+			t.Fatalf("the undo isn't in the event log:\n%s", events)
+		}
+
+		// A rotation that is kept stays, and the client needs its new config.
+		srv.cli("server", "rotate-key", "--yes", "--safe")
+		srv.cli("server", "confirm")
+		time.Sleep(6 * time.Second) // longer than the window
+		kept, err := srv.device()
+		if err != nil || kept.PrivateKey == before.PrivateKey || kept.PrivateKey == during.PrivateKey {
+			t.Fatalf("a kept rotation was undone, or didn't happen (err %v)", err)
+		}
+		cl.setPeer(parseConfig(t, srv.cli("client", "config", "phone")))
+		wantSource(t, cl, web4, srvAddr4)
+		wantSource(t, cl, web6, srvAddr6)
 	})
 
 	t.Run("a listen port change that is not kept is undone, and the client that it cut off is back", func(t *testing.T) {

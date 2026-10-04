@@ -66,6 +66,7 @@ func NewHandler(svc *service.Service, log *slog.Logger, fingerprint string) http
 	mux.HandleFunc("GET /v1/settings", h.getSettings)
 	mux.HandleFunc("PATCH /v1/settings", h.patchSettings)
 	mux.HandleFunc("GET /v1/dns-check", h.dnsCheck)
+	mux.HandleFunc("POST /v1/server/rotate-key", h.rotateServerKey)
 	mux.HandleFunc("GET /v1/pending", h.pendingChange)
 	mux.HandleFunc("POST /v1/pending/confirm", h.confirmChange)
 	mux.HandleFunc("POST /v1/pending/revert", h.revertChange)
@@ -179,6 +180,16 @@ func (h *handler) patchSettings(w http.ResponseWriter, r *http.Request) {
 	patch := p.Service()
 	patch.SafeApply = r.URL.Query().Get("safe") == "1"
 	s, applied, err := h.svc.UpdateSettings(r.Context(), patch)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
+}
+
+// rotateServerKey gives the server a new key pair; with safe=1 it waits to be kept.
+func (h *handler) rotateServerKey(w http.ResponseWriter, r *http.Request) {
+	s, applied, err := h.svc.RotateServerKey(r.Context(), r.URL.Query().Get("safe") == "1")
 	if err != nil {
 		h.fail(w, err)
 		return

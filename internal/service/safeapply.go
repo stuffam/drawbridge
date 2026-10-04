@@ -55,12 +55,14 @@ func (s *Service) safeApplyWindow() time.Duration {
 //   - The listen port. Clients, the admin's own VPN included, keep sending to the old one until
 //     they import a config that names the new one, and the router forwards only the old one.
 //   - Removing a source from the admin UI's allowlist, which can be the one the admin is on.
+//   - The server's key. Every client holds the old public key, the admin's own VPN included,
+//     and none of them can connect until it has the new config.
 //
 // Everything else either takes effect for new configs only (the endpoint, DNS, keepalive), or
-// can't lock anyone out (the MTU, client isolation, adding a source). Rotating the server's key
-// and changing the subnets will be on this list when they exist.
+// can't lock anyone out (the MTU, client isolation, adding a source). Changing the subnets will
+// be on this list when it exists.
 func needsConfirmation(before, after model.Settings) bool {
-	if before.ListenPort != after.ListenPort {
+	if before.ListenPort != after.ListenPort || before.PrivateKey != after.PrivateKey {
 		return true
 	}
 	for _, p := range before.AdminAllowed {

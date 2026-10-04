@@ -511,6 +511,12 @@ export const api = {
 
 	server: () => request<Settings>('GET', '/api/server'),
 	updateServer: (patch: SettingsPatch) => request<SettingsResult>('PATCH', '/api/server', patch),
+	/**
+	 * Gives the server a new key pair. Every client's config holds the old public key, so it
+	 * stops working until the client has the new one; the rotation waits to be kept, like any
+	 * change that could lock the admin out.
+	 */
+	rotateServerKey: () => request<SettingsResult>('POST', '/api/server/rotate-key'),
 	/** The settings change waiting to be kept, if there is one. */
 	applyState: () => request<{ pending_change?: PendingChange }>('GET', '/api/server/apply'),
 	/** Keeps the settings change that's waiting. */

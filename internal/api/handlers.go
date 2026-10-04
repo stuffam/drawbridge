@@ -172,6 +172,17 @@ func (h *handler) patchServer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
 }
 
+// rotateServerKey gives the server a new key pair. It waits to be kept like any change that
+// could lock the admin out: an admin connected through the VPN is cut off by it.
+func (h *handler) rotateServerKey(w http.ResponseWriter, r *http.Request) {
+	s, applied, err := h.svc.RotateServerKey(r.Context(), true)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, views.NewSettingsResult(s, applied))
+}
+
 // applyState says whether a settings change is waiting to be kept.
 func (h *handler) applyState(w http.ResponseWriter, r *http.Request) {
 	p, err := h.svc.PendingChange(r.Context())

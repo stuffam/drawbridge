@@ -14,7 +14,7 @@ in the product name.
 > CI, and `docs/MANUAL_CHECKLIST.md` records what has run on real hardware.
 > `drawbridge doctor`, the diagnostics page, `drawbridge backup create|restore`, the local
 > snapshots, the backup download on the System page, outdated-config tracking, client key
-> rotation, and safe apply, slices of M5, are built too.
+> rotation, safe apply, and rotating the server's key, slices of M5, are built too.
 > `docs/REQUIREMENTS.md` lists what the host and network need, and the known roadblocks.
 
 ---
@@ -132,7 +132,7 @@ All roles are subcommands of a single binary, `drawbridge`:
 |---|---|
 | `drawbridge serve` | The long-running daemon: HTTP API, SSE, embedded SPA, reconciler, and monitor. |
 | `drawbridge tunnel up\|down` | Used by `drawbridge-tunnel.service` to bring the VPN up or down from DB state (M1). |
-| `drawbridge server show\|set\|confirm\|revert` | Shows or changes the server's settings: endpoint, port, MTU, DNS, keepalive, client isolation (M1). `set --safe` undoes a change that could lock the admin out unless `confirm` keeps it in time; `revert` undoes it now (M5). |
+| `drawbridge server show\|set\|rotate-key\|confirm\|revert` | Shows or changes the server's settings: endpoint, port, MTU, DNS, keepalive, client isolation (M1). `set --safe` undoes a change that could lock the admin out unless `confirm` keeps it in time; `revert` undoes it now. `rotate-key` gives the server a new key (M5). |
 | `drawbridge client list\|add\|show\|pause\|resume\|rename\|delete\|config\|qr\|rotate-keys` | Headless client management. `qr` prints the QR code in the terminal (M1; `rename` M2; `rotate-keys` M5). |
 | `drawbridge events [--client NAME]` | The event log: changes from the web and the CLI, logins, and corrected drift (M2). |
 | `drawbridge apply [--dry-run]` | Reconciles once and prints the diff; `--dry-run` prints what it would change and changes nothing (M5). |
@@ -239,16 +239,16 @@ startup, after every change, every 30 s to detect drift, and from `drawbridge tu
    `wg set` by hand, or `nftables.service` ran `flush ruleset`), log a warning event.
 
 **Safe apply (commit-confirm; built 2026-10-04).** Some changes can cut off an admin who is
-connected through the VPN: listen port, subnets, server key, and firewall or NAT changes. The UI
-warns first. After it applies the change, the admin has 60 s to click "Keep changes". If they
+connected through the VPN: listen port, subnets, the server's key, and firewall or NAT changes. The
+UI warns first. After it applies the change, the admin has 60 s to click "Keep changes". If they
 don't (for example, because the change disconnected them), the previous settings are restored
 automatically.
 
 - **What waits.** `needsConfirmation` (`internal/service/safeapply.go`) lists it, and today it's
   a change to the listen port and the removal of a source from the admin UI's allowlist (which
   can be the one the admin is on). The endpoint, DNS, keepalive, MTU, client isolation, and adding
-  a source can't lock anyone out, so they apply as before. Rotating the server's key and changing
-  the subnets will join the list when they exist.
+  a source can't lock anyone out, so they apply as before. Rotating the server's key is on the
+  list too (§6.2), and changing the subnets will join it when it exists.
 - **Who waits.** Every change from the web UI. The CLI applies at once, because the person at the
   host can't be cut off by it, unless it's told to (`server set --safe`): an admin on SSH over the
   VPN can ask for the same protection.
@@ -474,7 +474,7 @@ changes.
 | **Remove** | Deletes the peer and the DB row after confirmation. Past events keep a snapshot of the client name, so the logs stay readable. |
 | **Config delivery** | Download a `.conf` file or show a QR code (generated in the browser; the view is logged). One-time download links that expire (M6). |
 | **Outdated-config tracking** | Stores the fingerprint of the config the client last received. When server-side changes (endpoint, port, server key, DNS, and so on) alter the rendered config, the client is flagged **"config outdated, re-import needed"**. *Built (2026-10-04); details below.* |
-| **Key rotation** | Regenerates the client keypair and PSK, and flags the config as outdated. *Built for clients (2026-10-04): `POST /api/clients/{id}/rotate-keys`, `drawbridge client rotate-keys`, and a button on the client's page. Rotating the server's key is part of safe apply (§4.3).* |
+| **Key rotation** | Regenerates the client keypair and PSK, and flags the config as outdated. *Built for clients (2026-10-04): `POST /api/clients/{id}/rotate-keys`, `drawbridge client rotate-keys`, and a button on the client's page. Rotating the server's key is built too, and goes through safe apply (§6.2).* |
 
 **How outdated-config tracking works (built 2026-10-04).**
 
@@ -538,13 +538,37 @@ safe apply (§4.3).
   when the router uses port translation). An optional "detect public IP" button calls an external
   service only when clicked.
 - **Interface:** interface name, listen port, MTU, and rotating the server keypair (with a strong
-  warning, because every client must re-import its config).
+  warning, because every client must re-import its config). *Rotating the key is built
+  (2026-10-04); see "Rotating the server's key" below.*
 - **Addressing:** IPv4 CIDR and server address; IPv6 on or off, its CIDR and server address, and
   the mode (NAT66 or routed).
 - **Routing and firewall:** uplink interface (auto or manual), NAT on or off for each family,
   client isolation, and MSS clamping.
 - **Defaults for new clients:** DNS, AllowedIPs preset, MTU, keepalive, PSK on or off, and
   whether client private keys are stored on the server.
+
+**Rotating the server's key (built 2026-10-04).** Every client's config holds the server's public
+key, so a new key pair cuts every client off until it imports the new config. It's the answer to
+a server key that may have leaked, and it's never worth doing for tidiness.
+
+- **How.** `POST /api/server/rotate-key`, the **Rotate the key…** button in Settings (which asks
+  first), and `drawbridge server rotate-key [--safe] [--yes]`. The new private key is generated
+  and saved by the same transaction path as any settings change (`Service.RotateServerKey`), then
+  the reconciler sets it on the live interface. The peers aren't touched. The event is
+  `server.key_rotated`, with `server_public_key: old → new` (public keys only).
+- **It waits to be kept.** The web UI always asks for safe apply, and the key is on
+  `needsConfirmation`'s list (§4.3): an admin connected through the VPN is cut off by it, and
+  can't confirm. Undoing restores the old key from the sealed copy in `pending_apply`, and the
+  clients' configs are current again (the flag is computed, §6.1). The CLI rotates at once unless
+  it's given `--safe`, and asks `[y/N]` first unless it's given `--yes`.
+- **What it does to clients.** WireGuard drops every current session when the interface's private
+  key changes, so a connected client stops at once, and its next handshake fails because it still
+  names the old public key (observed on a 7.0 kernel, and a step of `TestEndToEnd`). Each client
+  that had been handed a config shows as outdated, the dashboard counts them, and the CLI says how
+  many. Clients that were never handed a config aren't flagged: they have nothing stale.
+- **What it can't do.** It doesn't hand the new configs out: that's one QR code or download per
+  device, and the admin does it. The old key isn't kept anywhere except in the pending row while
+  the rotation waits, and a backup made before the rotation holds the old key.
 
 ### 6.3 DNS
 
@@ -1158,6 +1182,8 @@ GET    /api/server/status                tunnel up or down, client counts (M3)
 GET    /api/server/apply                 is a settings change waiting to be kept? (M5; built)
 POST   /api/server/apply/confirm         keep it                           (M5; built)
 POST   /api/server/apply/revert          undo it now                       (M5; built)
+POST   /api/server/rotate-key            a new server key pair; waits to be kept, and every
+                                         client's config goes stale        (M5; built)
 GET    /api/server/dns-check             asks the VPN addresses for DNS; which ones answer
 
 GET    /api/clients                      POST /api/clients
@@ -1191,7 +1217,6 @@ GET    /api/clients/{id}/dns-log?limit=  a client's recent queries from AdGuard 
 
 Later:
 POST   /api/auth/totp/enroll | /verify                                    (M5)
-POST   /api/server/rotate-key                                              (M5)
 GET    /api/dns                          PUT /api/dns                      (M4)
 GET    /api/system/health                diagnostics (the doctor's checks) (M5; built)
 POST   /api/system/backup                download a backup: password + passphrase (M5; built)
@@ -1454,8 +1479,7 @@ Each milestone ends in a usable, tested state.
 - Full systemd sandboxing, TOTP 2FA, safe apply with automatic rollback, outdated-config
   tracking, and encrypted backup/restore. *Built: the sandboxing (the units), outdated-config
   tracking with client key rotation (§6.1), safe apply with `drawbridge apply` (§4.3), and the
-  backups. Left: TOTP 2FA, rotating the server's key (which goes through safe apply), and
-  uploading a certificate.*
+  backups, and rotating the server's key (§6.2). Left: TOTP 2FA and uploading a certificate.*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
   (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor` and the diagnostics page are
@@ -1532,7 +1556,7 @@ Each milestone ends in a usable, tested state.
 | DNS | Public resolvers by default; a resolver on the host (such as AdGuard Home) at the server's VPN addresses when a check finds one answering | D12: the wizard offers the host's resolver only when it works, and there's optional AdGuard Home name sync and per-client DNS logs (§6.3) |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
-| Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
+| Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source, rotating the server's key) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |

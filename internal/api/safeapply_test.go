@@ -120,3 +120,89 @@ func TestSafeApplyChangesNeedTheHeader(t *testing.T) {
 		t.Fatal("a refused request resolved the change")
 	}
 }
+
+// Rotating the server's key over the API waits to be kept (the browser is likely on the very
+// tunnel it cuts), flags every client that holds a config, and can be undone.
+func TestRotateServerKeyOverTheAPI(t *testing.T) {
+	svc := newService(t)
+	srv := newServer(t, svc)
+	b, _ := loggedIn(t, svc, srv)
+
+	host := "vpn.example.com"
+	b.expect(http.StatusOK, "PATCH", "/api/server", views.SettingsPatch{EndpointHost: &host})
+	var phone views.ClientResult
+	b.expect(http.StatusCreated, "POST", "/api/clients", views.NewClientRequest{Name: "phone"}).decode(t, &phone)
+	b.expect(http.StatusOK, "GET", "/api/clients/"+phone.Client.ID+"/config", nil)
+	var before views.SettingsView
+	b.expect(http.StatusOK, "GET", "/api/server", nil).decode(t, &before)
+
+	var res views.SettingsResult
+	r := b.expect(http.StatusOK, "POST", "/api/server/rotate-key", nil)
+	r.decode(t, &res)
+	p := res.PendingChange
+	if res.Settings.PublicKey == before.PublicKey || res.Settings.PublicKey == "" || p == nil ||
+		p.Changes["server_public_key"] != before.PublicKey+" → "+res.Settings.PublicKey ||
+		p.Actor != "admin" || p.Via != "web" || p.ExpiresIn < 58 || p.ExpiresIn > 60 {
+		t.Fatalf("rotating: %+v (the key was %s)", res, before.PublicKey)
+	}
+	if strings.Contains(strings.ToLower(string(r.body)), "private") {
+		t.Fatalf("the response shows a private key: %s", r.body)
+	}
+
+	// The clients that hold a config are flagged, and the stream and the state route say so.
+	var status views.ServerStatus
+	b.expect(http.StatusOK, "GET", "/api/server/status", nil).decode(t, &status)
+	if status.Outdated != 1 {
+		t.Errorf("status.outdated = %d, want 1", status.Outdated)
+	}
+	var state views.ApplyState
+	b.expect(http.StatusOK, "GET", "/api/server/apply", nil).decode(t, &state)
+	if state.PendingChange == nil || state.PendingChange.Changes["server_public_key"] == "" {
+		t.Fatalf("state %+v", state)
+	}
+
+	// Nothing else changes, and the key doesn't rotate again, until it's kept or undone.
+	er := b.expect(http.StatusConflict, "POST", "/api/server/rotate-key", nil)
+	if !strings.Contains(er.errorText(), "waiting to be kept") {
+		t.Errorf("error %q", er.errorText())
+	}
+
+	// Undone, the old key is back and the clients' configs are current.
+	res = views.SettingsResult{}
+	b.expect(http.StatusOK, "POST", "/api/server/apply/revert", nil).decode(t, &res)
+	if res.Settings.PublicKey != before.PublicKey {
+		t.Fatalf("after reverting the key is %s, want %s", res.Settings.PublicKey, before.PublicKey)
+	}
+	status = views.ServerStatus{}
+	b.expect(http.StatusOK, "GET", "/api/server/status", nil).decode(t, &status)
+	if status.Outdated != 0 {
+		t.Errorf("status.outdated = %d after the undo, want 0", status.Outdated)
+	}
+
+	// Kept, it stays.
+	res = views.SettingsResult{}
+	b.expect(http.StatusOK, "POST", "/api/server/rotate-key", nil).decode(t, &res)
+	rotated := res.Settings.PublicKey
+	b.expect(http.StatusOK, "POST", "/api/server/apply/confirm", nil)
+	res = views.SettingsResult{}
+	b.expect(http.StatusOK, "GET", "/api/server", nil).decode(t, &res.Settings)
+	if res.Settings.PublicKey != rotated || rotated == before.PublicKey {
+		t.Fatalf("after keeping it the key is %s, want %s", res.Settings.PublicKey, rotated)
+	}
+
+	// It's in the log, with the public keys.
+	var events []views.EventView
+	b.expect(http.StatusOK, "GET", "/api/events?kind=server.key_rotated", nil).decode(t, &events)
+	if len(events) != 2 || events[0].Actor != "admin" || events[0].Category != "admin" ||
+		!strings.HasSuffix(events[0].Data["server_public_key"], rotated) {
+		t.Fatalf("events %+v", events)
+	}
+
+	// It needs the CSRF header like every other change, and a session.
+	if r := b.do("POST", "/api/server/rotate-key", nil, csrfHeader, ""); r.status != http.StatusForbidden {
+		t.Errorf("rotating without the header: status %d, want 403", r.status)
+	}
+	if r := newBrowser(t, srv).do("POST", "/api/server/rotate-key", nil); r.status != http.StatusUnauthorized {
+		t.Errorf("rotating without a session: status %d, want 401", r.status)
+	}
+}
