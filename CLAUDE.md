@@ -210,6 +210,11 @@ a step describes.
   - IPv6 that silently doesn't forward.
 
   A test that checks only the DB or the rendered text isn't a test of the effect.
+- **A test that freezes the service's clock and logs a browser in starts it at the real time.** The
+  session cookie expires 12 hours after the service's now, and the cookie jar compares that with the
+  real clock, so a fixed date more than 12 hours back drops the cookie and every later request is a
+  401. `TestTwoFactorFlow` did that and began failing, on every run, at midnight UTC after the date
+  it started at. Fixed dates are fine for data (an event's time, a snapshot's name).
 - **Times in the web UI are on a 24-hour clock, and dates are `9 Sep`.** Use `formatClock`,
   `formatDay`, `formatTime`, and `formatChartTime` in `web/src/lib/format.ts`, never
   `toLocaleString` or its relatives, which follow the browser's locale (am and pm, month first).
