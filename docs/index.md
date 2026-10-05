@@ -31,11 +31,13 @@ the host and your network, and the setups where it needs a workaround, for examp
 configures IPv6 with ifupdown, or a router that won't forward UDP 51820. After you install, run
 `sudo drawbridge doctor` to check for most of them.
 
-Installing a build is described in [the manual checklist](MANUAL_CHECKLIST.md), section 1, until
-the install guide is written.
+Then follow [Install Drawbridge](install.md): get the package, install it, set it up in your
+browser, and connect a first client.
 
 ## Guides
 
+- [Install Drawbridge](install.md): from a bare host to a phone on your VPN, and how to upgrade and
+  remove it.
 - [Backup and restore](backup-restore.md): make an encrypted backup, keep it, and restore it onto
   a fresh host.
 - [Two-factor authentication](two-factor.md): ask for a code from an authenticator app at login.

@@ -1647,7 +1647,8 @@ Each milestone ends in a usable, tested state.
   download and snapshot list are built. *The upgrade matrix is built (§12): the data half in
   `go test`, and the tunnel half, with a real older build and a connected client, in
   `make test-upgrade`. The package scripts keep an admin's `systemctl disable` across upgrades
-  (§11), with their own test (§12).*
+  (§11), with their own test (§12). The install guide is written (`docs/install.md`); router setup
+  and troubleshooting aren't.*
 - **Exit:**
     - The security checklist passes.
     - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build there

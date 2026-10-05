@@ -122,7 +122,9 @@ setups.** What exists:
   `.github/workflows/docs.yml`, with a landing page (`docs/index.md`) and a nav of guides and
   project docs. `make docs` builds it strictly and checks that every list on every page has the
   depth GitHub gives it (`test/docs/check_lists.py`).
-  Left in M5: the docs themselves (install, router setup, troubleshooting).
+  The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
+  from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
+  upgrading, and removing. Left in M5: router setup and troubleshooting.
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -755,6 +757,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/PLAN.md` is the specification. Read it first. §13 has the planned repository layout.
 - `docs/adr/` holds one decision record per decision in the plan's §3 (D1–D12).
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
+- `docs/install.md` is the admin's install guide, from getting the package to a first client. Its
+  "Get the package" section describes how to get a `.deb` before there's a release; change it
+  when `release.yml` and `install.sh` (docs/PLAN.md §11) exist.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
 - `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
 - `docs/two-factor.md` is the admin's guide to two-factor authentication: turning it on, the

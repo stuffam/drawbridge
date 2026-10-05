@@ -34,6 +34,9 @@ These are the preparation steps from docs/PLAN.md §14, M0.
 
 ## 1. Installing a build
 
+[The install guide](install.md) is the admin's version of these steps; this is the record of what
+ran on real hardware.
+
 Get the package from CI: open the latest run of the **CI** workflow for the branch, download the
 `drawbridge-deb` artifact, unzip it, and copy `drawbridge_<version>_<arch>.deb` to the host. The
 package only exists when every CI job passed, including the kernel tests.
