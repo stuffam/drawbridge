@@ -2,8 +2,9 @@
 set -e
 
 # On upgrade, postinst restarts the daemon and leaves the tunnel up, so nothing stops
-# here. On removal, stop the daemon, then take the tunnel down.
+# here. On removal, stop the daemon, then take the tunnel down. The units stay enabled, so
+# installing the package again brings them back; postrm deletes their links on purge.
 if [ "$1" = "remove" ] && [ -d /run/systemd/system ]; then
-	systemctl disable --now drawbridge.service || true
-	systemctl disable --now drawbridge-tunnel.service || true
+	systemctl stop drawbridge.service || true
+	systemctl stop drawbridge-tunnel.service || true
 fi

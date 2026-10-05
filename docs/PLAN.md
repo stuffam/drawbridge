@@ -1414,12 +1414,30 @@ home LAN. The UI is therefore treated as a high-value target:
      it's needed, before forwarding goes on. If NetworkManager is active, install the drop-in
      that leaves `wg0` unmanaged (§5.5).
   4. Initialize the DB (random ULA prefix, server keypair).
-  5. Enable and start both units, then print the URL, the setup token, and the certificate's
+  5. On a first install, enable both units. Start the tunnel and restart the daemon, each only if
+     it's enabled (see Upgrades). Then print the URL, the setup token, and the certificate's
      fingerprint, until the admin account exists.
 - **Upgrades:** `apt install ./drawbridge_<new>.deb`. The daemon restarts, while
   `drawbridge-tunnel.service` isn't restarted, so the VPN stays up. Migrations run after a DB
   snapshot. The upgrade matrix (§12) tests the data, and the tunnel with a connected client, from
-  every older build there is; the package's own scripts are on the on-hardware checklist.
+  every older build there is. The package scripts' own rules are tested with real `dpkg` (§12), and
+  on the reference platform by hand.
+- **An admin's `systemctl disable` survives an upgrade.** `postinst` enables the units only on a
+  first install, and after that goes by what each unit's state is, not by `$2`. dpkg gives an
+  upgrade, a downgrade, and a reinstall after `remove` all the same call, `postinst configure
+  <the version configured last>` (checked in a Debian 13 container with a dummy package); only a
+  first install, or an install after `purge`, has no `$2`. So a rule on `$2` would leave a host
+  that was removed and installed again with both units off. The rules:
+  - A unit that isn't enabled is left completely alone: not enabled, started, or restarted. An
+    admin who turned the web UI off to take it off the network keeps it off.
+  - An enabled unit should be running. The tunnel is started (a no-op when it's up, and a start
+    when it had stopped), never restarted, so the VPN stays up (ADR 0008); the daemon is
+    restarted.
+  - A daemon that won't restart doesn't fail `postinst`. It prints how to see why (`journalctl -u
+    drawbridge`) and carries on, because the script runs under `set -e` and dpkg would leave the
+    package half-configured. Installing an older build over a newer database does this (see
+    Downgrades), and so does anything else that keeps the daemon from starting.
+  - Only `configure` touches the units: an aborted upgrade (`abort-upgrade`) doesn't.
 - **Downgrades:** a database from a newer Drawbridge is read by an older one and never written.
   `store.Open` leaves it as it is and says so (`NewerSchema`). The daemon writes, so it refuses to
   start: it names the schema it found and the newest it knows, exits with status 78, and
@@ -1430,8 +1448,12 @@ home LAN. The UI is therefore treated as a high-value target:
   restore a backup made by this one (a restore refuses a newer backup). Until then the web UI is
   down and the VPN is up.
 - **Remove and purge:**
-  - `remove` stops both units and deletes the interface and nft table.
-  - `purge` also deletes `/var/lib/drawbridge` and `/etc/drawbridge`.
+  - `remove` stops both units (the daemon first) and deletes the interface and nft table. It
+    leaves the units enabled, so installing the package again brings them back, and a unit the
+    admin had disabled stays disabled.
+  - `purge` also deletes `/var/lib/drawbridge` and `/etc/drawbridge`, and the units' links in
+    `/etc/systemd/system/multi-user.target.wants`, which `remove` leaves pointing at unit files
+    that are gone.
 - **`install.sh`** (convenience): checks the architecture and OS, downloads the latest release,
   verifies the checksum, and runs `apt install`.
 - **Later:** a signed APT repository so upgrades come through `apt upgrade`.
@@ -1450,6 +1472,7 @@ home LAN. The UI is therefore treated as a high-value target:
 | E2E | Browser flows (setup, the client lifecycle with the QR code and the download, pausing, settings, logs, logins, and password changes) against `drawbridge serve --backend fake`, failing on any script error or CSP violation | Playwright: `make test-e2e`, and CI's "E2E (browser)" job |
 | Upgrade matrix (data) | A database as each earlier release left it (schema 1 to the latest), for a host that was used and one never set up, opened by this build, and restored from an old backup and an old snapshot. Every row is kept and reads back through the current store (secrets, times in the old formats, the password hash), the schema equals a new install's, the pre-migration snapshot is the old database row for row, and the host is as usable as before. Also: migrations are append-only and numbered without gaps, a new migration needs a fixture, a migration that fails halfway changes nothing, and two processes upgrading at once both succeed. The old data is written by hand (`internal/store/storetest`), because a release can't be run again from the squashed history before schema 5 | `go test`, every push: `internal/store`, `internal/backup` |
 | Upgrade matrix (tunnel) | A real older build sets up a host with a connected client, and this build takes over the way the package does: the daemon is swapped and nothing else is restarted. The interface, key, port, and peers don't change, the client's fetches through the tunnel never fail, every row the older build stored is kept, the account logs in with its old password and the browser's login survives, and after a restart of the tunnel the client reconnects with the config it had. One run for each build in `test/integration/upgrade-from.txt` (one merge on main per schema so far, a release's tag from the first one on) | `make test-upgrade`, and a step of CI's "Integration" job |
+| Package scripts | The real `postinst`, `prerm`, and `postrm` through real `dpkg`, against a fake `systemctl` that models enabled by the link systemd reads, active, and a unit that won't start: a first install, an upgrade, a downgrade, a remove, a reinstall after remove, a purge, an install after purge, and an aborted upgrade, each with the units enabled, disabled, stopped, and failing. An admin's `systemctl disable` survives an upgrade, the tunnel is never restarted, and a daemon that won't start doesn't leave the package half-configured. What it can't say is whether systemd does what the fake does | `make test-packaging` (a throwaway Debian container or VM), and CI's "Package scripts" job |
 | On hardware | Manual checklist for each release (below) | The reference platform (§2) |
 
 The on-hardware checklist:
@@ -1502,6 +1525,7 @@ drawbridge/                repository root
 │   └── nfpm.yaml
 ├── scripts/install.sh
 ├── test/integration/      netns-based tests (build tag: integration)
+├── test/packaging/        the maintainer scripts through real dpkg, with a fake systemctl
 ├── docs/
 │   ├── PLAN.md            this document
 │   ├── adr/               architecture decision records (D1–D12)
@@ -1610,7 +1634,8 @@ Each milestone ends in a usable, tested state.
   create|restore`, the local snapshots (nightly, and before a migration), and the System page's
   download and snapshot list are built. *The upgrade matrix is built (§12): the data half in
   `go test`, and the tunnel half, with a real older build and a connected client, in
-  `make test-upgrade`.*
+  `make test-upgrade`. The package scripts keep an admin's `systemctl disable` across upgrades
+  (§11), with their own test (§12).*
 - **Exit:**
   - The security checklist passes.
   - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build

@@ -116,6 +116,10 @@ test-upgrade: build ## Upgrade a host from each older build in test/integration/
 	test/integration/preflight.sh
 	DRAWBRIDGE_BIN=$(CURDIR)/dist/drawbridge test/integration/upgrade.sh
 
+.PHONY: test-packaging
+test-packaging: ## Run the .deb's maintainer scripts through real dpkg and a fake systemctl (root; a throwaway Debian container or VM only).
+	DRAWBRIDGE_PACKAGING_TEST=1 $(if $(filter 0,$(shell id -u)),,sudo -E )test/packaging/test.sh
+
 .PHONY: test-web
 test-web: $(WEB_DEPS) ## Run the web app's unit tests.
 	cd web && $(NPM) test
