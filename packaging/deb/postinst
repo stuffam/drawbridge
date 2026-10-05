@@ -42,29 +42,52 @@ if [ "$1" = "configure" ]; then
 	fi
 fi
 
-# Skip service handling where systemd isn't running, such as in a chroot or container.
-if [ -d /run/systemd/system ]; then
+# Skip service handling where systemd isn't running, such as in a chroot or container. Only
+# `configure` gets here: an aborted upgrade (`abort-upgrade`) must not enable or start anything.
+if [ "$1" = "configure" ] && [ -d /run/systemd/system ]; then
 	# Make NetworkManager read its drop-in, so it leaves wg0 alone.
 	if systemctl is-active --quiet NetworkManager.service && command -v nmcli >/dev/null 2>&1; then
 		nmcli general reload conf || true
 	fi
 	systemctl daemon-reload
-	systemctl enable drawbridge-tunnel.service drawbridge.service
-	# Start the tunnel if it isn't running; an upgrade leaves a running tunnel alone,
-	# and the restarted daemon applies any changes to it.
-	systemctl start drawbridge-tunnel.service
-	systemctl restart drawbridge.service
+
+	# Only a first install turns the units on. $2 is empty then, and after a purge; an upgrade,
+	# a downgrade, and a reinstall after `remove` all get the version that was configured last,
+	# so $2 can't tell them apart. What can is whether the unit is enabled: `remove` leaves the
+	# units enabled (prerm), and an admin's `systemctl disable` is a choice an upgrade keeps.
+	if [ -z "$2" ]; then
+		systemctl enable drawbridge-tunnel.service drawbridge.service
+	fi
+
+	# Start the tunnel if it isn't running, but never restart it: an upgrade leaves a running
+	# tunnel alone (ADR 0008), and the restarted daemon applies any changes to it.
+	if systemctl is-enabled --quiet drawbridge-tunnel.service; then
+		systemctl start drawbridge-tunnel.service
+	fi
+
+	# A daemon that won't start doesn't fail the package: it would leave dpkg half-configured.
+	# An older package over a newer database is the likely cause (it exits 78, docs/PLAN.md §11).
+	daemon_started=
+	if systemctl is-enabled --quiet drawbridge.service; then
+		if systemctl restart drawbridge.service; then
+			daemon_started=1
+		else
+			echo "drawbridge: the web UI didn't start; see why with: journalctl -u drawbridge" >&2
+		fi
+	fi
 
 	# Until the admin account exists, show where the web UI is and the one-time token
 	# that sets it up (docs/PLAN.md §6.5). After that, this prints nothing.
-	i=0
-	while [ ! -S /run/drawbridge/control.sock ] && [ "$i" -lt 20 ]; do
-		sleep 0.5
-		i=$((i + 1))
-	done
-	if token=$(drawbridge admin setup-token 2>/dev/null); then
-		echo
-		echo "$token"
-		echo
+	if [ -n "$daemon_started" ]; then
+		i=0
+		while [ ! -S /run/drawbridge/control.sock ] && [ "$i" -lt 20 ]; do
+			sleep 0.5
+			i=$((i + 1))
+		done
+		if token=$(drawbridge admin setup-token 2>/dev/null); then
+			echo
+			echo "$token"
+			echo
+		fi
 	fi
 fi

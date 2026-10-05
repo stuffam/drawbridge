@@ -143,6 +143,9 @@ A phone, on mobile data with Wi-Fi off:
 - `[UNVERIFIED]` `sudo apt purge drawbridge` deletes `/var/lib/drawbridge` and `/etc/drawbridge`
   (including the secret key), and keeps the `drawbridge` user.
 
+The scripts behind these steps changed on 2026-10-04 (`remove` no longer disables the units, and
+a reinstall goes by their enabled state): §19 runs the removal and reinstall steps again.
+
 ## 4. A self-hosted CI runner
 
 CI's "Integration (kernel WireGuard)" job runs on GitHub's `ubuntu-24.04` runner, and should
@@ -840,9 +843,53 @@ rewrites a value, and a tunnel restarted during the swap each fail the tests tha
   of an older build over a newer one (the newer one must have a migration the older lacks), the
   tunnel is up and a connected client stays connected, `journalctl -u drawbridge-tunnel` has the
   "newer Drawbridge" warning, and `drawbridge.service` is `failed` with exit status 78, tried once
-  and not again (`RestartPreventExitStatus=78`), with the journal naming both schemas. `apt` will
-  probably report the package's `postinst` failed, because it restarts the daemon and the restart
-  fails; note what it says. Installing the newer build again brings the daemon back, with the
+  and not again (`RestartPreventExitStatus=78`), with the journal naming both schemas. `apt`
+  succeeds and says "the web UI didn't start; see why with: journalctl -u drawbridge" (§19: a
+  daemon that won't restart doesn't fail `postinst`; before 2026-10-04 it did, and left the
+  package half-configured). Installing the newer build again brings the daemon back, with the
   database untouched. What has run, away from it: `TestANewerDatabaseStopsTheDaemonNotTheTunnel`
   does the tunnel half in network namespaces, and `systemd-analyze verify` (systemd 257) accepts
   the unit with the new line. Nothing has watched systemd honor it.
+
+## 19. The package scripts keep the admin's choices (the ninth M5 slice)
+
+What `postinst`, `prerm`, and `postrm` do to the two units (docs/PLAN.md §11): an admin's
+`systemctl disable` survives an upgrade, `remove` keeps the units enabled so a reinstall brings
+them back, `purge` deletes their links, and a daemon that won't restart doesn't fail the package.
+
+What has run, away from the reference platform (`make test-packaging`, in a Debian 13 container):
+the real scripts through real `dpkg`, against a fake `systemctl`. A first install, an upgrade, a
+downgrade, a remove, a reinstall after remove, a purge, an install after purge, and an aborted
+upgrade, each with the units enabled, disabled, stopped, and failing to start. Run against the
+scripts before this change, it fails 40 checks (a disabled unit enabled again, a failed restart
+leaving the package half-configured, `remove` disabling the units), and against the new scripts
+without the link deletion, the purge checks fail. What it can't show is systemd itself: the fake
+reads "enabled" from the link in `multi-user.target.wants` the way systemd does, but nothing here
+has watched systemd.
+
+- `[UNVERIFIED]` CI's "Package scripts" job passes, on a GitHub-hosted runner (Ubuntu's `dpkg`, not
+  Debian's).
+- `[UNVERIFIED]` **Disabled across an upgrade:** `sudo systemctl disable --now drawbridge`, then
+  `sudo apt install ./drawbridge_*.deb` over the same or a newer build. `systemctl is-enabled
+  drawbridge` still says `disabled`, `systemctl is-active drawbridge` says `inactive`, and the
+  tunnel is still up with its client connected. The install prints no setup token and doesn't
+  pause for the daemon's socket. Then `sudo systemctl enable --now drawbridge` brings the web UI
+  back, with its data.
+- `[UNVERIFIED]` **The tunnel disabled:** `sudo systemctl disable drawbridge-tunnel` (without
+  `--now`), then an upgrade. The tunnel unit is neither stopped nor restarted, and is still
+  `disabled`; the daemon restarts.
+- `[UNVERIFIED]` **Removing and installing again:** `sudo apt remove drawbridge` stops both units
+  (`systemctl status` says they can't be found), removes `wg0` and the `inet drawbridge` table, and
+  leaves `/etc/systemd/system/multi-user.target.wants/drawbridge*.service` (now pointing at
+  nothing). Installing the package again brings both units, `wg0`, and the table back with every
+  client and setting, with no new setup token. If the daemon was disabled first, it stays
+  disabled after the reinstall.
+- `[UNVERIFIED]` **Purging:** `sudo apt purge drawbridge` also deletes those two links. `ls
+  /etc/systemd/system/multi-user.target.wants/ | grep drawbridge` prints nothing. The next
+  install is a first install: both units enabled and started, and a setup token printed.
+- `[UNVERIFIED]` **A daemon that won't restart:** with the downgrade step above (§18), `apt` reports
+  success, and `dpkg -l drawbridge` says `ii`, not `iF`.
+- `[UNVERIFIED]` **A package from before this change, removed:** the older `prerm` disables the
+  units on `remove`, so installing this build afterward leaves both disabled (a reinstall goes by
+  their state, and they're off). `sudo systemctl enable --now drawbridge-tunnel drawbridge` is the
+  fix. Only a host that removed a build from before 2026-10-04 and installs this one sees it.

@@ -153,6 +153,17 @@ jobs:
       - name: Upgrade tests (each older build, then this one, with the tunnel up)
         run: DRAWBRIDGE_BIN="$PWD/dist/drawbridge" test/integration/upgrade.sh
 
+  package-scripts:
+    name: Package scripts (dpkg)
+    # The .deb's real maintainer scripts through real dpkg, against a fake systemctl (docs/PLAN.md
+    # §11). A GitHub-hosted VM, because the test installs and purges a package named drawbridge.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install, upgrade, downgrade, remove, and purge
+        run: make test-packaging
+
   spelling:
     name: Spelling (U.S. English)
     runs-on: ubuntu-latest
@@ -165,7 +176,7 @@ jobs:
 
   packages:
     name: Packages
-    needs: [go, web, e2e, spelling, integration]
+    needs: [go, web, e2e, spelling, integration, package-scripts]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

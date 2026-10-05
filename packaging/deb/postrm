@@ -1,10 +1,6 @@
 #!/bin/sh
 set -e
 
-if [ -d /run/systemd/system ]; then
-	systemctl daemon-reload || true
-fi
-
 # The accept_ra drop-in that /usr/lib/drawbridge/accept-ra wrote goes with the package. The
 # live setting stays until the next boot, which is harmless.
 if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
@@ -15,4 +11,12 @@ fi
 # policy asks, so file ownership stays consistent if it's installed again.
 if [ "$1" = "purge" ]; then
 	rm -rf /var/lib/drawbridge /etc/drawbridge
+	# `remove` leaves the units enabled (prerm), so their links are still in /etc, pointing at
+	# unit files that are gone. Purge leaves nothing of the package behind.
+	rm -f /etc/systemd/system/multi-user.target.wants/drawbridge.service \
+		/etc/systemd/system/multi-user.target.wants/drawbridge-tunnel.service
+fi
+
+if [ -d /run/systemd/system ]; then
+	systemctl daemon-reload || true
 fi

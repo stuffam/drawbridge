@@ -110,6 +110,13 @@ setups.** What exists:
   now re-reads the version inside each migration's transaction. The same slice settled downgrades:
   an older build reads a newer database and never writes it, so the daemon refuses to start on one
   and the tunnel unit carries on (docs/PLAN.md §11).
+- The package scripts keep an admin's choices (2026-10-04), the ninth slice of M5 (docs/PLAN.md
+  §11). `postinst` enables the units only on a first install and otherwise goes by their state:
+  a unit that isn't enabled is left alone, an enabled one has the tunnel started (never
+  restarted) and the daemon restarted, so an admin's `systemctl disable` survives an upgrade.
+  `remove` stops the units and leaves them enabled, `purge` deletes their links, and a daemon
+  that won't restart no longer fails `postinst`. `make test-packaging` runs the real scripts
+  through real `dpkg` against a fake `systemctl`.
   Left in M5: the docs (install, router setup, troubleshooting).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
@@ -236,6 +243,7 @@ make fmt        # format Go (gofmt, goimports) and the web app (Prettier)
 make deb        # web build, arm64 and amd64 binaries, and both .deb files in dist/
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
 make test-upgrade       # upgrade from each older build (test/integration/upgrade-from.txt)
+make test-packaging     # the .deb's scripts through real dpkg, fake systemctl (a throwaway Debian)
 make test-e2e   # the web app in Chromium against `serve --backend fake` (Playwright)
 ```
 
@@ -250,6 +258,15 @@ One Go test, or one web test file:
 ```bash
 go test ./internal/api -run TestAppFallsBackToShell -v
 cd web && npx vitest run src/lib/version.spec.ts
+```
+
+`make test-packaging` installs and purges a package named drawbridge, so it refuses to run unless
+`DRAWBRIDGE_PACKAGING_TEST=1` (the target sets it) and on a host that has Drawbridge already. Run
+it in a throwaway Debian, which is also how to run it without one:
+
+```bash
+docker run --rm -v "$PWD":/work:ro -e DRAWBRIDGE_PACKAGING_TEST=1 debian:13-slim \
+  /work/test/packaging/test.sh
 ```
 
 The end-to-end tests start `drawbridge serve --backend fake` on port 51899 (not 51821, so a real
@@ -342,6 +359,17 @@ These are the rules most likely to get silently broken.
     they're rendered.
 - **The VPN doesn't depend on the UI.** `drawbridge-tunnel.service` brings the tunnel up at boot
   from the DB on its own. If `drawbridge.service` stops or crashes, the VPN keeps running.
+- **The package scripts keep what the admin chose, and decide on state, never on `$2`.** dpkg
+  calls `postinst configure <the version configured last>` for an upgrade, a downgrade, and a
+  reinstall after `remove` alike, and only a first install (or one after `purge`) has no `$2`. So
+  `postinst` enables the units only when `$2` is empty, and otherwise goes by `systemctl
+  is-enabled`: a unit that isn't enabled is left completely alone, the tunnel of an enabled one is
+  started and never restarted, and the daemon is restarted. `prerm remove` stops the units and
+  never disables them, so a reinstall finds them enabled; `postrm purge` deletes their links.
+  `postinst` acts only on `configure`, and a daemon that won't start prints how to see why and
+  doesn't fail the script (`set -e` would leave dpkg with a half-configured package, which the
+  downgrade guard's exit 78 makes reachable). `test/packaging/test.sh` checks each of these, and
+  a change to a script has to keep it passing.
 - **Drawbridge owns only `table inet drawbridge`.** Never `flush ruleset` or touch another table.
   Only restrictive rules and NAT go in it, because an `accept` in one table can't override a
   `drop` in another (§5.3).
@@ -635,6 +663,11 @@ preinstalled, running as root):
   a snapshot name that `snapshot.NewPath` had picked for both, the other on `table users already
   exists`, from the migration the first had applied.
 
+**dpkg's maintainer script arguments** (2026-10-04, a Debian 13 container with a dummy package):
+`postinst configure <old-version>` is the call for an upgrade, a downgrade, and a reinstall after a
+plain `remove` (not a purge), all alike. Only a first install, or an install after `purge`, has an
+empty `$2`. A script can't tell the first three apart by its arguments.
+
 **The plan's example ruleset** (§5.3) passes `nft -c` and loads in a network namespace with
 nftables 1.0.9.
 
@@ -730,6 +763,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   middleware in middleware.go) and the embedded web app. `internal/webui/` embeds the
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports
   readiness to systemd, and `internal/version/` holds the build-time version.
+- `test/packaging/test.sh` runs the maintainer scripts through real `dpkg`, with a fake
+  `systemctl` that models what the scripts use (a unit is enabled when its link resolves, active
+  by a marker, and a flag makes it fail to start), and records the calls.
 - `test/integration/` holds the kernel tests (build tag `integration`), and the upgrade test with
   its list of older builds (`upgrade-from.txt`) and the script that builds and runs them
   (`upgrade.sh`).
