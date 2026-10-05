@@ -14,6 +14,7 @@ site_dir = "site"
 nav = [
   { "Home" = "index.md" },
   { "Guides" = [
+    "install.md",
     "REQUIREMENTS.md",
     "backup-restore.md",
     "two-factor.md",

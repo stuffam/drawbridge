@@ -15,7 +15,8 @@ To use your own TLS certificate for the web UI instead of the self-signed one, s
 [docs/tls-certificate.md](docs/tls-certificate.md). To ask for a code from an authenticator app
 at login, see [docs/two-factor.md](docs/two-factor.md).
 
-**Before you install**, read [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): it lists what
+**To install it**, follow [docs/install.md](docs/install.md). Before you do, read
+[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): it lists what
 Drawbridge needs from the host and your network, and the setups where it needs a workaround
 (for example, a host that configures IPv6 with ifupdown, or a router that won't forward
 UDP 51820).
@@ -31,8 +32,7 @@ make test-e2e           # the web app in a browser, against a fake tunnel
 make deb                # dist/drawbridge_<version>_arm64.deb and _amd64.deb
 ```
 
-`make help` lists every target. To install a build, see
-[docs/MANUAL_CHECKLIST.md](docs/MANUAL_CHECKLIST.md) §1.
+`make help` lists every target. To install a build, see [docs/install.md](docs/install.md).
 
 ## License
 

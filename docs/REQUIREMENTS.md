@@ -2,7 +2,8 @@
 
 Drawbridge was developed and tested on one home network. This page lists what it needs, what
 it has been tested on, and the places where other setups commonly differ. Read it before you
-install: a few of these can leave VPN clients without DNS, or the host without IPv6.
+install: a few of these can leave VPN clients without DNS, or the host without IPv6. The steps
+to install are in [Install Drawbridge](install.md).
 
 After you install, run `sudo drawbridge doctor`. It checks the host for most of what's below (the
 tunnel, forwarding, `accept_ra`, a firewall that drops forwarded traffic, DNS on the VPN
