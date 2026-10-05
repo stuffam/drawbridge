@@ -14,7 +14,12 @@ import (
 // Two-factor authentication over HTTP: what the web app sees at each step.
 func TestTwoFactorFlow(t *testing.T) {
 	svc := newService(t)
-	now := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	// The service's clock is frozen, starting at the real time. It can't start at a fixed date:
+	// the login's cookie expires 12 hours after the service's now, and the browser's cookie jar
+	// judges that by the real clock, so a date more than 12 hours back means the cookie is
+	// dropped and every request after the login is a 401. This test did that from midnight UTC
+	// on 2026-10-05, 12 hours after the date it used to start at.
+	now := time.Now().UTC().Truncate(time.Second)
 	svc.Now = func() time.Time { return now }
 	srv := newServer(t, svc)
 	b, password := loggedIn(t, svc, srv)
