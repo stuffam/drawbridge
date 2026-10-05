@@ -49,26 +49,26 @@ This is what the backup is for: the SD card failed, or you're moving to another 
 2. Copy the backup to the host.
 3. Stop the daemon. The tunnel unit doesn't need to stop.
 
-   ```bash
-   sudo systemctl stop drawbridge.service
-   ```
+    ```bash
+    sudo systemctl stop drawbridge.service
+    ```
 
 4. Restore.
 
-   ```bash
-   sudo drawbridge backup restore drawbridge-20261003-223600.backup
-   ```
+    ```bash
+    sudo drawbridge backup restore drawbridge-20261003-223600.backup
+    ```
 
-   It asks for the passphrase, and checks the backup before it changes anything: that the file is
-   whole, that the passphrase is right, that it isn't from a newer Drawbridge than this one,
-   that SQLite finds the database healthy, and that the key opens it. If any of that fails, it
-   says so and the host is as it was.
+    It asks for the passphrase, and checks the backup before it changes anything: that the file is
+    whole, that the passphrase is right, that it isn't from a newer Drawbridge than this one,
+    that SQLite finds the database healthy, and that the key opens it. If any of that fails, it
+    says so and the host is as it was.
 
 5. Start both units, so the tunnel comes up from the restored settings.
 
-   ```bash
-   sudo systemctl restart drawbridge-tunnel.service drawbridge.service
-   ```
+    ```bash
+    sudo systemctl restart drawbridge-tunnel.service drawbridge.service
+    ```
 
 6. Log in with the account from the old host. Your clients' configs still work: the server's key
    is the same, so they reconnect without anything changing on the phones and laptops. The

@@ -17,12 +17,13 @@ trust. This guide is for that.
 - A certificate that names what you type in the browser. The UI is reachable only from your home
   network and the VPN, never the internet, so a certificate authority can't reach it to check you
   control it. The ways to get a trusted one anyway:
-  - **A public name with a DNS challenge.** Choose a name in a domain you own, such as
-    `vpn.example.com`, point it (in your home DNS, or the VPN's) at the host, and get a
-    certificate for it from an ACME client that uses the DNS-01 challenge (Let's Encrypt supports
-    it, and most DNS providers have a plugin). Then open the UI at `https://vpn.example.com:51821`.
-  - **A private certificate authority** your devices already trust (a company's, or one you run
-    and installed on your devices).
+    - **A public name with a DNS challenge.** Choose a name in a domain you own, such as
+      `vpn.example.com`, point it (in your home DNS, or the VPN's) at the host, and get a
+      certificate for it from an ACME client that uses the DNS-01 challenge (Let's Encrypt supports
+      it, and most DNS providers have a plugin). Then open the UI at
+      `https://vpn.example.com:51821`.
+    - **A private certificate authority** your devices already trust (a company's, or one you run
+      and installed on your devices).
 
 The names the certificate covers matter: a browser warns if the address in its bar isn't one of
 them. Drawbridge tells you which names a certificate covers and warns if it covers none of the
