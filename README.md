@@ -7,8 +7,9 @@ and use full IPv4 and IPv6 support. It's tested on a Raspberry Pi 5 running Debi
 
 The WireGuard tunnel and its clients are managed from a web UI at `https://<host>:51821` that
 only the home network and the VPN can reach, from the command line
-(`sudo drawbridge client add phone --qr`), or through the same authenticated API. See
-[docs/PLAN.md](docs/PLAN.md) for the architecture, feature spec, and roadmap.
+(`sudo drawbridge client add phone --qr`), or through the same authenticated API. The
+documentation is at <https://stuffam.github.io/drawbridge/>, and
+[docs/PLAN.md](docs/PLAN.md) has the architecture, feature spec, and roadmap.
 
 To use your own TLS certificate for the web UI instead of the self-signed one, see
 [docs/tls-certificate.md](docs/tls-certificate.md). To ask for a code from an authenticator app

@@ -449,14 +449,15 @@ nothing here is `[VERIFIED]` yet.
   Make an account for it in AdGuard Home first (Settings, then the admin account, or a second
   user in `AdGuardHome.yaml`), and note the version in the result:
 
-  ```bash
-  DRAWBRIDGE_ADGUARD_URL=http://127.0.0.1:3000/control DRAWBRIDGE_ADGUARD_USER=drawbridge \
-  DRAWBRIDGE_ADGUARD_PASSWORD=... go test -count=1 -v -run Contract ./internal/adguard
-  ```
+    ```bash
+    DRAWBRIDGE_ADGUARD_URL=http://127.0.0.1:3000/control DRAWBRIDGE_ADGUARD_USER=drawbridge \
+    DRAWBRIDGE_ADGUARD_PASSWORD=... go test -count=1 -v -run Contract ./internal/adguard
+    ```
 
-  It adds, renames, and deletes clients named `drawbridge-contract-…` on documentation addresses
-  (192.0.2.0/24 and 2001:db8::/32), and leaves nothing behind. It sends no wrong password, because
-  AdGuard Home blocks an address for 15 minutes after five.
+    It adds, renames, and deletes clients named `drawbridge-contract-…` on documentation addresses
+    (192.0.2.0/24 and 2001:db8::/32), and leaves nothing behind. It sends no wrong password, because
+    AdGuard Home blocks an address for 15 minutes after five.
+
 - `[UNVERIFIED]` Settings has an AdGuard Home section. With the usual address
   (`http://127.0.0.1:3000/control`) and the account, Test connection says "Connected to AdGuard
   Home" with its version, and the daemon, in `drawbridge.service`'s sandbox, reached it (the

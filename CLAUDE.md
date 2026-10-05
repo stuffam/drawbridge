@@ -117,7 +117,12 @@ setups.** What exists:
   `remove` stops the units and leaves them enabled, `purge` deletes their links, and a daemon
   that won't restart no longer fails `postinst`. `make test-packaging` runs the real scripts
   through real `dpkg` against a fake `systemctl`.
-  Left in M5: the docs (install, router setup, troubleshooting).
+- The documentation site (2026-10-04, docs/adr/0013-docs-site-zensical.md): `docs/` is published
+  at https://stuffam.github.io/drawbridge/, built by Zensical (`zensical.toml`) in
+  `.github/workflows/docs.yml`, with a landing page (`docs/index.md`) and a nav of guides and
+  project docs. `make docs` builds it strictly and checks that every list on every page has the
+  depth GitHub gives it (`test/docs/check_lists.py`).
+  Left in M5: the docs themselves (install, router setup, troubleshooting).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -207,7 +212,8 @@ a step describes.
   no-echo prompt, on the argument that reading a passphrase with the echo on is not an option and
   hand-rolling termios for each platform is worse.) The plan names the core libraries: `wgctrl`,
   `vishvananda/netlink`, and `modernc.org/sqlite` in §3, Tailwind, uPlot, and `qrcode` in §9, and
-  Playwright in §12.
+  Playwright in §12. The docs site's build tools (Zensical and what it needs) are Python, used only
+  for `docs/` and pinned in `requirements-docs.txt` (ADR 0013).
   Anything else needs an explicit argument in its PR, and the default answer is no. Everything is
   pure Go (`CGO_ENABLED=0`), so the arm64 build stays a plain cross-compile.
 - **When adding behavior, add a test.** This project is most exposed to quiet failures: a change
@@ -227,6 +233,15 @@ a step describes.
   `toLocaleString` or its relatives, which follow the browser's locale (am and pm, month first).
 - **Formatting:** `gofmt` and `goimports` for Go, and Prettier for the web app. Markdown wraps at
   100 columns.
+- **Docs are GitHub-flavored Markdown that the site must show the same way.** Zensical's parser,
+  Python-Markdown, needs what GitHub doesn't: indent a nested list 4 spaces (not 2), indent a
+  paragraph or a fenced block inside a list item 4 spaces per level, and put a blank line before a
+  list, and before an item that follows a paragraph or a fence of the item above. A page that
+  breaks one still builds, with its bullets flattened or folded into a paragraph, so `make docs`
+  compares every list with GitHub's reading (`test/docs/check_lists.py`) and CI fails on a
+  difference. Don't turn on a Markdown extension in `zensical.toml` before checking that no page
+  changes: several in Zensical's starter list reinterpret `$`, `~`, `^`, and `1/2`. New pages go in
+  the `nav` there.
 
 ## Commands
 
@@ -244,6 +259,8 @@ make deb        # web build, arm64 and amd64 binaries, and both .deb files in di
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
 make test-upgrade       # upgrade from each older build (test/integration/upgrade-from.txt)
 make test-packaging     # the .deb's scripts through real dpkg, fake systemctl (a throwaway Debian)
+make docs               # the docs site: its tests, a strict build into site/, the list check
+make docs-serve         # preview the docs site at http://localhost:8000
 make test-e2e   # the web app in Chromium against `serve --backend fake` (Playwright)
 ```
 
@@ -268,6 +285,10 @@ it in a throwaway Debian, which is also how to run it without one:
 docker run --rm -v "$PWD":/work:ro -e DRAWBRIDGE_PACKAGING_TEST=1 debian:13-slim \
   /work/test/packaging/test.sh
 ```
+
+`make docs` and `make docs-serve` make their own virtualenv (`.venv-docs`) from
+`requirements-docs.txt`, and need Python 3.10 or later: where `python3` is older, pass
+`PYTHON=python3.13`. Nothing else in the repository uses Python.
 
 The end-to-end tests start `drawbridge serve --backend fake` on port 51899 (not 51821, so a real
 daemon on the same machine is left alone) with a fresh state directory, and use the CLI for the
@@ -668,6 +689,29 @@ preinstalled, running as root):
 plain `remove` (not a purge), all alike. Only a first install, or an install after `purge`, has an
 empty `$2`. A script can't tell the first three apart by its arguments.
 
+**The docs site** (2026-10-04, Zensical 0.0.67, Python 3.13):
+
+- Zensical is alpha (its PyPI classifier says so). `zensical build --strict` aborts with exit status
+  1 (and a Python traceback) on a link to a page that doesn't exist and on an anchor that doesn't;
+  `zensical serve --strict` is unsupported. A build of the whole of `docs/` takes under half a
+  second.
+- It builds with Python-Markdown 3.11. Two GitHub habits quietly break there: a nested list
+  indented 2 spaces comes out flat (a numbered sub-list becomes sibling bullets), and a list right
+  after a paragraph, or an item right after the block paragraph or fence of the item above, is
+  folded into that paragraph. `--strict` says nothing about either. Zensical gives the Markdown
+  parser no `tab_length` option, so the fix is in the sources.
+- GitHub's own renderer is available as `gh api markdown -X POST -f mode=markdown -F
+  text=@FILE` (use `mode=markdown`; `mode=gfm` renders newlines as `<br>`, as a comment does). It
+  proved that re-indenting `docs/PLAN.md` and three other pages changed nothing on GitHub: the
+  HTML of every old and new page was identical once a random `data-identity` on the mermaid
+  placeholder was masked.
+- `zensical.toml` is the native config (`[project]`, `[project.theme]`, and
+  `[project.markdown_extensions]`); `mkdocs.yml` also works but isn't used. The theme's `variant`
+  is `modern` by default, and `classic` keeps Material's look. Zensical writes a `.cache/`
+  directory that ignores itself.
+- Actions that publish it, at their current majors: `actions/configure-pages@v6`,
+  `actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, and `actions/setup-python@v7`.
+
 **The plan's example ruleset** (§5.3) passes `nft -c` and loads in a network namespace with
 nftables 1.0.9.
 
@@ -763,6 +807,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   middleware in middleware.go) and the embedded web app. `internal/webui/` embeds the
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports
   readiness to systemd, and `internal/version/` holds the build-time version.
+- `zensical.toml` configures the docs site (the nav, the theme, the Markdown extensions) and
+  `requirements-docs.txt` pins its build tools. `test/docs/` has the list check and its tests.
+  `docs/index.md` is the site's home page.
 - `test/packaging/test.sh` runs the maintainer scripts through real `dpkg`, with a fake
   `systemctl` that models what the scripts use (a unit is enabled when its link resolves, active
   by a marker, and a flag makes it fail to start), and records the calls.

@@ -26,13 +26,13 @@ in the product name.
 - Run WireGuard on the **in-kernel** implementation on a Debian-family Linux host, managed by
   systemd, with no containers.
 - Provide a **web GUI** that covers day-to-day management:
-  - **Clients:** add, edit, remove, pause/resume, download the config, show a QR code, and view
-    live status, connection history, and traffic.
-  - **Server settings:** endpoint FQDN and port, interface addresses and subnets, MTU,
-    keepalive, NAT and routing, and defaults for new clients.
-  - **DNS settings:** resolvers pushed to clients (global and per client), and later an optional
-    local resolver on the host.
-  - **Logs:** connection events, traffic history, and an admin audit trail.
+    - **Clients:** add, edit, remove, pause/resume, download the config, show a QR code, and view
+      live status, connection history, and traffic.
+    - **Server settings:** endpoint FQDN and port, interface addresses and subnets, MTU,
+      keepalive, NAT and routing, and defaults for new clients.
+    - **DNS settings:** resolvers pushed to clients (global and per client), and later an optional
+      local resolver on the host.
+    - **Logs:** connection events, traffic history, and an admin audit trail.
 - **Dual stack.** Clients reach the server over IPv4 or IPv6 and tunnel both IPv4 and IPv6
   traffic.
 - **Safe by default:** least-privilege processes, strong admin authentication, no arbitrary
@@ -89,6 +89,7 @@ and lets it in over IPv6. The kernel integration tests also run on Ubuntu 24.04 
 | D10 | Distribution | A **`.deb` built with nfpm** for arm64 (plus amd64 for VM testing), published as a GitHub Release | Installs and upgrades natively with `apt`/`dpkg`. |
 | D11 | Admin UI exposure | **Home network and VPN only** (decided), enforced both in the app and in nftables. The admin may add extra private-range sources, such as a Tailscale tailnet, as a setting (2026-09-26) | Anyone who controls the UI can reach the whole home network, so it must never face the internet. Two independent layers keep it off the internet even if one is misconfigured. |
 | D12 | Client DNS | **Public resolvers by default; a resolver on the host, such as AdGuard Home, when one answers on the VPN addresses** (decided; amended 2026-09-29); optional AdGuard Home integration syncs client names through its REST API (M4) | Ad-blocking and per-client DNS query logs for VPN clients, with no second resolver to run, on hosts that have one; a working default on hosts that don't. The setup wizard and Settings check the VPN addresses (`GET /api/server/dns-check`) and preselect the host only when it answers. |
+| D13 | Documentation site | **Zensical, built from `docs/` and published to GitHub Pages by a workflow** (decided 2026-10-04) | Readers who aren't contributors get navigation, search, and a stable URL, and the Markdown still reads the same on GitHub. Zensical is the successor to Material for MkDocs, which is in maintenance mode. It's alpha, so its version is pinned and the build is strict on every pull request; ADR 0013 has the trade-offs. |
 
 ---
 
@@ -220,19 +221,19 @@ The reconciler is idempotent. It is serialized by a lock and runs in four situat
 startup, after every change, every 30 s to detect drift, and from `drawbridge tunnel up`.
 
 1. **Validate** the desired state:
-   - No overlapping or duplicate addresses or keys.
-   - The VPN subnets don't overlap any subnet on the host's interfaces.
-   - MTU ≥ 1280 when IPv6 is enabled.
+    - No overlapping or duplicate addresses or keys.
+    - The VPN subnets don't overlap any subnet on the host's interfaces.
+    - MTU ≥ 1280 when IPv6 is enabled.
 2. **Interface:**
-   - Create `wg0` over netlink if it's missing. Only `drawbridge tunnel up` does this. The
-     daemon's runs leave a missing interface alone, so a tunnel the admin stopped stays
-     stopped (ADR 0008).
-   - Set the private key and listen port.
-   - Add or remove addresses to match the desired state.
-   - Set the MTU and bring the link up.
+    - Create `wg0` over netlink if it's missing. Only `drawbridge tunnel up` does this. The
+      daemon's runs leave a missing interface alone, so a tunnel the admin stopped stays
+      stopped (ADR 0008).
+    - Set the private key and listen port.
+    - Add or remove addresses to match the desired state.
+    - Set the MTU and bring the link up.
 3. **Peers:** diff the kernel peers against the enabled clients in the DB.
-   - Add new peers and remove stale ones.
-   - Update changed peers with `ReplaceAllowedIPs`. This doesn't interrupt their sessions.
+    - Add new peers and remove stale ones.
+    - Update changed peers with `ReplaceAllowedIPs`. This doesn't interrupt their sessions.
 4. **Routes:** add a route through `wg0` for each extra subnet routed to a client (site-to-site).
 5. **Firewall:** render `table inet drawbridge` and apply it atomically with `nft -f`
    (`table …; delete table …; table … { … }` in a single transaction).
@@ -317,18 +318,18 @@ safe apply, and every client config is then flagged as outdated (§6.1).
 1. **NAT66 (default).** Clients get ULA addresses, and traffic to the internet is masqueraded
    behind the host's global IPv6 address. It works with any ISP and router and needs no router
    changes.
-   - Per RFC 6724, many operating systems prefer IPv4 over a ULA source for dual-stack
-     destinations. IPv6-only destinations still work. This is expected behavior, not a bug.
+    - Per RFC 6724, many operating systems prefer IPv4 over a ULA source for dual-stack
+      destinations. IPv6-only destinations still work. This is expected behavior, not a bug.
 2. **Routed GUA (advanced, M6).** Clients get global addresses, so there's no NAT and they get
    native IPv6. It depends on a stable prefix from the ISP. There are two ways to do
    it:
-   - **Routed /64:** the router routes a separate /64 from the ISP's delegated prefix to the host.
-     This needs the ISP to delegate more than a /64 (for example, a /56) and the router to accept
-     an **IPv6** static route. Many consumer routers accept IPv4 static routes only (§16).
-   - **NDP proxy:** clients get addresses from a reserved slice of the LAN's own /64, and the host
-     answers neighbor discovery for them (`proxy_ndp` sysctl plus proxy entries managed by the
-     reconciler). It needs no router support, so it's the fallback when the router can't route
-     IPv6.
+    - **Routed /64:** the router routes a separate /64 from the ISP's delegated prefix to the host.
+      This needs the ISP to delegate more than a /64 (for example, a /56) and the router to accept
+      an **IPv6** static route. Many consumer routers accept IPv4 static routes only (§16).
+    - **NDP proxy:** clients get addresses from a reserved slice of the LAN's own /64, and the host
+      answers neighbor discovery for them (`proxy_ndp` sysctl plus proxy entries managed by the
+      reconciler). It needs no router support, so it's the fallback when the router can't route
+      IPv6.
 3. **IPv6 disabled.** Clients still get `::/0` in `AllowedIPs` (optional, on by default). IPv6
    traffic is then dropped inside the tunnel instead of leaking outside it.
 
@@ -405,8 +406,8 @@ changes.
 ### 5.4 MTU
 
 - The server MTU defaults to **1420**, which fits a 1500-byte path over either family:
-  - IPv4 outer header: 1500 − 20 (IPv4) − 8 (UDP) − 32 (WireGuard) = 1440.
-  - IPv6 outer header: 1500 − 40 (IPv6) − 8 (UDP) − 32 (WireGuard) = 1420.
+    - IPv4 outer header: 1500 − 20 (IPv4) − 8 (UDP) − 32 (WireGuard) = 1440.
+    - IPv6 outer header: 1500 − 40 (IPv6) − 8 (UDP) − 32 (WireGuard) = 1420.
 - Client MTU defaults to the server value and can be overridden per client. For example, use
   **1412** or lower over PPPoE, and lower values for some mobile carriers.
 - Validation enforces 1280 ≤ MTU ≤ 1500 when IPv6 is enabled. IPv6 requires at least 1280.
@@ -418,15 +419,15 @@ changes.
 - **Router Advertisements.** Enabling IPv6 forwarding makes the kernel **ignore RAs** on
   interfaces where `accept_ra=1`. A host that relies on kernel SLAAC (ifupdown) would lose its
   own IPv6 address and default route.
-  - NetworkManager and systemd-networkd handle RAs in userspace and set `accept_ra=0`, so
-    they aren't affected.
-  - The installer runs `/usr/lib/drawbridge/accept-ra` before it enables forwarding. For each
-    uplink (the default route's interface, IPv6 first, then IPv4 for an upgrade where the IPv6
-    route is already gone) whose `accept_ra` is `1`, it sets `accept_ra=2` now and writes
-    `/etc/sysctl.d/91-drawbridge-accept-ra.conf` for boot. An upgrade keeps an interface
-    already in that file while it still reads `2`. `postrm` removes the file. The kernel
-    integration tests send a Router Advertisement to a namespace with forwarding on: the host
-    ignores it before the step and configures its address and default route after.
+    - NetworkManager and systemd-networkd handle RAs in userspace and set `accept_ra=0`, so
+      they aren't affected.
+    - The installer runs `/usr/lib/drawbridge/accept-ra` before it enables forwarding. For each
+      uplink (the default route's interface, IPv6 first, then IPv4 for an upgrade where the IPv6
+      route is already gone) whose `accept_ra` is `1`, it sets `accept_ra=2` now and writes
+      `/etc/sysctl.d/91-drawbridge-accept-ra.conf` for boot. An upgrade keeps an interface
+      already in that file while it still reads `2`. `postrm` removes the file. The kernel
+      integration tests send a Router Advertisement to a namespace with forwarding on: the host
+      ignores it before the step and configures its address and default route after.
 - **NetworkManager and `wg0`:** when NetworkManager is active, the installer adds
   `/etc/NetworkManager/conf.d/drawbridge.conf` with `[keyfile]`
   `unmanaged-devices=interface-name:wg0`, so NetworkManager never tries to configure the VPN
@@ -582,151 +583,152 @@ AdGuard Home in particular gets an optional integration (below).
   addresses, `10.8.0.1` and `fd…::1`) is a choice the admin makes, and only after the server has
   checked that something answers DNS there. The other choices are *Other servers* and *None*.
   Each preset has IPv4 and IPv6 addresses.
-  - **The check** (`GET /api/server/dns-check`): the daemon sends a UDP DNS query for
-    `example.com` (an A record, recursion desired) to each VPN address on port 53, in parallel,
-    and waits two seconds. NOERROR and NXDOMAIN count as an answer. REFUSED and SERVFAIL mean a
-    resolver is listening but unusable (its access settings may exclude the VPN, or its upstream
-    servers are down); a refused connection means nothing is listening; silence means a firewall
-    or a stopped tunnel. Each address is reported on its own, and "this server" saves only the
-    ones that answered, so a resolver bound to IPv4 alone doesn't leave clients waiting on an IPv6
-    address that never replies. systemd-resolved's stub listens on `127.0.0.53` only, so the
-    check finds nothing there.
-  - **The CLI** (`drawbridge server set --dns server`) runs the same check through the control
-    socket (`GET /v1/dns-check`) and saves only the addresses that answer. When none does, it
-    refuses and says why; `--force` saves both VPN addresses anyway.
-  - **The setup wizard** (§9) runs the check on its DNS step and preselects *This server* when it
-    finds an address that answers; otherwise it preselects the public resolvers. Settings has the
-    same choices and a check button.
+    - **The check** (`GET /api/server/dns-check`): the daemon sends a UDP DNS query for
+      `example.com` (an A record, recursion desired) to each VPN address on port 53, in parallel,
+      and waits two seconds. NOERROR and NXDOMAIN count as an answer. REFUSED and SERVFAIL mean a
+      resolver is listening but unusable (its access settings may exclude the VPN, or its upstream
+      servers are down); a refused connection means nothing is listening; silence means a firewall
+      or a stopped tunnel. Each address is reported on its own, and "this server" saves only the
+      ones that answered, so a resolver bound to IPv4 alone doesn't leave clients waiting on an IPv6
+      address that never replies. systemd-resolved's stub listens on `127.0.0.53` only, so the
+      check finds nothing there.
+    - **The CLI** (`drawbridge server set --dns server`) runs the same check through the control
+      socket (`GET /v1/dns-check`) and saves only the addresses that answer. When none does, it
+      refuses and says why; `--force` saves both VPN addresses anyway.
+    - **The setup wizard** (§9) runs the check on its DNS step and preselects *This server* when it
+      finds an address that answers; otherwise it preselects the public resolvers. Settings has the
+      same choices and a check button.
 - Optional **search domains** (written to the `DNS =` line; `wg-quick` supports them, and support
   varies across the client apps).
 - **Per-client override.**
 - **AdGuard Home requirements** (checked by diagnostics, with fix hints):
-  - It must answer DNS on both VPN addresses. If its `dns.bind_hosts` setting lists specific
-    addresses rather than all interfaces, the VPN addresses must be added, and AdGuard Home must
-    start after `drawbridge-tunnel.service` so those addresses exist. When it listens on all
-    addresses (its default), the VPN addresses are covered with no changes.
-  - Its access settings must allow the VPN subnets. The default allows all clients.
-  - There are no port clashes: AdGuard Home uses port 53 and its own web port, while Drawbridge
-    uses UDP 51820 and TCP 51821.
+    - It must answer DNS on both VPN addresses. If its `dns.bind_hosts` setting lists specific
+      addresses rather than all interfaces, the VPN addresses must be added, and AdGuard Home must
+      start after `drawbridge-tunnel.service` so those addresses exist. When it listens on all
+      addresses (its default), the VPN addresses are covered with no changes.
+    - Its access settings must allow the VPN subnets. The default allows all clients.
+    - There are no port clashes: AdGuard Home uses port 53 and its own web port, while Drawbridge
+      uses UDP 51820 and TCP 51821.
 - **AdGuard Home integration (optional)** through its REST API (under `/control`, with HTTP
   basic auth; for a local install, `http://127.0.0.1:3000/control` by default). It uses a
   dedicated AdGuard Home account whose password Drawbridge stores encrypted. Without AdGuard
   Home, everything else works the same.
-  - **Client name sync (M4):** each Drawbridge client becomes an AdGuard Home persistent client
-    with its VPN IPv4 and IPv6 addresses (`/control/clients/add`, `/update`, `/delete`). AdGuard
-    Home's query log and statistics then show names like `phone` instead of `10.8.0.23`.
-  - **Per-client DNS log (M4):** the client detail page shows the client's recent DNS queries
-    from AdGuard Home's query log (`/control/querylog?search=<client IP>`), with a link to
-    AdGuard Home.
-  - **Per-client ad-blocking switch (M6):** turns AdGuard Home filtering off or on for one client,
-    for example a device that breaks when ads are blocked.
-  - **Client hostnames (M6):** AdGuard Home DNS rewrites (`/control/rewrite/*`) give clients names
-    such as `<client>.vpn.lan`.
-  - If AdGuard Home is unreachable, VPN management keeps working. Sync retries in the background,
-    and the dashboard shows a warning.
-  - **What AdGuard Home does** (checked against v0.107.79 on 2026-10-03, and written into the
-    client, `internal/adguard`, and its fake; the OpenAPI document says none of this):
-    - Every refusal is a plain-text 400, never a 404 or a 409, so the sync decides from a fresh
-      listing and never reads a message.
-    - **A client added with only a name and addresses isn't ad-blocked.** It's stored with
-      "use global settings" off, and its own filtering with it, so a query for a blocked domain
-      from its address is answered by the upstream resolver. Sync adds clients with the global
-      settings on.
-    - **An update replaces the whole client.** A rename that sends only the name and addresses
-      wipes the tags, upstreams, and settings the admin set in AdGuard Home. Sync reads the client
-      back and changes only the name and the addresses.
-    - **Five failed logins block the caller for 15 minutes**, and then even the right password
-      gets a bare 401. A 401 stops the sync, and it isn't retried on a timer: the admin changes
-      the settings or presses Test, which is one attempt.
-    - The query log's search is a **substring** match, so 10.8.0.2 also finds 10.8.0.20. The
-      DNS log keeps only entries from exactly the client's addresses, and pages past its busy
-      neighbors.
-  - **The connection (built).** Settings has the address, the account's username, and its
-    password, with a Test button, a Save, and a Remove. The password is encrypted in the database
-    and can be set but never read back. **It's sent only to the address and account it was saved
-    with**: a request that changes either (a save, or a test of unsaved values) has to bring the
-    password again, or it's refused before anything is sent. Otherwise anyone who could save an
-    address, a hijacked session say, could point it at their own server and have the daemon send
-    them the saved password. The test reports AdGuard Home's version, whether its DNS server runs
-    and its protection is on, how its query log is set (off, or hiding client addresses, which
-    would leave a client's DNS log empty), and what the server's VPN addresses answer for DNS. A
-    refused account is remembered for 30 seconds, so a double click can't walk the daemon into
-    AdGuard Home's 15-minute block. Saving and removing are events; neither carries the password.
-  - **How name sync works (built).** Two switches in Settings: *Use AdGuard Home*, and under it
-    *Name clients in AdGuard Home*. Like the reconciler, it's level-triggered: it lists AdGuard
-    Home's persistent clients, compares them with Drawbridge's, and makes up the difference
-    (`internal/service/adguardsync.go`). It runs at startup, a second after a client is added,
-    renamed, or deleted or the connection changes, and every five minutes, so an AdGuard Home that
-    was down, or a name the admin deleted there, catches up. *Sync now* runs a pass at once.
-    - **Drawbridge changes only the clients it made**, which are the ones it has a record of
-      (§7), and a client whose name and addresses are exactly a Drawbridge client's, which it
-      adopts without a write (a restored database, say). It never edits or deletes any other
-      persistent client. A client of the admin's that has the name or an address a Drawbridge
-      client wants is a *conflict*: shown in Settings and on the dashboard, once in the event log,
-      and settled by the admin in AdGuard Home. The next pass notices.
-    - **A client is added with AdGuard Home's global settings on**, or it isn't ad-blocked. A
-      rename or an address change reads the client back and changes only the name and the
-      addresses, so the admin's tags, upstreams, settings, and added identifiers (a MAC address)
-      stay.
-    - **The admin's changes are repaired**: a name deleted in AdGuard Home comes back, and one
-      renamed there goes back, but only while it still has exactly the addresses Drawbridge gave
-      it. With others added too, it may be the admin's, and it's left alone.
-    - **A deleted client's name is deleted** from AdGuard Home, but only if the client of that name
-      still has an address Drawbridge gave it. One the admin has made into something else stays.
-    - Paused clients are synced too, because they keep their addresses.
-    - **A refused account (401) stops the sync**, and nothing is asked until the connection
-      changes, or Test connection or Sync now shows the account works (at most one try in 30
-      seconds), because five refusals block the daemon for 15 minutes. Any other failure retries
-      after 30 seconds, doubling to 5 minutes. A first failure is one event
-      (`integration.adguard_sync_failed`, a warning in the journal), and so is the recovery.
-    - What it does to AdGuard Home is events: `integration.adguard_name_added`, `…_renamed`, and
-      `…_removed`, and `…_name_failed` for a conflict. They're system events, attributed to the
-      admin when *Sync now* started the pass.
-    - Its status (the last sync, the error, the conflicts) is kept in memory, and a sync that
-      changes nothing writes nothing, because of the SD card (§6.4). The dashboard shows a
-      warning from it (`adguard_warning` in `GET /api/server/status` and the stream) while it
-      can't reach AdGuard Home, was refused, or has conflicts.
-    - Removing the connection forgets the record. What it wrote stays in AdGuard Home, because the
-      account to remove it with is gone. Another address starts the record over, because it's
-      another AdGuard Home.
-  - **Per-client DNS log (built)** is a section on the client's page, "Recent DNS Queries": the
-    latest 50 queries (up to 200 with `limit`) newest first: when, the name and type, what it
-    answered, and, when AdGuard Home blocked it, the rule. It reads when the page opens and when
-    asked again, not on a timer. It needs *Use AdGuard Home* on, and not name sync: reading
-    writes nothing. Viewing it isn't an event, because it changes nothing, and AdGuard Home's own
-    interface shows the same.
-    - AdGuard Home's search matches part of an address (verified), so the daemon asks for each of
-      the client's addresses, keeps only the entries from exactly that address, and looks
-      through at most five pages of 200 for each, so a client that's been quiet behind busy
-      neighbors can show fewer than asked for. The queries are fetched on the page's request, not
-      kept.
-    - It says so when AdGuard Home's settings leave the view empty: its query log is off, or it
-      hides the end of each client's address (verified: it logs every client as `10.8.0.0`). A
-      client that has simply looked nothing up gets no warning.
-    - It follows the sync's rule for a refused account: after one 401 it asks no more, whoever
-      asked, until the connection changes or a test shows the account works. A page that's
-      reloaded can't walk the daemon into AdGuard Home's block.
-    - "Open this client's queries in AdGuard Home" links to AdGuard Home's own log, searching
-      for the client's IPv4 address. The saved address is the daemon's, and for a local install
-      it's `127.0.0.1`, which only the host can open, so the link uses the host the admin is
-      browsing Drawbridge on, with AdGuard Home's port.
-  - **Other resolvers.** AdGuard Home is the first integration, not the only one the design
-    allows. Pi-hole is the likeliest next (its v6 API only). Without an integration, a host's
-    resolver of any kind still works as the clients' DNS: the check, the wizard, and `doctor`
-    only send it a query. The integration is a seam, kept thin on purpose:
-    - Only one resolver can answer on the VPN addresses, so one integration is active at a time,
-      and it's stored as a single row with a `kind` (§7).
-    - The sync (names to make up, a record of what Drawbridge wrote, conflicts, status) and the DNS
-      log's shape (when, name, type, answer, blocked, rule) don't mention AdGuard Home. Its
-      client, `internal/adguard`, holds everything that does: its calls, its login, and the
-      behavior above.
-    - The sync's interface is drawn from AdGuard Home's calls alone for now. A second provider
-      will show what is shared, and the interface changes then rather than before. Pi-hole differs
-      in ways worth checking on a live instance first: its login is a session (`POST /api/auth`,
-      a session ID that lapses after 300 s of disuse, a limit on concurrent sessions, a rate
-      limit, and an optional TOTP), with no username, and it has no named persistent client, so
-      naming a client is likely a local DNS record, which also makes the name resolvable (what
-      the M6 client hostnames do for AdGuard Home).
+    - **Client name sync (M4):** each Drawbridge client becomes an AdGuard Home persistent client
+      with its VPN IPv4 and IPv6 addresses (`/control/clients/add`, `/update`, `/delete`). AdGuard
+      Home's query log and statistics then show names like `phone` instead of `10.8.0.23`.
+    - **Per-client DNS log (M4):** the client detail page shows the client's recent DNS queries
+      from AdGuard Home's query log (`/control/querylog?search=<client IP>`), with a link to
+      AdGuard Home.
+    - **Per-client ad-blocking switch (M6):** turns AdGuard Home filtering off or on for one client,
+      for example a device that breaks when ads are blocked.
+    - **Client hostnames (M6):** AdGuard Home DNS rewrites (`/control/rewrite/*`) give clients names
+      such as `<client>.vpn.lan`.
+    - If AdGuard Home is unreachable, VPN management keeps working. Sync retries in the background,
+      and the dashboard shows a warning.
+    - **What AdGuard Home does** (checked against v0.107.79 on 2026-10-03, and written into the
+      client, `internal/adguard`, and its fake; the OpenAPI document says none of this):
+        - Every refusal is a plain-text 400, never a 404 or a 409, so the sync decides from a fresh
+          listing and never reads a message.
+        - **A client added with only a name and addresses isn't ad-blocked.** It's stored with
+          "use global settings" off, and its own filtering with it, so a query for a blocked domain
+          from its address is answered by the upstream resolver. Sync adds clients with the global
+          settings on.
+        - **An update replaces the whole client.** A rename that sends only the name and addresses
+          wipes the tags, upstreams, and settings the admin set in AdGuard Home. Sync reads the
+          client back and changes only the name and the addresses.
+        - **Five failed logins block the caller for 15 minutes**, and then even the right password
+          gets a bare 401. A 401 stops the sync, and it isn't retried on a timer: the admin changes
+          the settings or presses Test, which is one attempt.
+        - The query log's search is a **substring** match, so 10.8.0.2 also finds 10.8.0.20. The
+          DNS log keeps only entries from exactly the client's addresses, and pages past its busy
+          neighbors.
+    - **The connection (built).** Settings has the address, the account's username, and its
+      password, with a Test button, a Save, and a Remove. The password is encrypted in the database
+      and can be set but never read back. **It's sent only to the address and account it was saved
+      with**: a request that changes either (a save, or a test of unsaved values) has to bring the
+      password again, or it's refused before anything is sent. Otherwise anyone who could save an
+      address, a hijacked session say, could point it at their own server and have the daemon send
+      them the saved password. The test reports AdGuard Home's version, whether its DNS server runs
+      and its protection is on, how its query log is set (off, or hiding client addresses, which
+      would leave a client's DNS log empty), and what the server's VPN addresses answer for DNS. A
+      refused account is remembered for 30 seconds, so a double click can't walk the daemon into
+      AdGuard Home's 15-minute block. Saving and removing are events; neither carries the password.
+    - **How name sync works (built).** Two switches in Settings: *Use AdGuard Home*, and under it
+      *Name clients in AdGuard Home*. Like the reconciler, it's level-triggered: it lists AdGuard
+      Home's persistent clients, compares them with Drawbridge's, and makes up the difference
+      (`internal/service/adguardsync.go`). It runs at startup, a second after a client is added,
+      renamed, or deleted or the connection changes, and every five minutes, so an AdGuard Home that
+      was down, or a name the admin deleted there, catches up. *Sync now* runs a pass at once.
+        - **Drawbridge changes only the clients it made**, which are the ones it has a record of
+          (§7), and a client whose name and addresses are exactly a Drawbridge client's, which it
+          adopts without a write (a restored database, say). It never edits or deletes any other
+          persistent client. A client of the admin's that has the name or an address a Drawbridge
+          client wants is a *conflict*: shown in Settings and on the dashboard, once in the event
+          log, and settled by the admin in AdGuard Home. The next pass notices.
+        - **A client is added with AdGuard Home's global settings on**, or it isn't ad-blocked. A
+          rename or an address change reads the client back and changes only the name and the
+          addresses, so the admin's tags, upstreams, settings, and added identifiers (a MAC address)
+          stay.
+        - **The admin's changes are repaired**: a name deleted in AdGuard Home comes back, and one
+          renamed there goes back, but only while it still has exactly the addresses Drawbridge gave
+          it. With others added too, it may be the admin's, and it's left alone.
+        - **A deleted client's name is deleted** from AdGuard Home, but only if the client of that
+          name still has an address Drawbridge gave it. One the admin has made into something else
+          stays.
+        - Paused clients are synced too, because they keep their addresses.
+        - **A refused account (401) stops the sync**, and nothing is asked until the connection
+          changes, or Test connection or Sync now shows the account works (at most one try in 30
+          seconds), because five refusals block the daemon for 15 minutes. Any other failure retries
+          after 30 seconds, doubling to 5 minutes. A first failure is one event
+          (`integration.adguard_sync_failed`, a warning in the journal), and so is the recovery.
+        - What it does to AdGuard Home is events: `integration.adguard_name_added`, `…_renamed`, and
+          `…_removed`, and `…_name_failed` for a conflict. They're system events, attributed to the
+          admin when *Sync now* started the pass.
+        - Its status (the last sync, the error, the conflicts) is kept in memory, and a sync that
+          changes nothing writes nothing, because of the SD card (§6.4). The dashboard shows a
+          warning from it (`adguard_warning` in `GET /api/server/status` and the stream) while it
+          can't reach AdGuard Home, was refused, or has conflicts.
+        - Removing the connection forgets the record. What it wrote stays in AdGuard Home, because
+          the account to remove it with is gone. Another address starts the record over, because
+          it's another AdGuard Home.
+    - **Per-client DNS log (built)** is a section on the client's page, "Recent DNS Queries": the
+      latest 50 queries (up to 200 with `limit`) newest first: when, the name and type, what it
+      answered, and, when AdGuard Home blocked it, the rule. It reads when the page opens and when
+      asked again, not on a timer. It needs *Use AdGuard Home* on, and not name sync: reading
+      writes nothing. Viewing it isn't an event, because it changes nothing, and AdGuard Home's own
+      interface shows the same.
+        - AdGuard Home's search matches part of an address (verified), so the daemon asks for each
+          of the client's addresses, keeps only the entries from exactly that address, and looks
+          through at most five pages of 200 for each, so a client that's been quiet behind busy
+          neighbors can show fewer than asked for. The queries are fetched on the page's request,
+          not kept.
+        - It says so when AdGuard Home's settings leave the view empty: its query log is off, or it
+          hides the end of each client's address (verified: it logs every client as `10.8.0.0`). A
+          client that has simply looked nothing up gets no warning.
+        - It follows the sync's rule for a refused account: after one 401 it asks no more, whoever
+          asked, until the connection changes or a test shows the account works. A page that's
+          reloaded can't walk the daemon into AdGuard Home's block.
+        - "Open this client's queries in AdGuard Home" links to AdGuard Home's own log, searching
+          for the client's IPv4 address. The saved address is the daemon's, and for a local install
+          it's `127.0.0.1`, which only the host can open, so the link uses the host the admin is
+          browsing Drawbridge on, with AdGuard Home's port.
+    - **Other resolvers.** AdGuard Home is the first integration, not the only one the design
+      allows. Pi-hole is the likeliest next (its v6 API only). Without an integration, a host's
+      resolver of any kind still works as the clients' DNS: the check, the wizard, and `doctor`
+      only send it a query. The integration is a seam, kept thin on purpose:
+        - Only one resolver can answer on the VPN addresses, so one integration is active at a time,
+          and it's stored as a single row with a `kind` (§7).
+        - The sync (names to make up, a record of what Drawbridge wrote, conflicts, status) and the
+          DNS log's shape (when, name, type, answer, blocked, rule) don't mention AdGuard Home. Its
+          client, `internal/adguard`, holds everything that does: its calls, its login, and the
+          behavior above.
+        - The sync's interface is drawn from AdGuard Home's calls alone for now. A second provider
+          will show what is shared, and the interface changes then rather than before. Pi-hole
+          differs in ways worth checking on a live instance first: its login is a session (`POST
+          /api/auth`, a session ID that lapses after 300 s of disuse, a limit on concurrent
+          sessions, a rate limit, and an optional TOTP), with no username, and it has no named
+          persistent client, so naming a client is likely a local DNS record, which also makes the
+          name resolvable (what the M6 client hostnames do for AdGuard Home).
 - **Health check:** if clients are pointed at the host but nothing answers on port 53 at the VPN
   addresses, the UI shows a warning.
 
@@ -761,127 +763,128 @@ stateDiagram-v2
 ```
 
 - **Events** (one table, filterable by client, type, and date, exportable as CSV):
-  - Connection events: `connected`, `disconnected` (with session duration and bytes), and
-    `roamed` (with the new endpoint IP).
-  - Admin events: `created`, `updated`, `paused`, `resumed`, `deleted`, `config_downloaded`,
-    `qr_shown`, and `keys_rotated`.
-  - System events: `apply_ok`, `apply_failed`, `drift_corrected`, `login_ok`, `login_failed`, and
-    `settings_changed`.
-  - **The log viewer** (the Logs page) filters by category, by kind of event, by client, and by
-    time (the last hour, 24 hours, 7 days, or 30 days, counted back from when the list loads), and
-    pages back 50 events at a time. The API takes the same filters, with `from` and `to` as exact
-    RFC 3339 times (from inclusive, to exclusive), so a script can ask about any period. **Export
-    CSV** (`format=csv`) sends every event that matches the filters, not a page: one row per event,
-    newest first, with the time in UTC (RFC 3339) and the event's data as a JSON object in the last
-    column. A cell that starts with `=`, `+`, `-`, or `@` begins with an apostrophe, so a
-    spreadsheet never runs it as a formula: a failed login's actor is whatever name a stranger
-    typed.
+    - Connection events: `connected`, `disconnected` (with session duration and bytes), and
+      `roamed` (with the new endpoint IP).
+    - Admin events: `created`, `updated`, `paused`, `resumed`, `deleted`, `config_downloaded`,
+      `qr_shown`, and `keys_rotated`.
+    - System events: `apply_ok`, `apply_failed`, `drift_corrected`, `login_ok`, `login_failed`, and
+      `settings_changed`.
+    - **The log viewer** (the Logs page) filters by category, by kind of event, by client, and by
+      time (the last hour, 24 hours, 7 days, or 30 days, counted back from when the list loads), and
+      pages back 50 events at a time. The API takes the same filters, with `from` and `to` as exact
+      RFC 3339 times (from inclusive, to exclusive), so a script can ask about any period. **Export
+      CSV** (`format=csv`) sends every event that matches the filters, not a page: one row per
+      event, newest first, with the time in UTC (RFC 3339) and the event's data as a JSON object in
+      the last column. A cell that starts with `=`, `+`, `-`, or `@` begins with an apostrophe, so a
+      spreadsheet never runs it as a formula: a failed login's actor is whatever name a stranger
+      typed.
 - **Sessions table:** one row per connection (start, end, endpoint, bytes), which gives a
   per-client connection history.
 - **Traffic history:**
-  - RX/TX deltas are stored at a "raw" resolution (a minute wide by default) for 48 h and a
-    "hourly" resolution for 90 days, both windows configurable, and the raw resolution's bucket
-    width is too: a host on an SD card can keep the conservative defaults, and one on an NVMe
-    SSD can afford a finer interval and/or longer retention without the same write-wear concern
-    (`--traffic-raw-interval`, `--traffic-raw-retention`, `--traffic-hourly-retention`). The
-    stored values are named "raw"/"hourly" rather than a literal "1m"/"1h", since the interval
-    isn't always a minute.
-  - Counter resets (a peer re-added or the interface recreated) are detected when a new counter
-    value is lower than the previous one, the same way `client_sessions` already does it.
-  - **Chart ranges:** 1m, 1h, 12h, 24h, 7d, 30d, and 90d. The stored raw buckets are too coarse
-    for 1m (a minute wide by default, and the newest isn't flushed until its minute is over), so
-    1m is served from the last two minutes of 5 s polls, kept in memory only
-    (`Service.live`, `internal/service/traffic.go`). Nothing is written to the database for it,
-    so a restart starts it empty and it fills back in within a minute. The UI refetches it every
-    5 s, and every other range every 60 s. 1h, 12h, and 24h read the raw buckets; 7d, 30d, and
-    90d read the hourly rollup, which the 90-day retention covers.
-  - **The Charts page** draws one line per client (Beszel's network charts, with a client where it
-    has an interface), and leaves out a client that moved nothing in the range. Received and
-    Sent are the server's, as everywhere else in Drawbridge: the bytes it received from the client
-    (`receive_bytes`) and the bytes it sent the client (`send_bytes`), as bit rates, where Beszel
-    says Download and Upload. The two cumulative charts are running totals of those bytes from
-    the start of the range, which is the closest thing to Beszel's interface counters that
-    survives a reset. `GET /api/traffic/clients` returns every
-    client's samples, plus `step_seconds` (what a sample covers, so bytes become a rate) and
-    `until`. It leaves out a bucket until it has ended and the poll after it has saved it, so a
-    bucket that's still filling or isn't written yet is never drawn as a drop to zero. The page
-    averages a stored range into about 144 points (a day becomes ten minutes, a week two hours,
-    90 days one day), counted back from `until`, because a day of minutes is 1,440 points in a few
-    hundred pixels and blurs into a solid band. Lines are monotone splines, so a quiet stretch
-    dips to zero without overshooting it.
-  - **The dashboard and a client's page** chart the total, or the client's own, as Beszel's
-    bandwidth chart does: a Received line and a Sent line as bit rates, and a tooltip that follows
-    the cursor with both and their total. A client's page adds a cumulative chart of the same two
-    lines as running totals. `GET /api/traffic` and `GET /api/clients/{id}/traffic` return the
-    same window as the per-client route: `step_seconds`, `until`, and `samples`.
-  - **A total for a dashboard that can't add** (Homepage): `GET /api/traffic/total` adds the same
-    samples into `receive_bytes` and `send_bytes`, with the window (`since`, `until`) and the range
-    it answered for. It reads the stored history, so a restart or a pause doesn't take anything out
-    of it, and deleting a client does (the client's history cascades). `GET /api/server/status`
-    also has `receive_bytes` and `send_bytes`: the sum of the peers' counters, which is the number
-    since the tunnel last started, and falls when a client is paused or deleted.
-  - **The x axis** is labeled by range: every 15 s for 1m (to the second), every 5 min for 1h,
-    every hour for 12h, every 3 h for 24h, every day for 1w, every 3 days for 30d, and every week
-    for 90d. Under a week it shows times only, from a week up dates only, and never a year. The
-    hours and days are on the browser's local clock and calendar, and a label is dropped when it
-    wouldn't fit (a phone).
-  - **Times in the UI** are on a 24-hour clock (`18:24`, and `18:24:05` where seconds matter) and
-    dates are a day and an English month (`9 Sep`), written out by `web/src/lib/format.ts` and not
-    left to the browser's locale. A year is added only to a date in another year than this one.
+    - RX/TX deltas are stored at a "raw" resolution (a minute wide by default) for 48 h and a
+      "hourly" resolution for 90 days, both windows configurable, and the raw resolution's bucket
+      width is too: a host on an SD card can keep the conservative defaults, and one on an NVMe
+      SSD can afford a finer interval and/or longer retention without the same write-wear concern
+      (`--traffic-raw-interval`, `--traffic-raw-retention`, `--traffic-hourly-retention`). The
+      stored values are named "raw"/"hourly" rather than a literal "1m"/"1h", since the interval
+      isn't always a minute.
+    - Counter resets (a peer re-added or the interface recreated) are detected when a new counter
+      value is lower than the previous one, the same way `client_sessions` already does it.
+    - **Chart ranges:** 1m, 1h, 12h, 24h, 7d, 30d, and 90d. The stored raw buckets are too coarse
+      for 1m (a minute wide by default, and the newest isn't flushed until its minute is over), so
+      1m is served from the last two minutes of 5 s polls, kept in memory only
+      (`Service.live`, `internal/service/traffic.go`). Nothing is written to the database for it,
+      so a restart starts it empty and it fills back in within a minute. The UI refetches it every
+      5 s, and every other range every 60 s. 1h, 12h, and 24h read the raw buckets; 7d, 30d, and
+      90d read the hourly rollup, which the 90-day retention covers.
+    - **The Charts page** draws one line per client (Beszel's network charts, with a client where it
+      has an interface), and leaves out a client that moved nothing in the range. Received and
+      Sent are the server's, as everywhere else in Drawbridge: the bytes it received from the client
+      (`receive_bytes`) and the bytes it sent the client (`send_bytes`), as bit rates, where Beszel
+      says Download and Upload. The two cumulative charts are running totals of those bytes from
+      the start of the range, which is the closest thing to Beszel's interface counters that
+      survives a reset. `GET /api/traffic/clients` returns every
+      client's samples, plus `step_seconds` (what a sample covers, so bytes become a rate) and
+      `until`. It leaves out a bucket until it has ended and the poll after it has saved it, so a
+      bucket that's still filling or isn't written yet is never drawn as a drop to zero. The page
+      averages a stored range into about 144 points (a day becomes ten minutes, a week two hours,
+      90 days one day), counted back from `until`, because a day of minutes is 1,440 points in a few
+      hundred pixels and blurs into a solid band. Lines are monotone splines, so a quiet stretch
+      dips to zero without overshooting it.
+    - **The dashboard and a client's page** chart the total, or the client's own, as Beszel's
+      bandwidth chart does: a Received line and a Sent line as bit rates, and a tooltip that follows
+      the cursor with both and their total. A client's page adds a cumulative chart of the same two
+      lines as running totals. `GET /api/traffic` and `GET /api/clients/{id}/traffic` return the
+      same window as the per-client route: `step_seconds`, `until`, and `samples`.
+    - **A total for a dashboard that can't add** (Homepage): `GET /api/traffic/total` adds the same
+      samples into `receive_bytes` and `send_bytes`, with the window (`since`, `until`) and the
+      range it answered for. It reads the stored history, so a restart or a pause doesn't take
+      anything out of it, and deleting a client does (the client's history cascades). `GET
+      /api/server/status` also has `receive_bytes` and `send_bytes`: the sum of the peers' counters,
+      which is the number since the tunnel last started, and falls when a client is paused or
+      deleted.
+    - **The x axis** is labeled by range: every 15 s for 1m (to the second), every 5 min for 1h,
+      every hour for 12h, every 3 h for 24h, every day for 1w, every 3 days for 30d, and every week
+      for 90d. Under a week it shows times only, from a week up dates only, and never a year. The
+      hours and days are on the browser's local clock and calendar, and a label is dropped when it
+      wouldn't fit (a phone).
+    - **Times in the UI** are on a 24-hour clock (`18:24`, and `18:24:05` where seconds matter) and
+      dates are a day and an English month (`9 Sep`), written out by `web/src/lib/format.ts` and not
+      left to the browser's locale. A year is added only to a date in another year than this one.
 - **Live updates** (`GET /api/stream`, Server-Sent Events, ADR 0009) replace the pages' polling:
-  - **Two messages.** `status` comes as the stream opens, then every poll of the peers (5 s by
-    default), and 300 ms after each event (a change is recorded before it's applied to the tunnel,
-    so the status waits to show it): the server's state and every client's status, which is what
-    `GET /api/server/status` and `GET /api/clients` return together. `event` comes as an event is
-    recorded, as `GET /api/events` returns it, with its ID as the message's `id`. They come from
-    an in-process bus (`service.Subscribe`), which never waits for a watcher: a subscriber that
-    falls 64 events behind misses them. An event that couldn't be stored isn't sent.
-  - **The session** is checked on every status, which also counts as use, so a page that stays
-    open and visible stays logged in, as it did when it polled. When the session ends the stream
-    closes, and the browser's reconnect gets a 401. At most 16 streams are open at once.
-  - **No write timeout.** One would cut every stream (ADR 0009), so each write has a 10 s
-    deadline instead, and a reader that has stopped is dropped. On shutdown the daemon closes the
-    streams itself, so its graceful shutdown doesn't wait on them.
-  - **In the web UI** the dashboard, the client list, a client's page, and the Logs page ask for
-    the stream (`web/src/lib/live.svelte.ts`), and one connection serves them all. They take the
-    status from it and don't poll while it's open. A page that shows events lists each as it
-    arrives (the Logs page only those its filters show) and loads them again after the stream has
-    reconnected, because what came while it was away is missed. When the stream isn't open (it's
-    connecting, or something between the browser and the daemon won't carry it) the pages poll
-    every 5 s, as before, so nothing depends on it. A hidden tab closes its stream, so it stops
-    keeping its session alive.
-  - **A limit:** the daemon speaks HTTP/1.1 only, so an open stream holds a connection, and a
-    browser allows six to one host. Hidden tabs hold none, so this takes six visible tabs or
-    windows, which would starve the seventh's requests. Enabling HTTP/2 (`h2` in the TLS
-    configuration's protocols) would lift it.
+    - **Two messages.** `status` comes as the stream opens, then every poll of the peers (5 s by
+      default), and 300 ms after each event (a change is recorded before it's applied to the tunnel,
+      so the status waits to show it): the server's state and every client's status, which is what
+      `GET /api/server/status` and `GET /api/clients` return together. `event` comes as an event is
+      recorded, as `GET /api/events` returns it, with its ID as the message's `id`. They come from
+      an in-process bus (`service.Subscribe`), which never waits for a watcher: a subscriber that
+      falls 64 events behind misses them. An event that couldn't be stored isn't sent.
+    - **The session** is checked on every status, which also counts as use, so a page that stays
+      open and visible stays logged in, as it did when it polled. When the session ends the stream
+      closes, and the browser's reconnect gets a 401. At most 16 streams are open at once.
+    - **No write timeout.** One would cut every stream (ADR 0009), so each write has a 10 s
+      deadline instead, and a reader that has stopped is dropped. On shutdown the daemon closes the
+      streams itself, so its graceful shutdown doesn't wait on them.
+    - **In the web UI** the dashboard, the client list, a client's page, and the Logs page ask for
+      the stream (`web/src/lib/live.svelte.ts`), and one connection serves them all. They take the
+      status from it and don't poll while it's open. A page that shows events lists each as it
+      arrives (the Logs page only those its filters show) and loads them again after the stream has
+      reconnected, because what came while it was away is missed. When the stream isn't open (it's
+      connecting, or something between the browser and the daemon won't carry it) the pages poll
+      every 5 s, as before, so nothing depends on it. A hidden tab closes its stream, so it stops
+      keeping its session alive.
+    - **A limit:** the daemon speaks HTTP/1.1 only, so an open stream holds a connection, and a
+      browser allows six to one host. Hidden tabs hold none, so this takes six visible tabs or
+      windows, which would starve the seventh's requests. Enabling HTTP/2 (`h2` in the TLS
+      configuration's protocols) would lift it.
 - **Low write volume:** samples are buffered in memory and flushed once per raw interval in one
   transaction, and a periodic job rolls old raw rows up into hourly ones, then prunes both past
   their retention windows. This keeps SD card writes low (and stays low on an SSD too, unless the
   admin explicitly widens the budget above).
-  - **The open sessions' bytes ride in the same flush.** Each poll updates a session's bytes in
-    memory, and everything that shows a session (the dashboard, a client's page, the session
-    history) reads them from there, so it's as fresh as the poll. The database gets them once per
-    flush, and a roam at once (so a restart can't announce it twice). A session that ends is
-    written when it ends. Before this, every poll wrote every connected client's session, which
-    for a household of ten devices was about 93,000 transactions and 425 MiB of log a day.
-  - **The budget** is enforced by `TestWriteBudget` (`internal/service/writebudget_test.go`),
-    which simulates a day of the daemon's loops against a real database file and reads its
-    write-ahead log from outside: every committed transaction, and every 4 KiB page one wrote.
-    Counting from the file, not inside the code that writes, means a new way of writing can't slip
-    past it. In a day of a typical household (five devices connected all day, five that connect
-    twice for 45 minutes, and a dashboard tab left open, with the traffic rollup at the end) the
-    database commits about 1,800 transactions and writes about 75 MiB of log. The budget is 2,200
-    transactions and 94 MiB. Twenty devices connected all day commit the same number of
-    transactions (a flush is one transaction for every client, and the test checks it), and write
-    about 230 MiB, which is the budget's 290 MiB. A server nobody is connected to writes nothing.
-    Pages grow with the clients because each has its own row in the traffic table's primary-key
-    index, so the way to lower the bytes is to change that index, not the flush.
-  - **For an SSD**, `--traffic-raw-interval` sets how often a flush happens, and the writes
-    follow it (the test checks that 10 s is about six times 1 min). The budget is for the default.
-  - **What the budget counts** is the database's log, a proxy for the card and not the card's own
-    physical writes: a checkpoint copies pages into the database file (at most as much again), the
-    journal is separate, and the card amplifies small writes. A day at the budget is about 35 GiB
-    of log a year, far below what an SD card is rated to take.
+    - **The open sessions' bytes ride in the same flush.** Each poll updates a session's bytes in
+      memory, and everything that shows a session (the dashboard, a client's page, the session
+      history) reads them from there, so it's as fresh as the poll. The database gets them once per
+      flush, and a roam at once (so a restart can't announce it twice). A session that ends is
+      written when it ends. Before this, every poll wrote every connected client's session, which
+      for a household of ten devices was about 93,000 transactions and 425 MiB of log a day.
+    - **The budget** is enforced by `TestWriteBudget` (`internal/service/writebudget_test.go`),
+      which simulates a day of the daemon's loops against a real database file and reads its
+      write-ahead log from outside: every committed transaction, and every 4 KiB page one wrote.
+      Counting from the file, not inside the code that writes, means a new way of writing can't slip
+      past it. In a day of a typical household (five devices connected all day, five that connect
+      twice for 45 minutes, and a dashboard tab left open, with the traffic rollup at the end) the
+      database commits about 1,800 transactions and writes about 75 MiB of log. The budget is 2,200
+      transactions and 94 MiB. Twenty devices connected all day commit the same number of
+      transactions (a flush is one transaction for every client, and the test checks it), and write
+      about 230 MiB, which is the budget's 290 MiB. A server nobody is connected to writes nothing.
+      Pages grow with the clients because each has its own row in the traffic table's primary-key
+      index, so the way to lower the bytes is to change that index, not the flush.
+    - **For an SSD**, `--traffic-raw-interval` sets how often a flush happens, and the writes
+      follow it (the test checks that 10 s is about six times 1 min). The budget is for the default.
+    - **What the budget counts** is the database's log, a proxy for the card and not the card's own
+      physical writes: a checkpoint copies pages into the database file (at most as much again), the
+      journal is separate, and the card amplifies small writes. A day at the budget is about 35 GiB
+      of log a year, far below what an SD card is rated to take.
 - **journald:** under systemd, every event is also a journal entry, sent with journald's native
   protocol (`internal/journal`), so its parts are fields and not only text:
   `DRAWBRIDGE_EVENT` (`client.connected`), `DRAWBRIDGE_CATEGORY`, `DRAWBRIDGE_ACTOR`,
@@ -910,58 +913,59 @@ stateDiagram-v2
 ### 6.5 Admin and security features
 
 - **First-run setup:**
-  - A one-time **setup token** is printed by `postinst` and to the journal
-    (`drawbridge admin setup-token` shows it again). This stops anyone else on the LAN from claiming
-    the admin account first.
-  - The wizard creates the admin account, then asks for the endpoint FQDN and the clients' DNS
-    (subnets aren't asked yet).
+    - A one-time **setup token** is printed by `postinst` and to the journal (`drawbridge admin
+      setup-token` shows it again). This stops anyone else on the LAN from claiming the admin
+      account first.
+    - The wizard creates the admin account, then asks for the endpoint FQDN and the clients' DNS
+      (subnets aren't asked yet).
 - **Passwords:** hashed with Argon2id (RFC 9106's 64 MiB, three-pass profile, one hash at a
   time so logins can't exhaust the host's memory), in the PHC string format. A password needs at
   least 10 characters; there are no composition rules.
 - **Sessions:**
-  - Stored server-side in the DB, in a `__Host-drawbridge` cookie that is `HttpOnly`, `Secure`,
-    and `SameSite=Strict`. The DB holds only a SHA-256 hash of each token.
-  - They expire after an hour idle, and twelve hours after login at most. Their last use is
-    written at most every five minutes, to spare the SD card. A visible page that shows live
-    status counts as use (its stream checks the session on every status, §6.4); a background tab
-    closes its stream, so it does idle out.
-  - The API lists active sessions and can revoke them. Changing the password ends every other
-    session.
+    - Stored server-side in the DB, in a `__Host-drawbridge` cookie that is `HttpOnly`, `Secure`,
+      and `SameSite=Strict`. The DB holds only a SHA-256 hash of each token.
+    - They expire after an hour idle, and twelve hours after login at most. Their last use is
+      written at most every five minutes, to spare the SD card. A visible page that shows live
+      status counts as use (its stream checks the session on every status, §6.4); a background tab
+      closes its stream, so it does idle out.
+    - The API lists active sessions and can revoke them. Changing the password ends every other
+      session.
 - **TOTP 2FA** with recovery codes (M5, built 2026-10-04; docs/two-factor.md). It's optional, and
   there's one account:
-  - **The code** is RFC 6238: HMAC-SHA1, six digits, a 30-second step, which every authenticator
-    app supports, and nothing more is offered. The secret is 160 random bits, sealed like the other
-    secrets (`totp_secret_enc`, with a purpose that names the account). A code is accepted from the
-    step before to the step after the current one, because the host may start with the wrong time
-    (§15). **A code is good once**: the last accepted step is kept (`totp_last_step`) and updated
-    in one conditional `UPDATE`, so a code that was used, and any earlier one, is refused even
-    inside the window, and two logins with the same code at once can't both pass (RFC 6238 §5.2).
-  - **Logging in has two steps over one endpoint.** `POST /api/auth/login` with the right password
-    and no code answers 401 with the error code `totp_required`, creates no session, and counts
-    as nothing: it isn't a failure. The page then asks for the code and sends all three. A wrong
-    code is a failure like a wrong password, against the same source and account. **Nothing clears
-    the failures until the whole login has passed**: a right password forgives nothing, or someone
-    with the password could guess the code without limit. The same rule holds when turning 2FA off
-    and when making new recovery codes, which take the password and a code.
-  - **Turning it on** takes the password again (`POST /api/auth/totp/enroll`: a session alone could
-    otherwise pick the second factor, which locks the admin out and keeps the attacker in), shows
-    the secret as a QR code, and does nothing until the first code is proved
-    (`/api/auth/totp/verify`). The secret waits in the database in the meantime; a login doesn't
-    ask for a code until `totp_enabled_at` is set. Turning it on or off ends the account's other
-    sessions, as a password change does.
-  - **Recovery codes** are ten random 75-bit codes (`ABCDE-FGHJK-LMNPQ`), shown once, and each
-    works once in place of an app code. Only their SHA-256 hashes are kept (they're random and
-    long, so no slow hash is needed), as a JSON array in `recovery_codes_hash`, and a code that's
-    used is removed in the same transaction that checks it. New ones void the old
-    (`/api/auth/totp/recovery-codes`). The Account page says how many are left.
-  - **`drawbridge admin disable-2fa`** is the way back for an admin who lost the app and the codes.
-    It goes through the control socket, which already can reset the password, and ends the
-    account's sessions and lifts the lockout. `reset-password` doesn't turn 2FA off.
-  - **API tokens are not asked for a code**: they're read-only dashboards that can't type one.
-  - Events: `auth.totp_enabled`, `auth.totp_disabled`, `auth.totp_failed` (a wrong password or code
-    on a change), `auth.login_failed` (with `reason: wrong code` when the password was right),
-    `auth.recovery_code_used` (with how many are left), and `auth.recovery_codes_renewed`. None
-    carries a secret or a code.
+    - **The code** is RFC 6238: HMAC-SHA1, six digits, a 30-second step, which every authenticator
+      app supports, and nothing more is offered. The secret is 160 random bits, sealed like the
+      other secrets (`totp_secret_enc`, with a purpose that names the account). A code is accepted
+      from the step before to the step after the current one, because the host may start with the
+      wrong time (§15). **A code is good once**: the last accepted step is kept (`totp_last_step`)
+      and updated in one conditional `UPDATE`, so a code that was used, and any earlier one, is
+      refused even inside the window, and two logins with the same code at once can't both pass (RFC
+      6238 §5.2).
+    - **Logging in has two steps over one endpoint.** `POST /api/auth/login` with the right password
+      and no code answers 401 with the error code `totp_required`, creates no session, and counts
+      as nothing: it isn't a failure. The page then asks for the code and sends all three. A wrong
+      code is a failure like a wrong password, against the same source and account. **Nothing clears
+      the failures until the whole login has passed**: a right password forgives nothing, or someone
+      with the password could guess the code without limit. The same rule holds when turning 2FA off
+      and when making new recovery codes, which take the password and a code.
+    - **Turning it on** takes the password again (`POST /api/auth/totp/enroll`: a session alone
+      could otherwise pick the second factor, which locks the admin out and keeps the attacker in),
+      shows the secret as a QR code, and does nothing until the first code is proved
+      (`/api/auth/totp/verify`). The secret waits in the database in the meantime; a login doesn't
+      ask for a code until `totp_enabled_at` is set. Turning it on or off ends the account's other
+      sessions, as a password change does.
+    - **Recovery codes** are ten random 75-bit codes (`ABCDE-FGHJK-LMNPQ`), shown once, and each
+      works once in place of an app code. Only their SHA-256 hashes are kept (they're random and
+      long, so no slow hash is needed), as a JSON array in `recovery_codes_hash`, and a code that's
+      used is removed in the same transaction that checks it. New ones void the old
+      (`/api/auth/totp/recovery-codes`). The Account page says how many are left.
+    - **`drawbridge admin disable-2fa`** is the way back for an admin who lost the app and the
+      codes. It goes through the control socket, which already can reset the password, and ends the
+      account's sessions and lifts the lockout. `reset-password` doesn't turn 2FA off.
+    - **API tokens are not asked for a code**: they're read-only dashboards that can't type one.
+    - Events: `auth.totp_enabled`, `auth.totp_disabled`, `auth.totp_failed` (a wrong password or
+      code on a change), `auth.login_failed` (with `reason: wrong code` when the password was
+      right), `auth.recovery_code_used` (with how many are left), and `auth.recovery_codes_renewed`.
+      None carries a secret or a code.
 - **Brute-force protection:** failed logins are rate-limited per source (IPv6 by /64) and per
   account. After five failures, each attempt waits twice as long as the last, from 2 seconds up
   to 15 minutes; an hour without a failure resets the count. `drawbridge admin reset-password`
@@ -977,172 +981,175 @@ stateDiagram-v2
   the username and source address for the web, the account name for the CLI, or the daemon.
 - **Admin access: home network and VPN only (decided).** The UI must never be reachable from the
   internet. Two independent layers enforce this:
-  - **In the app:** requests are accepted only from the LAN's own subnets (the router's IPv4
-    subnet and the LAN's IPv6 /64, detected from the uplink interface), link-local addresses,
-    loopback, and the VPN subnets. The LAN is the on-link subnets of the interfaces that carry the
-    default routes and hold one of the host's addresses; with no default route, only loopback,
-    link-local, and the VPN are allowed. The allowlist doesn't simply trust "private ranges,"
-    because LAN devices often reach the host over the LAN's *global* IPv6 prefix.
-  - **In the firewall:** the `input` chain in Drawbridge's nftables table drops traffic to the
-    admin port from any other source (§5.3). This protects the UI even if the router's IPv6
-    firewall lets inbound traffic through to the host.
-  - The router forwards only UDP 51820, never the admin port.
-  - **No reverse proxy in front of the admin UI.** Many hosts also run a reverse proxy (or a
-    container publishing ports 80 and 443). If the admin UI were routed through one on the same
-    host, requests would reach Drawbridge from the host itself, pass both allowlist layers, and
-    be exposed if 80 or 443 is forwarded from the internet. Drawbridge therefore serves the UI
-    directly on port 51821, and it ignores `X-Forwarded-For` and similar headers, so no proxy
-    can make a request look like it came from the LAN.
-  - **Extra sources (decided 2026-09-26).** The admin can add prefixes to both layers with the
-    `admin_allowed` setting (`drawbridge server set --admin-allow 100.64.10.0/24`), for a Tailscale
-    tailnet, say. Each prefix must lie inside 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16,
-    Tailscale's 100.64.0.0/10, or fc00::/7, so no setting can admit a globally routable source.
-    Only the TCP connection's source address counts, so a spoofed private source that got past the
-    router would pass; the router's WAN side must drop those.
-  - An optional stricter mode allows VPN access only.
+    - **In the app:** requests are accepted only from the LAN's own subnets (the router's IPv4
+      subnet and the LAN's IPv6 /64, detected from the uplink interface), link-local addresses,
+      loopback, and the VPN subnets. The LAN is the on-link subnets of the interfaces that carry the
+      default routes and hold one of the host's addresses; with no default route, only loopback,
+      link-local, and the VPN are allowed. The allowlist doesn't simply trust "private ranges,"
+      because LAN devices often reach the host over the LAN's *global* IPv6 prefix.
+    - **In the firewall:** the `input` chain in Drawbridge's nftables table drops traffic to the
+      admin port from any other source (§5.3). This protects the UI even if the router's IPv6
+      firewall lets inbound traffic through to the host.
+    - The router forwards only UDP 51820, never the admin port.
+    - **No reverse proxy in front of the admin UI.** Many hosts also run a reverse proxy (or a
+      container publishing ports 80 and 443). If the admin UI were routed through one on the same
+      host, requests would reach Drawbridge from the host itself, pass both allowlist layers, and
+      be exposed if 80 or 443 is forwarded from the internet. Drawbridge therefore serves the UI
+      directly on port 51821, and it ignores `X-Forwarded-For` and similar headers, so no proxy
+      can make a request look like it came from the LAN.
+    - **Extra sources (decided 2026-09-26).** The admin can add prefixes to both layers with the
+      `admin_allowed` setting (`drawbridge server set --admin-allow 100.64.10.0/24`), for a
+      Tailscale tailnet, say. Each prefix must lie inside 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16,
+      Tailscale's 100.64.0.0/10, or fc00::/7, so no setting can admit a globally routable source.
+      Only the TCP connection's source address counts, so a spoofed private source that got past the
+      router would pass; the router's WAN side must drop those.
+    - An optional stricter mode allows VPN access only.
 - **One admin account** in v1.0 (decided). Multiple admins are optional (M6).
 - **Read-only API tokens (built ahead of M6)**, for a dashboard such as Homepage that can send a
   header but can't log in (docs/api-tokens.md):
-  - A token is `dbt_` and 256 random bits. It's shown once, when it's made, and only its SHA-256
-    hash is stored, as for a session. The first 8 characters are kept to tell tokens apart.
-  - **It reads a short, fixed list of GET routes and nothing else**: the status, the clients, and
-    their traffic, including the totals (`/api/traffic/total`, added 2026-10-04: two numbers, and
-    nothing that says whose). The list is in the code (`tokenReadable`, `internal/api/tokens.go`)
-    and is closed by default, so a new route can't be reached by a token until someone adds it,
-    and a test names what can never be on it: a client's config (its private key), its DNS log,
-    the event log, the settings, the integrations, and the account routes, tokens' own included.
-    A token can't change anything, and can't make, list, or revoke tokens.
-  - **Making one takes the password again**, even in a logged-in session, because a token
-    outlives the session and a password change; a hijacked session mustn't be able to leave one
-    behind. Wrong passwords count against the login limits. An account has at most 20, with names
-    that differ in more than case.
-  - A request that carries a token is a token's request, whatever else it carries: a session
-    cookie sent along doesn't widen it, and a bad token isn't rescued by one.
-  - It's held to the same network limits as the web UI (the allowlist and the nftables rule, D11):
-    a dashboard in Docker on the host connects from Docker's network, which has to be added with
-    `--admin-allow`.
-  - Its last use is written at most once an hour, because a dashboard asks every few seconds and
-    each write is a commit on an SD card (§6.4). `TestWriteBudget` has a dashboard polling every
-    ten seconds all day.
-  - Revoking it, on the Account page, takes effect at once. A password reset from the command
-    line revokes them all; a routine password change doesn't, so it doesn't break dashboards.
-  - Events: `auth.token_created`, `auth.token_revoked`, `auth.token_failed` (a wrong password),
-    and `auth.tokens_revoked` (by a reset). None carries the token.
+    - A token is `dbt_` and 256 random bits. It's shown once, when it's made, and only its SHA-256
+      hash is stored, as for a session. The first 8 characters are kept to tell tokens apart.
+    - **It reads a short, fixed list of GET routes and nothing else**: the status, the clients, and
+      their traffic, including the totals (`/api/traffic/total`, added 2026-10-04: two numbers, and
+      nothing that says whose). The list is in the code (`tokenReadable`, `internal/api/tokens.go`)
+      and is closed by default, so a new route can't be reached by a token until someone adds it,
+      and a test names what can never be on it: a client's config (its private key), its DNS log,
+      the event log, the settings, the integrations, and the account routes, tokens' own included.
+      A token can't change anything, and can't make, list, or revoke tokens.
+    - **Making one takes the password again**, even in a logged-in session, because a token
+      outlives the session and a password change; a hijacked session mustn't be able to leave one
+      behind. Wrong passwords count against the login limits. An account has at most 20, with names
+      that differ in more than case.
+    - A request that carries a token is a token's request, whatever else it carries: a session
+      cookie sent along doesn't widen it, and a bad token isn't rescued by one.
+    - It's held to the same network limits as the web UI (the allowlist and the nftables rule, D11):
+      a dashboard in Docker on the host connects from Docker's network, which has to be added with
+      `--admin-allow`.
+    - Its last use is written at most once an hour, because a dashboard asks every few seconds and
+      each write is a commit on an SD card (§6.4). `TestWriteBudget` has a dashboard polling every
+      ten seconds all day.
+    - Revoking it, on the Account page, takes effect at once. A password reset from the command
+      line revokes them all; a routine password change doesn't, so it doesn't break dashboards.
+    - Events: `auth.token_created`, `auth.token_revoked`, `auth.token_failed` (a wrong password),
+      and `auth.tokens_revoked` (by a reset). None carries the token.
 
 ### 6.6 System
 
 - **Diagnostics** (the web page and `drawbridge doctor` run the same checks). Each check shows
   pass, warn, or fail with a fix hint, or skip when the daemon can't read what the check needs:
-  - The tunnel is up, and the kernel module is loaded.
-  - Forwarding sysctls set, and `accept_ra` correct.
-  - Uplink interface detected.
-  - VPN subnets don't overlap the LAN.
-  - Drawbridge's own nftables table is loaded.
-  - Host firewall and Docker `FORWARD` policy aren't blocking traffic.
-  - Clients' DNS servers answer, when they're this server's own VPN addresses.
-  - The FQDN resolves to an address a client on the internet can reach, and its AAAA record
-    isn't a temporary address.
-  - Time is synced.
-  - Free disk space.
-  - The TLS certificate hasn't expired.
+    - The tunnel is up, and the kernel module is loaded.
+    - Forwarding sysctls set, and `accept_ra` correct.
+    - Uplink interface detected.
+    - VPN subnets don't overlap the LAN.
+    - Drawbridge's own nftables table is loaded.
+    - Host firewall and Docker `FORWARD` policy aren't blocking traffic.
+    - Clients' DNS servers answer, when they're this server's own VPN addresses.
+    - The FQDN resolves to an address a client on the internet can reach, and its AAAA record
+      isn't a temporary address.
+    - Time is synced.
+    - Free disk space.
+    - The TLS certificate hasn't expired.
 
-  *`drawbridge doctor` and the web page are built (`internal/diag`). The daemon runs the
-  checks, because `nft -j list ruleset` needs `CAP_NET_ADMIN`; the CLI prints them over the
-  control socket (`GET /v1/diagnostics`), and the System page shows them from
-  `GET /api/system/health` (a session is needed; an API token can't read it, because it says
-  where the host's weak points are). Both run a fresh set of checks each time, with nothing
-  cached, so a fix shows on the next run. The checks change nothing, so they record no events.
-  The doctor's exit status is 1 when a check failed, and 0 otherwise.*
-  - *The dashboard raises the checks that warn or fail (2026-10-04), in one banner that names each
-    and links to the System page, where the fix hints are. It's red when any check failed and
-    amber otherwise, and absent when none needs attention. A skipped check isn't raised: the
-    daemon couldn't read what it needed, which is the System page's to say. The page runs the
-    checks when it opens, every five minutes while it's showing (not while the tab is hidden), and
-    when a settings change arrives on the live feed, because a fix made at a terminal is not an
-    event. It leaves out the tunnel check, because the dashboard reads the tunnel from the live
-    status, which is fresher, and says so in a banner of its own; and it leaves out an endpoint
-    that isn't set, for the same reason. If the checks can't run, the banner is simply absent.
-    Nothing is cached on the server, and no token reaches the route, so Homepage doesn't see it.*
-  - *Known limits:*
-    - *Comparing the A record with the current public IPv4 address (§5.6) isn't built (§16).*
-    - *The host firewall check is a best guess from `nft -j list ruleset`: it doesn't model rule
-      order, can't see iptables-legacy, and doesn't check input-chain drops of UDP 51820.*
-    - *The clock check recognizes only systemd-timesyncd, so a host that uses chrony or ntpd sees
-      a warning.*
-    - *The overlap hint is limited because the VPN's subnets can't change after setup.*
+    *`drawbridge doctor` and the web page are built (`internal/diag`). The daemon runs the
+    checks, because `nft -j list ruleset` needs `CAP_NET_ADMIN`; the CLI prints them over the
+    control socket (`GET /v1/diagnostics`), and the System page shows them from
+    `GET /api/system/health` (a session is needed; an API token can't read it, because it says
+    where the host's weak points are). Both run a fresh set of checks each time, with nothing
+    cached, so a fix shows on the next run. The checks change nothing, so they record no events.
+    The doctor's exit status is 1 when a check failed, and 0 otherwise.*
+
+    - *The dashboard raises the checks that warn or fail (2026-10-04), in one banner that names each
+      and links to the System page, where the fix hints are. It's red when any check failed and
+      amber otherwise, and absent when none needs attention. A skipped check isn't raised: the
+      daemon couldn't read what it needed, which is the System page's to say. The page runs the
+      checks when it opens, every five minutes while it's showing (not while the tab is hidden), and
+      when a settings change arrives on the live feed, because a fix made at a terminal is not an
+      event. It leaves out the tunnel check, because the dashboard reads the tunnel from the live
+      status, which is fresher, and says so in a banner of its own; and it leaves out an endpoint
+      that isn't set, for the same reason. If the checks can't run, the banner is simply absent.
+      Nothing is cached on the server, and no token reaches the route, so Homepage doesn't see it.*
+    - *Known limits:*
+        - *Comparing the A record with the current public IPv4 address (§5.6) isn't built (§16).*
+        - *The host firewall check is a best guess from `nft -j list ruleset`: it doesn't model rule
+          order, can't see iptables-legacy, and doesn't check input-chain drops of UDP 51820.*
+        - *The clock check recognizes only systemd-timesyncd, so a host that uses chrony or ntpd
+          sees a warning.*
+        - *The overlap hint is limited because the VPN's subnets can't change after setup.*
+
 - **Backup and restore (decided 2026-10-03):**
-  - **A backup is one file with the database and the key.** The database's secrets (the
-    server's and the clients' private keys, the AdGuard Home password) are encrypted with
-    `/etc/drawbridge/secret.key`, which sits on the same SD card. A backup without the key
-    couldn't restore after the card fails, so the file holds a consistent snapshot (`VACUUM INTO`)
-    and the key.
-  - **The passphrase is required**, 12 characters or more, because the file holds the key beside
-    what it unlocks. (This replaces "optionally encrypted".) The whole file is encrypted with a
-    key from the passphrase (Argon2id, 64 MiB, four passes) and XChaCha20-Poly1305 in 64 KiB
-    chunks. Each chunk is bound to its position, and the last is marked, so a damaged, reordered,
-    or cut-short file is refused. The payload is a gzipped tar of `manifest.json` (the format, the
-    time, the Drawbridge version, and the schema version), `secret.key`, and `drawbridge.db`.
-  - `drawbridge backup create` (through the daemon) makes one, and so does the System page's
-    download (below). Making one is an event, `backup.created`, because the file holds every
-    secret.
-  - **Restore is `sudo drawbridge backup restore FILE`, with the daemon stopped, and only there**
-    (decided 2026-10-03). A web restore would let a hijacked session replace the whole database,
-    the admin's password hash included, and the daemon can't write `secret.key` anyway. The
-    commands that matter when something has gone wrong are the ones that work at a terminal.
-    Restore decrypts into a temporary file and checks it before touching anything: the file
-    is intact, the schema isn't newer than this Drawbridge understands, SQLite's integrity check
-    passes, and the key opens the database's own encrypted server key. Then it ends every
-    session, records `backup.restored`, moves the current database (and its WAL files) and key
-    aside as `*.before-restore`, installs the new ones with the right owner and mode, and says
-    to restart both units. A failure at any step leaves the current files where they were. An
-    older backup's schema is migrated forward when restore opens it. The TLS certificate isn't in
-    a backup: the host keeps its own, which names the host's addresses and the VPN's as they
-    were when it made it. (`rm -r /var/lib/drawbridge/tls`, with the daemon stopped, makes a new
-    one that names the restored VPN's addresses.) API tokens survive a restore; `drawbridge admin
-    reset-password` revokes them.
-  - **Built (2026-10-03):** the file format and `drawbridge backup create|restore`
-    (`internal/backup`), with the passphrase read from the terminal with no echo (the one new
-    dependency is `golang.org/x/term`, for that), from `--passphrase-file`, or from standard
-    input.
-  - **Web download (built 2026-10-04):** the System page's Backup card calls
-    `POST /api/system/backup` with `{password, passphrase}` and saves the attachment it answers
-    with: the same file as `backup create`. Neither secret is ever in a URL, kept, or logged.
-    - **It takes the account's password again**, as making an API token does, because the file
-      holds every secret the server has, and a session alone (a hijacked one, a browser left
-      open) shouldn't be able to carry them off. A wrong password counts against the login limits
-      (429) and is an event, `auth.backup_failed`. A weak passphrase is refused first, so it
-      costs no attempt.
-    - **The whole file is made before any of it is sent**, in a private temporary directory that
-      is deleted when the response ends, so a failure is an error response and never a download
-      that stops partway. The length is announced, so a browser refuses one that is cut short,
-      and the page refuses a body that doesn't match it. Each piece of the download has its own
-      write deadline, and the daemon's shutdown ends it (ADR 0009).
-    - **The page asks for the passphrase twice**, because one typo makes a backup nobody can
-      open, and it says when the last backup was made (from the `backup.created` events).
-    - **An API token can't use it**, or the list below: a test names both routes.
-    - `GET /api/system/snapshots` lists the host's snapshots for the page: the kind, the time,
-      the size, and the directory. **They are listed, never downloadable**, because a snapshot
-      has no passphrase and the database has the admin's password hash in it. A backup is how a
-      copy leaves the host.
-  - **Local snapshots (built 2026-10-04):** copies of the database alone (SQLite's `VACUUM INTO`),
-    in `/var/lib/drawbridge/backups/` (0700, files 0600), sealed with the key that's already on the
-    host. They protect against a bad change or a bad migration, not against a lost card.
-    - **Nightly:** the daemon makes one when the newest is a day old (`--snapshot-interval`, 0
-      turns them off) and keeps the newest seven (`--snapshot-keep`). It looks at the files, not a
-      timer, so a restart doesn't make an extra one and a host that was off makes one when it's
-      back. It's a few megabytes written once a day, and nothing in the live database.
-    - **Before a migration:** when opening the database would apply a migration to one that has
-      data, the store snapshots it first (`pre-migration-v<schema>-<time>.db`, the newest three
-      kept), and **refuses to migrate if it can't**, leaving the database as it was. Whichever of
-      the tunnel unit and the daemon opens it first after an upgrade does it, and if both open it at
-      once, one of them does (§7). A new database has nothing to save, so none is made.
-    - **Restore:** `sudo drawbridge backup restore FILE` accepts one of them (it recognizes a plain
-      SQLite file), with no passphrase. It goes back as the database alone, opened with the host's
-      own key, which stays; the other checks and the aside files are the same, and an older
-      snapshot is migrated forward.
-    - Making one isn't an event: it changes nothing the admin manages, and the journal has a line
-      for it. The `snapshot` package names, lists, and prunes them, and touches only files whose
-      names it made.
+    - **A backup is one file with the database and the key.** The database's secrets (the
+      server's and the clients' private keys, the AdGuard Home password) are encrypted with
+      `/etc/drawbridge/secret.key`, which sits on the same SD card. A backup without the key
+      couldn't restore after the card fails, so the file holds a consistent snapshot (`VACUUM INTO`)
+      and the key.
+    - **The passphrase is required**, 12 characters or more, because the file holds the key beside
+      what it unlocks. (This replaces "optionally encrypted".) The whole file is encrypted with a
+      key from the passphrase (Argon2id, 64 MiB, four passes) and XChaCha20-Poly1305 in 64 KiB
+      chunks. Each chunk is bound to its position, and the last is marked, so a damaged, reordered,
+      or cut-short file is refused. The payload is a gzipped tar of `manifest.json` (the format, the
+      time, the Drawbridge version, and the schema version), `secret.key`, and `drawbridge.db`.
+    - `drawbridge backup create` (through the daemon) makes one, and so does the System page's
+      download (below). Making one is an event, `backup.created`, because the file holds every
+      secret.
+    - **Restore is `sudo drawbridge backup restore FILE`, with the daemon stopped, and only there**
+      (decided 2026-10-03). A web restore would let a hijacked session replace the whole database,
+      the admin's password hash included, and the daemon can't write `secret.key` anyway. The
+      commands that matter when something has gone wrong are the ones that work at a terminal.
+      Restore decrypts into a temporary file and checks it before touching anything: the file
+      is intact, the schema isn't newer than this Drawbridge understands, SQLite's integrity check
+      passes, and the key opens the database's own encrypted server key. Then it ends every
+      session, records `backup.restored`, moves the current database (and its WAL files) and key
+      aside as `*.before-restore`, installs the new ones with the right owner and mode, and says
+      to restart both units. A failure at any step leaves the current files where they were. An
+      older backup's schema is migrated forward when restore opens it. The TLS certificate isn't in
+      a backup: the host keeps its own, which names the host's addresses and the VPN's as they
+      were when it made it. (`rm -r /var/lib/drawbridge/tls`, with the daemon stopped, makes a new
+      one that names the restored VPN's addresses.) API tokens survive a restore; `drawbridge admin
+      reset-password` revokes them.
+    - **Built (2026-10-03):** the file format and `drawbridge backup create|restore`
+      (`internal/backup`), with the passphrase read from the terminal with no echo (the one new
+      dependency is `golang.org/x/term`, for that), from `--passphrase-file`, or from standard
+      input.
+    - **Web download (built 2026-10-04):** the System page's Backup card calls
+      `POST /api/system/backup` with `{password, passphrase}` and saves the attachment it answers
+      with: the same file as `backup create`. Neither secret is ever in a URL, kept, or logged.
+        - **It takes the account's password again**, as making an API token does, because the file
+          holds every secret the server has, and a session alone (a hijacked one, a browser left
+          open) shouldn't be able to carry them off. A wrong password counts against the login
+          limits (429) and is an event, `auth.backup_failed`. A weak passphrase is refused first, so
+          it costs no attempt.
+        - **The whole file is made before any of it is sent**, in a private temporary directory that
+          is deleted when the response ends, so a failure is an error response and never a download
+          that stops partway. The length is announced, so a browser refuses one that is cut short,
+          and the page refuses a body that doesn't match it. Each piece of the download has its own
+          write deadline, and the daemon's shutdown ends it (ADR 0009).
+        - **The page asks for the passphrase twice**, because one typo makes a backup nobody can
+          open, and it says when the last backup was made (from the `backup.created` events).
+        - **An API token can't use it**, or the list below: a test names both routes.
+        - `GET /api/system/snapshots` lists the host's snapshots for the page: the kind, the time,
+          the size, and the directory. **They are listed, never downloadable**, because a snapshot
+          has no passphrase and the database has the admin's password hash in it. A backup is how a
+          copy leaves the host.
+    - **Local snapshots (built 2026-10-04):** copies of the database alone (SQLite's `VACUUM INTO`),
+      in `/var/lib/drawbridge/backups/` (0700, files 0600), sealed with the key that's already on
+      the host. They protect against a bad change or a bad migration, not against a lost card.
+        - **Nightly:** the daemon makes one when the newest is a day old (`--snapshot-interval`, 0
+          turns them off) and keeps the newest seven (`--snapshot-keep`). It looks at the files, not
+          a timer, so a restart doesn't make an extra one and a host that was off makes one when
+          it's back. It's a few megabytes written once a day, and nothing in the live database.
+        - **Before a migration:** when opening the database would apply a migration to one that has
+          data, the store snapshots it first (`pre-migration-v<schema>-<time>.db`, the newest three
+          kept), and **refuses to migrate if it can't**, leaving the database as it was. Whichever
+          of the tunnel unit and the daemon opens it first after an upgrade does it, and if both
+          open it at once, one of them does (§7). A new database has nothing to save, so none is
+          made.
+        - **Restore:** `sudo drawbridge backup restore FILE` accepts one of them (it recognizes a
+          plain SQLite file), with no passphrase. It goes back as the database alone, opened with
+          the host's own key, which stays; the other checks and the aside files are the same, and an
+          older snapshot is migrated forward.
+        - Making one isn't an event: it changes nothing the admin manages, and the journal has a
+          line for it. The `snapshot` package names, lists, and prunes them, and touches only files
+          whose names it made.
 - **TLS:** the daemon creates a self-signed ECDSA certificate on first start, with SANs for the
   hostname (and `.local`), loopback, and the LAN and VPN addresses, and replaces it 30 days before
   it expires. It lasts 800 days, under the 825 days Apple's platforms accept. Its SHA-256
@@ -1150,50 +1157,50 @@ stateDiagram-v2
   browser's warning is about this certificate. Users can upload their own certificate (M5, built
   2026-10-04, below). ACME DNS-01 is available in M6; HTTP-01 isn't a good fit because the UI
   shouldn't be exposed to the internet.
-  - **Your own certificate (built 2026-10-04).** `drawbridge tls install --cert FILE --key FILE`
-    and the System page's **Web UI Certificate** card give the web UI a certificate the admin
-    brings, so browsers stop warning. `drawbridge tls show` and `GET /api/system/certificate`
-    describe the one in use (its names, issuer, dates, and SHA-256 fingerprint), `tls reset` and
-    `DELETE` go back to the self-signed one, and `PUT` installs. The routes are closed to API
-    tokens.
-  - **What's accepted.** The chain as PEM (the server's own certificate first, then the
-    intermediates) and its private key as PEM in PKCS#8, PKCS#1, or SEC1 form; one file that
-    holds both may be given for each. Everything is checked before anything changes
-    (`tlscert.Parse`), and a refusal changes nothing and records nothing: the key must belong to
-    the first certificate, which must be valid now, name at least one host or address (browsers
-    ignore the common name), allow server authentication, and not use an RSA key under 2048 bits.
-    A key protected by a passphrase is refused with how to remove it, and so is a certificate in
-    the key field or the reverse, which the error says.
-  - **Notes, not refusals.** The page and `tls show` warn when an installed certificate expires
-    within 30 days, covers none of the names the host answers to (its hostname, `.local`, its
-    addresses, and the endpoint), or comes without the intermediates its issuer needs. The admin
-    may reach the UI by a name the certificate covers, so none of these stops an install.
-  - **The web path asks for the password again** (`confirmPassword`, shared with API tokens and
-    the backup download, so a wrong one counts against the login limits and is the event
-    `auth.certificate_failed`). A hijacked session that could install a certificate could put one
-    whose key it holds in front of the admin's next login. The CLI is root's, so it asks for
-    nothing. Going back to the self-signed certificate needs no password: it gives the browser a
-    warning and gives no one a way in.
-  - **It takes effect for the next connection, with no restart.** The TLS configuration asks
-    `tlscert.Store` for the certificate on every handshake (`GetCertificate`), so a connection
-    already open, the one that made the request included, keeps the old certificate. The doctor's
-    TLS check and the setup token read the certificate in use now, not the one at startup.
-  - **On disk.** `tls/uploaded.pem` (mode 0600) holds the chain and then the key as PKCS#8, in
-    one file so that replacing it is one rename and a crash can't leave a certificate beside the
-    wrong key. The self-signed pair stays beside it as the way back, and is made again if it has
-    run out. The key is not sealed with `secret.key`: the TLS stack needs it at startup, like the
-    self-signed key beside it. It is never in a view, an event, a log line, or an API response,
-    and **it is not in a backup** (like the self-signed pair), so the admin keeps their own copy
-    and installs it again after a restore.
-  - **Nothing renews it, and nothing replaces it unasked.** An installed certificate stays in
-    use after it expires: swapping in the self-signed one without being told would hide the
-    problem, and an expired certificate is the admin's to renew. The doctor's TLS check warns 30
-    days ahead and fails at expiry, with the command to install a renewed one (an ACME client's
-    deploy hook can run it; docs/tls-certificate.md). A file that can't be loaded at startup (it
-    was damaged, say) is logged and left alone while the self-signed certificate serves, so the
-    web UI stays reachable; `drawbridge tls reset` clears it.
-  - Events: `tls.certificate_installed` and `tls.certificate_reset` carry the old and new
-    fingerprints (and the names and expiry, for an install), never a key.
+    - **Your own certificate (built 2026-10-04).** `drawbridge tls install --cert FILE --key FILE`
+      and the System page's **Web UI Certificate** card give the web UI a certificate the admin
+      brings, so browsers stop warning. `drawbridge tls show` and `GET /api/system/certificate`
+      describe the one in use (its names, issuer, dates, and SHA-256 fingerprint), `tls reset` and
+      `DELETE` go back to the self-signed one, and `PUT` installs. The routes are closed to API
+      tokens.
+    - **What's accepted.** The chain as PEM (the server's own certificate first, then the
+      intermediates) and its private key as PEM in PKCS#8, PKCS#1, or SEC1 form; one file that
+      holds both may be given for each. Everything is checked before anything changes
+      (`tlscert.Parse`), and a refusal changes nothing and records nothing: the key must belong to
+      the first certificate, which must be valid now, name at least one host or address (browsers
+      ignore the common name), allow server authentication, and not use an RSA key under 2048 bits.
+      A key protected by a passphrase is refused with how to remove it, and so is a certificate in
+      the key field or the reverse, which the error says.
+    - **Notes, not refusals.** The page and `tls show` warn when an installed certificate expires
+      within 30 days, covers none of the names the host answers to (its hostname, `.local`, its
+      addresses, and the endpoint), or comes without the intermediates its issuer needs. The admin
+      may reach the UI by a name the certificate covers, so none of these stops an install.
+    - **The web path asks for the password again** (`confirmPassword`, shared with API tokens and
+      the backup download, so a wrong one counts against the login limits and is the event
+      `auth.certificate_failed`). A hijacked session that could install a certificate could put one
+      whose key it holds in front of the admin's next login. The CLI is root's, so it asks for
+      nothing. Going back to the self-signed certificate needs no password: it gives the browser a
+      warning and gives no one a way in.
+    - **It takes effect for the next connection, with no restart.** The TLS configuration asks
+      `tlscert.Store` for the certificate on every handshake (`GetCertificate`), so a connection
+      already open, the one that made the request included, keeps the old certificate. The doctor's
+      TLS check and the setup token read the certificate in use now, not the one at startup.
+    - **On disk.** `tls/uploaded.pem` (mode 0600) holds the chain and then the key as PKCS#8, in
+      one file so that replacing it is one rename and a crash can't leave a certificate beside the
+      wrong key. The self-signed pair stays beside it as the way back, and is made again if it has
+      run out. The key is not sealed with `secret.key`: the TLS stack needs it at startup, like the
+      self-signed key beside it. It is never in a view, an event, a log line, or an API response,
+      and **it is not in a backup** (like the self-signed pair), so the admin keeps their own copy
+      and installs it again after a restore.
+    - **Nothing renews it, and nothing replaces it unasked.** An installed certificate stays in
+      use after it expires: swapping in the self-signed one without being told would hide the
+      problem, and an expired certificate is the admin's to renew. The doctor's TLS check warns 30
+      days ahead and fails at expiry, with the command to install a renewed one (an ACME client's
+      deploy hook can run it; docs/tls-certificate.md). A file that can't be loaded at startup (it
+      was damaged, say) is logged and left alone while the self-signed certificate serves, so the
+      web UI stays reachable; `drawbridge tls reset` clears it.
+    - Events: `tls.certificate_installed` and `tls.certificate_reset` carry the old and new
+      fingerprints (and the names and expiry, for an install), never a key.
 - **Retention settings, about/version, and an optional update check.**
 
 ---
@@ -1368,28 +1375,28 @@ home LAN. The UI is therefore treated as a high-value target:
 - **No arbitrary hooks.** `PostUp`/`PostDown` commands that can be edited in a GUI (common in
   WireGuard GUIs) run as root under `wg-quick`, which turns a compromised web login into root on
   the host. Drawbridge doesn't offer them.
-  - Everything that hooks usually do (NAT, forwarding, routes) is a typed, validated setting.
+    - Everything that hooks usually do (NAT, forwarding, routes) is a typed, validated setting.
 - **Least privilege:**
-  - The daemon runs as `drawbridge` with only `CAP_NET_ADMIN` and heavy systemd sandboxing (§4.2).
-  - A compromised daemon can change network configuration but can't read `/home`, write system
-    files, or run code as root.
+    - The daemon runs as `drawbridge` with only `CAP_NET_ADMIN` and heavy systemd sandboxing (§4.2).
+    - A compromised daemon can change network configuration but can't read `/home`, write system
+      files, or run code as root.
 - **Strict input validation:** nothing reaches a rendered file unvalidated.
-  - Keys must be 32-byte base64. CIDRs and addresses are parsed with `net/netip`. Ports and MTU
-    are range-checked.
-  - Names, which can contain arbitrary text, never appear in the nftables or WireGuard files.
-    This prevents injection through newlines or quotes.
+    - Keys must be 32-byte base64. CIDRs and addresses are parsed with `net/netip`. Ports and MTU
+      are range-checked.
+    - Names, which can contain arbitrary text, never appear in the nftables or WireGuard files.
+      This prevents injection through newlines or quotes.
 - **Secrets:**
-  - Private keys and PSKs are encrypted at rest, and the DB file is 0600. Session and API
-    tokens are stored only as SHA-256 hashes.
-  - Storing client private keys is optional ("show once, never store").
-  - Secrets are never logged, and the config and QR views are logged as events.
+    - Private keys and PSKs are encrypted at rest, and the DB file is 0600. Session and API
+      tokens are stored only as SHA-256 hashes.
+    - Storing client private keys is optional ("show once, never store").
+    - Secrets are never logged, and the config and QR views are logged as events.
 - **Transport:** HTTPS only. The admin UI allowlist defaults to private ranges and the VPN
   subnets.
 - **Supply chain:**
-  - Dependencies are pinned (`go.sum`, lockfile).
-  - CI runs `govulncheck` and `npm audit`.
-  - Builds are reproducible (`-trimpath`, `SOURCE_DATE_EPOCH`), and releases ship an SBOM and
-    checksums.
+    - Dependencies are pinned (`go.sum`, lockfile).
+    - CI runs `govulncheck` and `npm audit`.
+    - Builds are reproducible (`-trimpath`, `SOURCE_DATE_EPOCH`), and releases ship an SBOM and
+      checksums.
 - **Before v1.0:** a security review against a checklist covering authentication, sessions,
   CSRF, headers, injection, file permissions, and the systemd sandbox, plus a test run with
   `systemd-analyze security drawbridge`.
@@ -1399,24 +1406,24 @@ home LAN. The UI is therefore treated as a high-value target:
 ## 11. Packaging, installation, and upgrades
 
 - **Build:**
-  - `pnpm build` (the SPA) → `go build` with `CGO_ENABLED=0 GOARCH=arm64` → **nfpm** produces
-    `drawbridge_<ver>_arm64.deb`.
-  - An amd64 package is also built for testing in VMs.
+    - `pnpm build` (the SPA) → `go build` with `CGO_ENABLED=0 GOARCH=arm64` → **nfpm** produces
+      `drawbridge_<ver>_arm64.deb`.
+    - An amd64 package is also built for testing in VMs.
 - **Package metadata:**
-  - `Depends: nftables, wireguard-tools`
-  - `Recommends: systemd-timesyncd`
+    - `Depends: nftables, wireguard-tools`
+    - `Recommends: systemd-timesyncd`
 - **`postinst`:**
-  1. Create the `drawbridge` system user from `/usr/lib/sysusers.d/drawbridge.conf`
-     (`systemd-sysusers`, falling back to `adduser`), and the directories.
-  2. Generate `secret.key`. (The daemon creates its self-signed TLS certificate on first
-     start, in its state directory.)
-  3. Install the sysctl and modules-load drop-ins, then apply them. Set `accept_ra=2` where
-     it's needed, before forwarding goes on. If NetworkManager is active, install the drop-in
-     that leaves `wg0` unmanaged (§5.5).
-  4. Initialize the DB (random ULA prefix, server keypair).
-  5. On a first install, enable both units. Start the tunnel and restart the daemon, each only if
-     it's enabled (see Upgrades). Then print the URL, the setup token, and the certificate's
-     fingerprint, until the admin account exists.
+    1. Create the `drawbridge` system user from `/usr/lib/sysusers.d/drawbridge.conf`
+       (`systemd-sysusers`, falling back to `adduser`), and the directories.
+    2. Generate `secret.key`. (The daemon creates its self-signed TLS certificate on first
+       start, in its state directory.)
+    3. Install the sysctl and modules-load drop-ins, then apply them. Set `accept_ra=2` where
+       it's needed, before forwarding goes on. If NetworkManager is active, install the drop-in
+       that leaves `wg0` unmanaged (§5.5).
+    4. Initialize the DB (random ULA prefix, server keypair).
+    5. On a first install, enable both units. Start the tunnel and restart the daemon, each only if
+       it's enabled (see Upgrades). Then print the URL, the setup token, and the certificate's
+       fingerprint, until the admin account exists.
 - **Upgrades:** `apt install ./drawbridge_<new>.deb`. The daemon restarts, while
   `drawbridge-tunnel.service` isn't restarted, so the VPN stays up. Migrations run after a DB
   snapshot. The upgrade matrix (§12) tests the data, and the tunnel with a connected client, from
@@ -1428,16 +1435,16 @@ home LAN. The UI is therefore treated as a high-value target:
   <the version configured last>` (checked in a Debian 13 container with a dummy package); only a
   first install, or an install after `purge`, has no `$2`. So a rule on `$2` would leave a host
   that was removed and installed again with both units off. The rules:
-  - A unit that isn't enabled is left completely alone: not enabled, started, or restarted. An
-    admin who turned the web UI off to take it off the network keeps it off.
-  - An enabled unit should be running. The tunnel is started (a no-op when it's up, and a start
-    when it had stopped), never restarted, so the VPN stays up (ADR 0008); the daemon is
-    restarted.
-  - A daemon that won't restart doesn't fail `postinst`. It prints how to see why (`journalctl -u
-    drawbridge`) and carries on, because the script runs under `set -e` and dpkg would leave the
-    package half-configured. Installing an older build over a newer database does this (see
-    Downgrades), and so does anything else that keeps the daemon from starting.
-  - Only `configure` touches the units: an aborted upgrade (`abort-upgrade`) doesn't.
+    - A unit that isn't enabled is left completely alone: not enabled, started, or restarted. An
+      admin who turned the web UI off to take it off the network keeps it off.
+    - An enabled unit should be running. The tunnel is started (a no-op when it's up, and a start
+      when it had stopped), never restarted, so the VPN stays up (ADR 0008); the daemon is
+      restarted.
+    - A daemon that won't restart doesn't fail `postinst`. It prints how to see why (`journalctl -u
+      drawbridge`) and carries on, because the script runs under `set -e` and dpkg would leave the
+      package half-configured. Installing an older build over a newer database does this (see
+      Downgrades), and so does anything else that keeps the daemon from starting.
+    - Only `configure` touches the units: an aborted upgrade (`abort-upgrade`) doesn't.
 - **Downgrades:** a database from a newer Drawbridge is read by an older one and never written.
   `store.Open` leaves it as it is and says so (`NewerSchema`). The daemon writes, so it refuses to
   start: it names the schema it found and the newest it knows, exits with status 78, and
@@ -1448,12 +1455,12 @@ home LAN. The UI is therefore treated as a high-value target:
   restore a backup made by this one (a restore refuses a newer backup). Until then the web UI is
   down and the VPN is up.
 - **Remove and purge:**
-  - `remove` stops both units (the daemon first) and deletes the interface and nft table. It
-    leaves the units enabled, so installing the package again brings them back, and a unit the
-    admin had disabled stays disabled.
-  - `purge` also deletes `/var/lib/drawbridge` and `/etc/drawbridge`, and the units' links in
-    `/etc/systemd/system/multi-user.target.wants`, which `remove` leaves pointing at unit files
-    that are gone.
+    - `remove` stops both units (the daemon first) and deletes the interface and nft table. It
+      leaves the units enabled, so installing the package again brings them back, and a unit the
+      admin had disabled stays disabled.
+    - `purge` also deletes `/var/lib/drawbridge` and `/etc/drawbridge`, and the units' links in
+      `/etc/systemd/system/multi-user.target.wants`, which `remove` leaves pointing at unit files
+      that are gone.
 - **`install.sh`** (convenience): checks the architecture and OS, downloads the latest release,
   verifies the checksum, and runs `apt install`.
 - **Later:** a signed APT repository so upgrades come through `apt upgrade`.
@@ -1473,6 +1480,7 @@ home LAN. The UI is therefore treated as a high-value target:
 | Upgrade matrix (data) | A database as each earlier release left it (schema 1 to the latest), for a host that was used and one never set up, opened by this build, and restored from an old backup and an old snapshot. Every row is kept and reads back through the current store (secrets, times in the old formats, the password hash), the schema equals a new install's, the pre-migration snapshot is the old database row for row, and the host is as usable as before. Also: migrations are append-only and numbered without gaps, a new migration needs a fixture, a migration that fails halfway changes nothing, and two processes upgrading at once both succeed. The old data is written by hand (`internal/store/storetest`), because a release can't be run again from the squashed history before schema 5 | `go test`, every push: `internal/store`, `internal/backup` |
 | Upgrade matrix (tunnel) | A real older build sets up a host with a connected client, and this build takes over the way the package does: the daemon is swapped and nothing else is restarted. The interface, key, port, and peers don't change, the client's fetches through the tunnel never fail, every row the older build stored is kept, the account logs in with its old password and the browser's login survives, and after a restart of the tunnel the client reconnects with the config it had. One run for each build in `test/integration/upgrade-from.txt` (one merge on main per schema so far, a release's tag from the first one on) | `make test-upgrade`, and a step of CI's "Integration" job |
 | Package scripts | The real `postinst`, `prerm`, and `postrm` through real `dpkg`, against a fake `systemctl` that models enabled by the link systemd reads, active, and a unit that won't start: a first install, an upgrade, a downgrade, a remove, a reinstall after remove, a purge, an install after purge, and an aborted upgrade, each with the units enabled, disabled, stopped, and failing. An admin's `systemctl disable` survives an upgrade, the tunnel is never restarted, and a daemon that won't start doesn't leave the package half-configured. What it can't say is whether systemd does what the fake does | `make test-packaging` (a throwaway Debian container or VM), and CI's "Package scripts" job |
+| Docs site | The site builds strictly (a broken link, anchor, or page fails it), and every list on every page has the depth GitHub gives it: the checker reads each source page the way GitHub does and compares it with the built page, because Zensical's parser needs 4-space nesting and a blank line before a list, and a page that breaks either still builds, with its bullets flattened | `make docs`, and CI's "Docs" workflow on every pull request that touches `docs/` |
 | On hardware | Manual checklist for each release (below) | The reference platform (§2) |
 
 The on-hardware checklist:
@@ -1526,14 +1534,18 @@ drawbridge/                repository root
 ├── scripts/install.sh
 ├── test/integration/      netns-based tests (build tag: integration)
 ├── test/packaging/        the maintainer scripts through real dpkg, with a fake systemctl
+├── test/docs/             the docs site's list check (Python, standard library only)
+├── zensical.toml          the docs site's configuration (nav, theme, extensions)
+├── requirements-docs.txt  the docs site's pinned build tools
 ├── docs/
+│   ├── index.md           the site's home page
 │   ├── PLAN.md            this document
-│   ├── adr/               architecture decision records (D1–D12)
+│   ├── adr/               architecture decision records (D1–D13)
 │   ├── MANUAL_CHECKLIST.md  what has actually run on real hardware
 │   ├── REQUIREMENTS.md    what the host and network need, and known roadblocks
 │   ├── install.md, router-setup.md, troubleshooting.md
 ├── Makefile               every build, lint, test, and package command
-└── .github/workflows/     ci.yml, release.yml
+└── .github/workflows/     ci.yml, docs.yml, release.yml
 ```
 
 ---
@@ -1551,11 +1563,11 @@ Each milestone ends in a usable, tested state.
   same way releases will.
 - Write ADRs for D1–D12, and start `docs/MANUAL_CHECKLIST.md`.
 - **Prepare a host and the router** (docs/REQUIREMENTS.md):
-  - A Debian-family OS, SSH, and a reserved LAN IPv4 address (a DHCP reservation on the router).
-  - A stable IPv6 address.
-  - A port forward (IPv4) for UDP 51820, and an inbound IPv6 rule for it if the router offers one.
-  - DNS A and AAAA records for the FQDN.
-  - Note which DNS resolver, if any, runs on the host and which addresses it listens on (§6.3).
+    - A Debian-family OS, SSH, and a reserved LAN IPv4 address (a DHCP reservation on the router).
+    - A stable IPv6 address.
+    - A port forward (IPv4) for UDP 51820, and an inbound IPv6 rule for it if the router offers one.
+    - DNS A and AAAA records for the FQDN.
+    - Note which DNS resolver, if any, runs on the host and which addresses it listens on (§6.3).
 - **Exit:** CI is green, and a hello-world build runs on a real host as a hardened systemd
   service.
 
@@ -1571,12 +1583,12 @@ Each milestone ends in a usable, tested state.
   module, and NetworkManager drop-ins.
 - Netns integration tests.
 - **Exit:**
-  - `drawbridge client add phone` shows a terminal QR code, and the phone connects over **both** the
-    IPv4 and IPv6 endpoints.
-  - Full-tunnel IPv4 and IPv6 browsing works.
-  - Pause takes effect immediately. After resume, the client reconnects within about 15
-    seconds (WireGuard's retry timer), or at once when its tunnel is switched off and on.
-  - The VPN survives a reboot.
+    - `drawbridge client add phone` shows a terminal QR code, and the phone connects over **both**
+      the IPv4 and IPv6 endpoints.
+    - Full-tunnel IPv4 and IPv6 browsing works.
+    - Pause takes effect immediately. After resume, the client reconnects within about 15
+      seconds (WireGuard's retry timer), or at once when its tunnel is switched off and on.
+    - The VPN survives a reboot.
 
 ### M2: API and authentication
 
@@ -1599,9 +1611,9 @@ Each milestone ends in a usable, tested state.
   docs/MANUAL_CHECKLIST.md §6.*
 - The `.deb` carries both systemd units (the tunnel unit arrives in M1).
 - **Exit:**
-  - Every requested capability (add, remove, pause, basic logs, FQDN, IPs, MTU, DNS, IPv4 and
-    IPv6) can be done from a phone or desktop browser.
-  - It's installed from the `.deb` on a real host.
+    - Every requested capability (add, remove, pause, basic logs, FQDN, IPs, MTU, DNS, IPv4 and
+      IPv6) can be done from a phone or desktop browser.
+    - It's installed from the `.deb` on a real host.
 
 ### M4: Monitoring and logging
 
@@ -1614,11 +1626,11 @@ Each milestone ends in a usable, tested state.
   name sync, and the per-client DNS log.*
 - AdGuard Home integration: client name sync and the per-client DNS log. *Built.*
 - **Exit:**
-  - Connect, disconnect, and roam events are correct in simulated tests and on real hardware,
-    with real clients *(done — docs/MANUAL_CHECKLIST.md §7)*.
-  - Measured DB writes per day stay within a set budget: SD-card-safe by default, and
-    configurable for hosts on an SSD (§6.4) *(done: `TestWriteBudget`; on real hardware,
-    docs/MANUAL_CHECKLIST.md §7)*.
+    - Connect, disconnect, and roam events are correct in simulated tests and on real hardware,
+      with real clients *(done — docs/MANUAL_CHECKLIST.md §7)*.
+    - Measured DB writes per day stay within a set budget: SD-card-safe by default, and
+      configurable for hosts on an SSD (§6.4) *(done: `TestWriteBudget`; on real hardware,
+      docs/MANUAL_CHECKLIST.md §7)*.
 
 ### M5: Hardening and operations → **v1.0**
 
@@ -1637,11 +1649,11 @@ Each milestone ends in a usable, tested state.
   `make test-upgrade`. The package scripts keep an admin's `systemctl disable` across upgrades
   (§11), with their own test (§12).*
 - **Exit:**
-  - The security checklist passes.
-  - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build
-    there is, and by hand on the reference platform with a package upgrade, docs/MANUAL_CHECKLIST.md
-    §2 and §18)*.
-  - Restoring onto a fresh host works.
+    - The security checklist passes.
+    - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build there
+      is, and by hand on the reference platform with a package upgrade, docs/MANUAL_CHECKLIST.md §2
+      and §18)*.
+    - Restoring onto a fresh host works.
 
 ### M6: Extras (pick as needed)
 
