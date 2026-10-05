@@ -124,7 +124,8 @@ setups.** What exists:
   depth GitHub gives it (`test/docs/check_lists.py`).
   The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
   from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
-  upgrading, and removing. Left in M5: router setup and troubleshooting.
+  upgrading, and removing. Left in M5: router setup, troubleshooting, and the release pipeline
+  (docs/PLAN.md §11.1: a version tag, `release.yml`, `CHANGELOG.md`, and `install.sh`).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -759,7 +760,7 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/install.md` is the admin's install guide, from getting the package to a first client. Its
   "Get the package" section describes how to get a `.deb` before there's a release; change it
-  when `release.yml` and `install.sh` (docs/PLAN.md §11) exist.
+  when `release.yml` and `install.sh` (docs/PLAN.md §11.1) exist.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
 - `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
 - `docs/two-factor.md` is the admin's guide to two-factor authentication: turning it on, the
