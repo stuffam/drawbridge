@@ -42,6 +42,18 @@ updates:
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
 
+  # The docs site's build tools, pinned in requirements-docs.txt (ADR 0013).
+  # Zensical is alpha, so a release can break a page: the Docs workflow builds the site strictly on
+  # the pull request, and that is the check.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      docs-site:
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

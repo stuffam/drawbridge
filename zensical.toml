@@ -1,0 +1,98 @@
+# The documentation site: Zensical reads docs/ and writes site/, and .github/workflows/docs.yml
+# publishes it to https://stuffam.github.io/drawbridge/. `make docs-serve` previews it.
+
+[project]
+site_name = "Drawbridge"
+site_description = "A self-hosted web manager for a WireGuard VPN server."
+site_url = "https://stuffam.github.io/drawbridge/"
+repo_url = "https://github.com/stuffam/drawbridge"
+repo_name = "stuffam/drawbridge"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+site_dir = "site"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Guides" = [
+    "REQUIREMENTS.md",
+    "backup-restore.md",
+    "two-factor.md",
+    "tls-certificate.md",
+    "api-tokens.md",
+  ] },
+  { "Project" = [
+    "PLAN.md",
+    { "Decisions" = [
+      "adr/README.md",
+      "adr/0001-go-backend.md",
+      "adr/0002-svelte-web-ui.md",
+      "adr/0003-sqlite-datastore.md",
+      "adr/0004-database-source-of-truth.md",
+      "adr/0005-netlink-not-wg-quick.md",
+      "adr/0006-nftables-own-table.md",
+      "adr/0007-unprivileged-cap-net-admin.md",
+      "adr/0008-separate-tunnel-and-ui-units.md",
+      "adr/0009-server-sent-events.md",
+      "adr/0010-deb-with-nfpm.md",
+      "adr/0011-admin-ui-lan-and-vpn-only.md",
+      "adr/0012-adguard-home-client-dns.md",
+      "adr/0013-docs-site-zensical.md",
+    ] },
+    "MANUAL_CHECKLIST.md",
+  ] },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "content.action.edit",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+# The docs are written as GitHub-flavored Markdown, so this is a short list. Zensical's starter
+# list also turns on arithmatex (`$...$` becomes math, and shell commands have dollar signs),
+# tilde and caret (`~x~` and `^x^` become subscripts and superscripts), and smartsymbols (`1/2`
+# becomes a fraction). Add one only after checking that no page changes.
+[project.markdown_extensions]
+admonition = {}
+toc.permalink = true
+pymdownx.details = {}
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.magiclink = {}
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tasklist.custom_checkbox = true

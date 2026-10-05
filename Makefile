@@ -128,6 +128,26 @@ test-web: $(WEB_DEPS) ## Run the web app's unit tests.
 test-e2e: web build ## Drive the real web app in a browser, against `serve --backend fake` (Playwright).
 	cd web && DRAWBRIDGE_BIN=$(CURDIR)/dist/drawbridge npx playwright test
 
+# The docs site (zensical.toml): Zensical, in a virtualenv of its own. It needs Python 3.10 or later,
+# so on a machine whose python3 is older, `make docs PYTHON=python3.13`.
+PYTHON    ?= python3
+DOCS_VENV ?= $(CURDIR)/.venv-docs
+
+$(DOCS_VENV)/bin/zensical: requirements-docs.txt
+	$(PYTHON) -m venv $(DOCS_VENV)
+	$(DOCS_VENV)/bin/pip install -q -r requirements-docs.txt
+	@touch $@
+
+.PHONY: docs
+docs: $(DOCS_VENV)/bin/zensical ## Build the docs site into site/ (strictly), and check its lists against GitHub's.
+	$(DOCS_VENV)/bin/python -m unittest discover -s test/docs
+	$(DOCS_VENV)/bin/zensical build --clean --strict
+	$(DOCS_VENV)/bin/python test/docs/check_lists.py docs site
+
+.PHONY: docs-serve
+docs-serve: $(DOCS_VENV)/bin/zensical ## Preview the docs site at http://localhost:8000, rebuilt as docs/ changes.
+	$(DOCS_VENV)/bin/zensical serve
+
 .PHONY: lint
 lint: lint-go lint-web spell ## Run every linter and the spelling check.
 

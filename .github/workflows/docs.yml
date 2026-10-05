@@ -1,0 +1,67 @@
+name: Docs
+
+# The documentation site (zensical.toml): built strictly on every pull request that touches it, so a
+# broken link or a list that the site shows differently from GitHub fails there, and published to
+# https://stuffam.github.io/drawbridge/ when the change reaches main. The repository's Pages source
+# has to be "GitHub Actions" (Settings, Pages, Build and deployment).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - zensical.toml
+      - requirements-docs.txt
+      - test/docs/**
+      - .github/workflows/docs.yml
+  pull_request:
+    paths:
+      - docs/**
+      - zensical.toml
+      - requirements-docs.txt
+      - test/docs/**
+      - .github/workflows/docs.yml
+  # To publish again without a change to the docs, such as the first time after the Pages source
+  # was switched.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          # The version the site was built and checked with. Zensical needs 3.10 or later.
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - name: Test the list check, build the site strictly, and check its lists
+        run: make docs
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request'
+        with:
+          path: site
+
+  deploy:
+    name: Publish
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One publish at a time, and none canceled halfway.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: deployment

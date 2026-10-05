@@ -12,6 +12,11 @@ desktop.ini
 /dist/
 /drawbridge
 
+# The docs site: `make docs` builds it into site/, from a virtualenv in .venv-docs. Zensical's own
+# cache, .cache/, ignores itself.
+/site/
+/.venv-docs/
+
 # `make web` copies the web app's build here; only the placeholder is tracked.
 /internal/webui/dist/*
 !/internal/webui/dist/.keep

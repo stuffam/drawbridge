@@ -89,6 +89,7 @@ and lets it in over IPv6. The kernel integration tests also run on Ubuntu 24.04 
 | D10 | Distribution | A **`.deb` built with nfpm** for arm64 (plus amd64 for VM testing), published as a GitHub Release | Installs and upgrades natively with `apt`/`dpkg`. |
 | D11 | Admin UI exposure | **Home network and VPN only** (decided), enforced both in the app and in nftables. The admin may add extra private-range sources, such as a Tailscale tailnet, as a setting (2026-09-26) | Anyone who controls the UI can reach the whole home network, so it must never face the internet. Two independent layers keep it off the internet even if one is misconfigured. |
 | D12 | Client DNS | **Public resolvers by default; a resolver on the host, such as AdGuard Home, when one answers on the VPN addresses** (decided; amended 2026-09-29); optional AdGuard Home integration syncs client names through its REST API (M4) | Ad-blocking and per-client DNS query logs for VPN clients, with no second resolver to run, on hosts that have one; a working default on hosts that don't. The setup wizard and Settings check the VPN addresses (`GET /api/server/dns-check`) and preselect the host only when it answers. |
+| D13 | Documentation site | **Zensical, built from `docs/` and published to GitHub Pages by a workflow** (decided 2026-10-04) | Readers who aren't contributors get navigation, search, and a stable URL, and the Markdown still reads the same on GitHub. Zensical is the successor to Material for MkDocs, which is in maintenance mode. It's alpha, so its version is pinned and the build is strict on every pull request; ADR 0013 has the trade-offs. |
 
 ---
 
@@ -1479,6 +1480,7 @@ home LAN. The UI is therefore treated as a high-value target:
 | Upgrade matrix (data) | A database as each earlier release left it (schema 1 to the latest), for a host that was used and one never set up, opened by this build, and restored from an old backup and an old snapshot. Every row is kept and reads back through the current store (secrets, times in the old formats, the password hash), the schema equals a new install's, the pre-migration snapshot is the old database row for row, and the host is as usable as before. Also: migrations are append-only and numbered without gaps, a new migration needs a fixture, a migration that fails halfway changes nothing, and two processes upgrading at once both succeed. The old data is written by hand (`internal/store/storetest`), because a release can't be run again from the squashed history before schema 5 | `go test`, every push: `internal/store`, `internal/backup` |
 | Upgrade matrix (tunnel) | A real older build sets up a host with a connected client, and this build takes over the way the package does: the daemon is swapped and nothing else is restarted. The interface, key, port, and peers don't change, the client's fetches through the tunnel never fail, every row the older build stored is kept, the account logs in with its old password and the browser's login survives, and after a restart of the tunnel the client reconnects with the config it had. One run for each build in `test/integration/upgrade-from.txt` (one merge on main per schema so far, a release's tag from the first one on) | `make test-upgrade`, and a step of CI's "Integration" job |
 | Package scripts | The real `postinst`, `prerm`, and `postrm` through real `dpkg`, against a fake `systemctl` that models enabled by the link systemd reads, active, and a unit that won't start: a first install, an upgrade, a downgrade, a remove, a reinstall after remove, a purge, an install after purge, and an aborted upgrade, each with the units enabled, disabled, stopped, and failing. An admin's `systemctl disable` survives an upgrade, the tunnel is never restarted, and a daemon that won't start doesn't leave the package half-configured. What it can't say is whether systemd does what the fake does | `make test-packaging` (a throwaway Debian container or VM), and CI's "Package scripts" job |
+| Docs site | The site builds strictly (a broken link, anchor, or page fails it), and every list on every page has the depth GitHub gives it: the checker reads each source page the way GitHub does and compares it with the built page, because Zensical's parser needs 4-space nesting and a blank line before a list, and a page that breaks either still builds, with its bullets flattened | `make docs`, and CI's "Docs" workflow on every pull request that touches `docs/` |
 | On hardware | Manual checklist for each release (below) | The reference platform (§2) |
 
 The on-hardware checklist:
@@ -1532,14 +1534,18 @@ drawbridge/                repository root
 ├── scripts/install.sh
 ├── test/integration/      netns-based tests (build tag: integration)
 ├── test/packaging/        the maintainer scripts through real dpkg, with a fake systemctl
+├── test/docs/             the docs site's list check (Python, standard library only)
+├── zensical.toml          the docs site's configuration (nav, theme, extensions)
+├── requirements-docs.txt  the docs site's pinned build tools
 ├── docs/
+│   ├── index.md           the site's home page
 │   ├── PLAN.md            this document
-│   ├── adr/               architecture decision records (D1–D12)
+│   ├── adr/               architecture decision records (D1–D13)
 │   ├── MANUAL_CHECKLIST.md  what has actually run on real hardware
 │   ├── REQUIREMENTS.md    what the host and network need, and known roadblocks
 │   ├── install.md, router-setup.md, troubleshooting.md
 ├── Makefile               every build, lint, test, and package command
-└── .github/workflows/     ci.yml, release.yml
+└── .github/workflows/     ci.yml, docs.yml, release.yml
 ```
 
 ---
