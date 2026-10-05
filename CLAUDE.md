@@ -100,7 +100,17 @@ setups.** What exists:
   With it on, `POST /api/auth/login` answers a right password and no code with a 401 whose error
   code is `totp_required`, and the login page asks for the code in a second step.
   `drawbridge admin disable-2fa` is the way back for an admin who lost the app and the codes.
-  Left in M5: the upgrade matrix and the docs (install, router setup, troubleshooting).
+- The upgrade matrix (2026-10-04), the eighth slice of M5 (docs/PLAN.md §12). Its data half runs in
+  `go test`: a database as each schema from 1 to 11 left it, for a used host and one never set up
+  (`internal/store/storetest`), is opened by this build and restored from an old backup and an old
+  snapshot (`TestUpgradeFromEverySchema`, `TestRestoreFromEverySchema`). Its tunnel half, `make
+  test-upgrade`, sets a host up with a real older binary built from each ref in
+  `test/integration/upgrade-from.txt`, with a client connected, and swaps in this build the way the
+  package does. It found that two processes opening an old database at once failed; `store.Open`
+  now re-reads the version inside each migration's transaction. The same slice settled downgrades:
+  an older build reads a newer database and never writes it, so the daemon refuses to start on one
+  and the tunnel unit carries on (docs/PLAN.md §11).
+  Left in M5: the docs (install, router setup, troubleshooting).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -220,6 +230,7 @@ make spell      # the U.S. English check on every tracked file
 make fmt        # format Go (gofmt, goimports) and the web app (Prettier)
 make deb        # web build, arm64 and amd64 binaries, and both .deb files in dist/
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
+make test-upgrade       # upgrade from each older build (test/integration/upgrade-from.txt)
 make test-e2e   # the web app in Chromium against `serve --backend fake` (Playwright)
 ```
 
@@ -435,6 +446,27 @@ These are the rules most likely to get silently broken.
   making an API token, so a wrong one counts against the login limits), makes the whole file
   before it sends any of it, and writes each piece under its own deadline. Snapshots are listed
   in the web UI and never downloadable: they have no passphrase.
+- **Migrations are append-only, and each ships with its fixture.** A shipped migration is never
+  edited, renumbered, or removed: a database that applied it keeps the old text, and records only
+  the highest version it applied, so numbers have no gaps. `TestReleasedMigrationsAreNeverChanged`
+  pins each migration's statements (not its comments) by hash,
+  `TestMigrationsAreNumberedWithoutGaps` catches two branches that each added `0012`, and
+  `TestEveryMigrationHasAFixture` fails until the new migration has a feature in
+  `internal/store/storetest`: seed rows for what it adds, written as raw SQL against that version's
+  tables in the shape the release stored them (sealed secrets under their purposes, times in the
+  format of the day), and the check that reads them back through the store. Then
+  `TestUpgradeFromEverySchema` and `TestRestoreFromEverySchema` exercise it from every older schema
+  for free, and fail on any row an upgrade loses or changes. A migration that changes old rows on
+  purpose says so by changing the old fixture, not by loosening `storetest.Kept`. Add the new
+  migration's hash to `released`, and the release's tag to `test/integration/upgrade-from.txt`.
+- **A database from a newer build is read, never written.** `store.Open` leaves one alone and
+  `Store.NewerSchema` says so. `serve` (`openService`) refuses it, exits 78 (`exitDatabaseNewer`),
+  and `drawbridge.service` has `RestartPreventExitStatus=78`, so a downgrade doesn't make the daemon
+  flap. `tunnel up` and `tunnel down` warn and go on, because they only read: keep it so (the
+  reconciler's `State` interface is `Settings` and `Clients`, and a write there would be a decision
+  to make out loud). Anything new that opens the database and writes must check `NewerSchema` first.
+  `TestServeRefusesADatabaseFromANewerBuild` and `TestANewerDatabaseStopsTheDaemonNotTheTunnel`
+  check both halves.
 - **A migration needs its snapshot first.** `store.Open` with `WithMigrationSnapshots` (both
   units pass it) snapshots a database that has data before applying any migration to it, and
   returns an error without migrating when it can't. Don't make that a warning: a migration that
@@ -557,6 +589,12 @@ preinstalled, running as root):
   preinstalled, and root through passwordless sudo. The modules load without
   `linux-modules-extra`, the preflight's probes all pass, and the kernel tests pass there
   (about 40 seconds).
+- On that runner (2026-10-04), the drawbridge processes the kernel tests start printed nothing to
+  standard error, and the journal is reachable there (the journal tests don't skip). Setting
+  `JOURNAL_STREAM` with a journal socket present reproduces the silence exactly, so the runner
+  evidently hands `JOURNAL_STREAM` to every step: a binary that sees it logs to the journal
+  (`newLoggerAt`). `TestMain` unsets it, and the journal tests set it on their own daemon. A test
+  that reads a child's output needs that, or it passes in a container and fails in CI.
 - Current GitHub Actions majors: `actions/checkout@v7`, `actions/setup-go@v7`,
   `actions/setup-node@v7`, `actions/upload-artifact@v7`, `actions/download-artifact@v8`, and
   `golangci/golangci-lint-action@v9`. All run on Node 24.
@@ -577,6 +615,20 @@ preinstalled, running as root):
   `@playwright/test`).
 - Where Go and Node were installed by hand (`/usr/local/go/bin`, nvm's `bin`), the tools' PATH
   can miss them until the shell is restarted.
+
+**The upgrade matrix** (2026-10-04, Docker Desktop's VM, a 7.0 aarch64 kernel with WireGuard):
+
+- The repository's history starts at the "Initial commit" (`72174d0`, 2026-09-29), which is schema
+  5. Schemas 1 to 4 can't be built again, which is why the data half of the matrix writes its old
+  databases by hand. From schema 5 on, every schema's build is in the history and builds with a
+  plain `go build` (`CGO_ENABLED=0`, no web build needed: the daemon starts without the UI).
+- The oldest build's CLI has what the upgrade test uses: `tunnel up`, `serve` with
+  `--drift-interval`, `server set --endpoint`, `client add|pause|config`, `admin create`, and
+  `events`. A flag added since (`--safe-apply-window`) is passed only to this build.
+- The units order the daemon after the tunnel unit (`After=`), so under systemd the two shouldn't
+  open an old database together. Two processes that did, in a test, failed before the fix: one on
+  a snapshot name that `snapshot.NewPath` had picked for both, the other on `table users already
+  exists`, from the migration the first had applied.
 
 **The plan's example ruleset** (§5.3) passes `nft -c` and loads in a network namespace with
 nftables 1.0.9.
@@ -660,6 +712,10 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
     swaps it in. `store.Snapshot` is the `VACUUM INTO` copy it's made from.
   - `snapshot/` names, lists, and prunes the host's database snapshots, with no dependency on
     the store, which uses it for the one before a migration.
+  - `store/storetest/` builds the databases older releases left (`Build`, with
+    `store.WithSchemaLimit` making the schema) and reads them back through the current store
+    (`Verify`); it has one feature per migration, and `Kept`, `Rows`, and `Schema` compare a
+    database before and after an upgrade. Only tests import it.
   - `auth/` has password hashing, tokens, the login rate limiter, and TOTP codes and recovery
     codes (totp.go); `lan/` detects the LAN and builds the admin allowlist; `tlscert/` makes the
     self-signed certificate and holds the one in use (`Store`, which swaps it live and keeps the
@@ -669,7 +725,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   middleware in middleware.go) and the embedded web app. `internal/webui/` embeds the
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports
   readiness to systemd, and `internal/version/` holds the build-time version.
-- `test/integration/` holds the kernel tests (build tag `integration`).
+- `test/integration/` holds the kernel tests (build tag `integration`), and the upgrade test with
+  its list of older builds (`upgrade-from.txt`) and the script that builds and runs them
+  (`upgrade.sh`).
 - `web/` is the SvelteKit app. `src/routes/(auth)/` holds setup and login, and
   `src/routes/(app)/` everything behind a session (its `+layout.ts` is the guard). `src/lib/`
   has the API client (`api.ts`), formatting (`format.ts`), and components. `e2e/` holds the

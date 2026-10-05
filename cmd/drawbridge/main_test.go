@@ -15,6 +15,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	"github.com/stuffam/drawbridge/internal/reconcile"
 	"github.com/stuffam/drawbridge/internal/service"
 	"github.com/stuffam/drawbridge/internal/store"
+	"github.com/stuffam/drawbridge/internal/store/storetest"
 	"github.com/stuffam/drawbridge/internal/tlscert"
 	"github.com/stuffam/drawbridge/internal/tlscert/tlscerttest"
 	"github.com/stuffam/drawbridge/internal/version"
@@ -968,6 +970,58 @@ func TestServeWithTheFakeBackend(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "fake WireGuard backend") {
 		t.Fatalf("serve didn't warn about the fake backend:\n%s", stderr.String())
+	}
+}
+
+// A database that a newer Drawbridge last used is one the daemon won't write to (docs/PLAN.md
+// §11): it says why, leaves the database as it was, and exits with the status the unit won't
+// restart on.
+func TestServeRefusesADatabaseFromANewerBuild(t *testing.T) {
+	dir := t.TempDir()
+	secret := filepath.Join(dir, "secret.key")
+	if err := os.WriteFile(secret, bytes.Repeat([]byte{4}, 32), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	db := filepath.Join(dir, "db")
+	serveArgs := []string{"serve", "--backend", "fake", "--listen", "127.0.0.1:0", "--db", db, "--secret-key", secret,
+		"--control", filepath.Join(dir, "control.sock")}
+
+	// A database this build has used, made newer.
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, serveArgs, nil, io.Discard, io.Discard) }()
+	waitFor(t, func() bool {
+		return runCLI("", "server", "show", "--control="+filepath.Join(dir, "control.sock")).code == 0
+	})
+	cancel()
+	if code := <-done; code != 0 {
+		t.Fatalf("the first run exited %d", code)
+	}
+	newer := store.LatestSchema() + 1
+	storetest.MakeNewer(t, db, newer)
+	before := storetest.Rows(t, db)
+
+	// If it started, it would run until the context ends, and the exit status would say so.
+	refused, stop := context.WithTimeout(context.Background(), 10*time.Second)
+	defer stop()
+	var stderr bytes.Buffer
+	code := run(refused, serveArgs, nil, io.Discard, &stderr)
+	if code != exitDatabaseNewer {
+		t.Errorf("serve exited %d, want %d:\n%s", code, exitDatabaseNewer, stderr.String())
+	}
+	for _, want := range []string{"from a newer Drawbridge", "schema " + strconv.Itoa(newer), "knows up to " + strconv.Itoa(store.LatestSchema()), "restore a backup"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("serve's message doesn't say %q:\n%s", want, stderr.String())
+		}
+	}
+	if got := storetest.Version(t, db); got != newer {
+		t.Errorf("the database is at schema %d, want it left at %d", got, newer)
+	}
+	if after := storetest.Rows(t, db); !reflect.DeepEqual(after, before) {
+		t.Error("serve changed a database it refused")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "backups")); err == nil {
+		t.Error("serve made a snapshot of a database it refused")
 	}
 }
 

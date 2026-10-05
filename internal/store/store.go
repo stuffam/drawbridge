@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"net/netip"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,8 +58,15 @@ type Store struct {
 	// of those are kept (WithMigrationSnapshots). An empty dir means none is made.
 	snapshotDir  string
 	snapshotKeep int
+	// migrations holds the schema's migrations: the embedded ones, except in a test that
+	// supplies its own. schemaLimit, when positive, stops Open at that version
+	// (WithSchemaLimit).
+	migrations  fs.FS
+	schemaLimit int
 	// migration is what Open did to the schema, if anything.
 	migration *Migration
+	// newer is the database's schema version when that's later than this build knows.
+	newer int
 }
 
 // Option changes how Open opens the database.
@@ -76,6 +84,13 @@ func WithMigrationSnapshots(dir string, keep int) Option {
 	}
 }
 
+// WithSchemaLimit makes Open stop at schema version v instead of the latest, which builds the
+// database an older release left behind. The upgrade tests use it (internal/store/storetest,
+// docs/PLAN.md §12); nothing in the daemon does.
+func WithSchemaLimit(v int) Option {
+	return func(s *Store) { s.schemaLimit = v }
+}
+
 // Migration says what Open did to the schema.
 type Migration struct {
 	// From is the schema version the database was at, 0 for a new one, and To the version it's at
@@ -88,6 +103,13 @@ type Migration struct {
 
 // Migration returns what Open did to the schema, or nil when it was already current.
 func (s *Store) Migration() *Migration { return s.migration }
+
+// NewerSchema is the schema version of the database when it's later than this build knows
+// (LatestSchema), and 0 otherwise. Open leaves such a database as it is, because a build that
+// doesn't know the newer schema mustn't write to it. What to do about it is the caller's
+// (docs/PLAN.md §11): the daemon writes, so it refuses to start, and the tunnel unit only
+// reads, so it carries on.
+func (s *Store) NewerSchema() int { return s.newer }
 
 // Open opens (creating if needed) the database at path and brings its schema up to date.
 func Open(ctx context.Context, path string, sealer *keys.Sealer, opts ...Option) (*Store, error) {
@@ -105,7 +127,7 @@ func Open(ctx context.Context, path string, sealer *keys.Sealer, opts ...Option)
 	}
 	// One connection serializes access within the process; the load is tiny.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, sealer: sealer, now: time.Now}
+	s := &Store{db: db, sealer: sealer, now: time.Now, migrations: migrationFiles}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -128,52 +150,91 @@ func (s *Store) migrate(ctx context.Context) error {
 	)`); err != nil {
 		return err
 	}
-	var current int
-	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&current); err != nil {
-		return err
-	}
-	names, err := fs.Glob(migrationFiles, "migrations/*.sql")
+	names, err := fs.Glob(s.migrations, "migrations/*.sql")
 	if err != nil {
 		return err
 	}
 	sort.Strings(names)
-	target := LatestSchema()
-	if target > current {
-		// A database with data is snapshotted first; a new one has nothing to lose.
-		m := &Migration{From: current, To: target}
-		if current > 0 && s.snapshotDir != "" {
-			path, err := s.snapshotBeforeMigrating(ctx, current)
-			if err != nil {
-				return fmt.Errorf("snapshotting the database before migrating it from schema %d to %d: %w", current, target, err)
-			}
-			m.Snapshot = path
-		}
-		s.migration = m
+	latest := latestSchemaIn(s.migrations)
+	target := latest
+	if s.schemaLimit > 0 && s.schemaLimit < target {
+		target = s.schemaLimit
 	}
+
+	// A database with data is snapshotted first; a new one has nothing to lose. The tunnel unit
+	// and the daemon can both find the database behind and get here together, so the version is
+	// read again after the snapshot, and the loop starts over if the other one got there first.
+	var (
+		current  int
+		snapPath string
+	)
+	for {
+		if current, err = s.SchemaVersion(ctx); err != nil {
+			return err
+		}
+		if current > latest {
+			s.newer = current
+		}
+		if current >= target {
+			return nil
+		}
+		if current == 0 || s.snapshotDir == "" {
+			break
+		}
+		snapPath, err = s.snapshotBeforeMigrating(ctx, current)
+		if errors.Is(err, errMovedOn) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("snapshotting the database before migrating it from schema %d to %d: %w", current, target, err)
+		}
+		break
+	}
+
+	applied := 0
 	for _, name := range names {
 		base := strings.TrimPrefix(name, "migrations/")
 		version, err := strconv.Atoi(strings.SplitN(base, "_", 2)[0])
 		if err != nil {
 			return fmt.Errorf("migration %s has no version number", base)
 		}
-		if version <= current {
+		if version <= current || version > target {
 			continue
 		}
-		script, err := migrationFiles.ReadFile(name)
+		script, err := fs.ReadFile(s.migrations, name)
 		if err != nil {
 			return err
 		}
 		err = s.tx(ctx, func(tx *sql.Tx) error {
+			// The transaction holds the write lock from its start, so what it reads here is
+			// what it changes: if another process applied this migration since the version was
+			// read, there's nothing left to do.
+			var done int
+			if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_migrations`).Scan(&done); err != nil {
+				return err
+			}
+			if done >= version {
+				return nil
+			}
 			if _, err := tx.ExecContext(ctx, string(script)); err != nil {
 				return fmt.Errorf("migration %s: %w", base, err)
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`,
-				version, s.timestamp())
-			return err
+			if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`,
+				version, s.timestamp()); err != nil {
+				return err
+			}
+			applied++
+			return nil
 		})
 		if err != nil {
 			return err
 		}
+	}
+	if applied > 0 {
+		s.migration = &Migration{From: current, To: target, Snapshot: snapPath}
+	} else if snapPath != "" {
+		// The other process did it all, and has its own snapshot from before.
+		_ = os.Remove(snapPath)
 	}
 	return nil
 }

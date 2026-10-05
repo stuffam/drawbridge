@@ -58,6 +58,10 @@ func TestMain(m *testing.M) {
 		fmt.Println("skipping: set DRAWBRIDGE_INTEGRATION=1 (make test-integration) to run the kernel tests")
 		os.Exit(0)
 	}
+	// A runner that's a systemd service hands JOURNAL_STREAM down to every step, and a binary
+	// that sees it logs to the journal and prints nothing to the standard error these tests read.
+	// The journal tests set it on their own daemon.
+	_ = os.Unsetenv("JOURNAL_STREAM")
 	os.Exit(m.Run())
 }
 
@@ -235,9 +239,17 @@ func (s *server) tunnel(sub string) {
 
 func (s *server) startDaemon() {
 	s.t.Helper()
+	s.startDaemonWith("--drift-interval", "1s", "--safe-apply-window", "4s")
+}
+
+// startDaemonWith starts the daemon with flags besides the ones every build has. The upgrade
+// test runs older builds, which don't have every flag the current one does.
+func (s *server) startDaemonWith(flags ...string) {
+	s.t.Helper()
 	// The default listen address: every address in the namespace, port 51821.
-	s.daemon = exec.Command("ip", "netns", "exec", s.tp.srv, s.bin, "serve",
-		"--db", s.db, "--secret-key", s.secret, "--control", s.socket, "--drift-interval", "1s", "--safe-apply-window", "4s")
+	args := append([]string{"netns", "exec", s.tp.srv, s.bin, "serve",
+		"--db", s.db, "--secret-key", s.secret, "--control", s.socket}, flags...)
+	s.daemon = exec.Command("ip", args...)
 	s.daemon.Stdout, s.daemon.Stderr = s, s
 	if err := s.daemon.Start(); err != nil {
 		s.t.Fatal(err)

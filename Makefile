@@ -111,6 +111,11 @@ test-integration: build ## Run the kernel WireGuard tests in network namespaces 
 	DRAWBRIDGE_INTEGRATION=1 DRAWBRIDGE_BIN=$(CURDIR)/dist/drawbridge \
 		$(GO) test -tags integration -count=1 -v $(SUDO_EXEC) ./test/integration/
 
+.PHONY: test-upgrade
+test-upgrade: build ## Upgrade a host from each older build in test/integration/upgrade-from.txt, tunnel up (same needs as test-integration).
+	test/integration/preflight.sh
+	DRAWBRIDGE_BIN=$(CURDIR)/dist/drawbridge test/integration/upgrade.sh
+
 .PHONY: test-web
 test-web: $(WEB_DEPS) ## Run the web app's unit tests.
 	cd web && $(NPM) test

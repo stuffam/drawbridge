@@ -571,7 +571,8 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   refused, and the host's database and key are as they were.
 - `[UNVERIFIED]` With the daemon running, `restore` refuses and says to stop it.
 - `[UNVERIFIED]` A backup made by the previous release restores onto this one, and the database is
-  migrated (the upgrade half of the matrix, until that has its own tests).
+  migrated (`TestRestoreFromEverySchema` checks this for every earlier schema, with data written
+  by hand; §18 has the part that needs a real older build).
 - `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
   and an API token made before the backup still works.
 - `[UNVERIFIED]` Nightly snapshots: a minute after the daemon starts on a host with none, one
@@ -802,3 +803,46 @@ real authenticator app has scanned the QR code, and no phone's clock has been in
 - `[UNVERIFIED]` Over the VPN from a phone: the login's code step and the Account page work in the
   phone's browser, and the browser's password manager doesn't fill the code field with the
   password.
+
+## 18. The upgrade matrix (the eighth M5 slice)
+
+The tests that upgrade a host from every older build there is (docs/PLAN.md §12), and a bug they
+found (two processes opening an old database at the same time failed, on a snapshot name or a table
+that already existed; docs/PLAN.md §7 says what happens now). Two kinds. The data half runs in `go
+test` (`internal/store`, `internal/backup`): a database as each schema from 1 to 11 left it, written
+by hand, for a host that was used and one that was never set up, upgraded by this build, restored
+from an old backup and an old snapshot. The tunnel half runs a real older binary (`make
+test-upgrade`, `test/integration/upgrade-from.txt`): it sets a host up with a client connected
+through the tunnel and an admin logged in, then this build takes over the way the package does, with
+the daemon swapped and nothing else restarted.
+
+What has run, away from the reference platform: all of the data half, and all seven runs of the
+tunnel half, in Docker Desktop's VM (a 7.0 aarch64 kernel with WireGuard and IPv6), from builds of
+schemas 5, 6, 7, 8, 9, 10, and 11 to this one. In each, wg0 kept its interface index, key, port, and
+peers; the 40-odd fetches through the tunnel from a connected client during the swap (the test logs
+the count) didn't fail once; every row the older build stored was still there; the admin's login
+from before the upgrade still worked, and so did logging in again with the password the older build
+printed; the TLS certificate was the same file; and after `tunnel down` and `tunnel up` the client
+reconnected with the config it had. A mutation check of each: a migration that loses rows, one that
+rewrites a value, and a tunnel restarted during the swap each fail the tests that should.
+
+- `[UNVERIFIED]` CI's "Integration" job passes with the new "Upgrade tests" step, on a GitHub-hosted
+  runner (Ubuntu's kernel, not Docker Desktop's).
+- `[UNVERIFIED]` `make test-upgrade` on the reference platform passes for every build in the list.
+  It needs root, the wireguard module, and the whole history (`git fetch --unshallow` on a shallow
+  clone), and takes about 25 seconds of test and one build for each.
+- `[UNVERIFIED]` The package half, which the tests don't cover: `sudo apt install
+  ./drawbridge_*.deb` over the previous release, with a client connected, as in §2's `[VERIFIED
+  2026-09-27]` step, now also with the journal saying `upgraded the database` and `backups/` holding
+  the snapshot (§13's first step). The matrix swaps the daemon the way `postinst` does; it doesn't
+  run `postinst`.
+- `[UNVERIFIED]` A downgrade, on the reference platform: after `sudo apt install ./drawbridge_*.deb`
+  of an older build over a newer one (the newer one must have a migration the older lacks), the
+  tunnel is up and a connected client stays connected, `journalctl -u drawbridge-tunnel` has the
+  "newer Drawbridge" warning, and `drawbridge.service` is `failed` with exit status 78, tried once
+  and not again (`RestartPreventExitStatus=78`), with the journal naming both schemas. `apt` will
+  probably report the package's `postinst` failed, because it restarts the daemon and the restart
+  fails; note what it says. Installing the newer build again brings the daemon back, with the
+  database untouched. What has run, away from it: `TestANewerDatabaseStopsTheDaemonNotTheTunnel`
+  does the tunnel half in network namespaces, and `systemd-analyze verify` (systemd 257) accepts
+  the unit with the new line. Nothing has watched systemd honor it.

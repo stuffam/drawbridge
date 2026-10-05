@@ -1,0 +1,18 @@
+# The older builds the upgrade test upgrades from (docs/PLAN.md §12): one git ref per line, then
+# a comment. `make test-upgrade` builds each one, sets up a host with it, and upgrades the host to
+# this build with the tunnel up; CI does the same. The test reads which schema the host is at, so
+# the comment is only for people.
+#
+# Nothing has been released yet, so these are merges on main, one for each schema version there
+# has been. Add a release's tag here when it's made. A build that nobody can still have installed
+# can be dropped, but keep at least the newest one: with no migration between it and this build,
+# it still checks that swapping the binary leaves the tunnel alone.
+#
+# Refs have to be reachable in a full clone. CI fetches the whole history for this.
+72174d0  # schema 5: the first commit, the oldest build there is
+7276b59  # schema 6: the AdGuard Home connection (PR 22)
+e6c39f8  # schema 7: AdGuard Home name sync (PR 23)
+b15de78  # schema 8: read-only API tokens (PR 26)
+1fc3cfc  # schema 9: outdated-config tracking (PR 34)
+3f0314d  # schema 10: safe apply (PR 35)
+963bda9  # schema 11: TOTP two-factor authentication (PR 39)

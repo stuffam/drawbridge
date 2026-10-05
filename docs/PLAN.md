@@ -1134,8 +1134,8 @@ stateDiagram-v2
     - **Before a migration:** when opening the database would apply a migration to one that has
       data, the store snapshots it first (`pre-migration-v<schema>-<time>.db`, the newest three
       kept), and **refuses to migrate if it can't**, leaving the database as it was. Whichever of
-      the tunnel unit and the daemon opens it first after an upgrade does it. A new database has
-      nothing to save, so none is made.
+      the tunnel unit and the daemon opens it first after an upgrade does it, and if both open it at
+      once, one of them does (§7). A new database has nothing to save, so none is made.
     - **Restore:** `sudo drawbridge backup restore FILE` accepts one of them (it recognizes a plain
       SQLite file), with no passphrase. It goes back as the database alone, opened with the host's
       own key, which stays; the other checks and the aside files are the same, and an older
@@ -1248,7 +1248,17 @@ schema_migrations   version, applied_at
 - Every `*_enc` column is encrypted with XChaCha20-Poly1305 using `/etc/drawbridge/secret.key`. This
   protects DB copies and backups. It doesn't protect against a full compromise of the host.
 - Migrations are embedded in the binary. They run at startup after an automatic pre-migration
-  snapshot (§6.6), and don't run if it can't be made.
+  snapshot (§6.6), and don't run if it can't be made. Each one is a single transaction, so one that
+  fails leaves the schema as it was. The tunnel unit and the daemon may open an old database at the
+  same time: each migration re-reads the version inside its write transaction, so one process
+  applies it and the other finds it done, and a snapshot that turns out to hold a later schema than
+  its name says is discarded and taken again.
+- **Migrations are append-only, and each ships with a fixture.** A database records only the
+  highest version it applied, and keeps the text of the migrations it ran. So a migration that has
+  shipped is never edited, renumbered, or removed (a new one fixes it), and the numbers run from 1
+  without gaps. The next migration comes with a feature in `internal/store/storetest`: rows for what
+  it adds, in the shape the release stored them, and the check that reads them back. Tests enforce
+  all three (§12).
 
 ---
 
@@ -1408,7 +1418,17 @@ home LAN. The UI is therefore treated as a high-value target:
      fingerprint, until the admin account exists.
 - **Upgrades:** `apt install ./drawbridge_<new>.deb`. The daemon restarts, while
   `drawbridge-tunnel.service` isn't restarted, so the VPN stays up. Migrations run after a DB
-  snapshot.
+  snapshot. The upgrade matrix (§12) tests the data, and the tunnel with a connected client, from
+  every older build there is; the package's own scripts are on the on-hardware checklist.
+- **Downgrades:** a database from a newer Drawbridge is read by an older one and never written.
+  `store.Open` leaves it as it is and says so (`NewerSchema`). The daemon writes, so it refuses to
+  start: it names the schema it found and the newest it knows, exits with status 78, and
+  `drawbridge.service` doesn't restart on that status (`RestartPreventExitStatus=78`), so it isn't
+  restarted every two seconds until someone acts. The tunnel unit only reads (the reconciler's
+  `State` has `Settings` and `Clients` and nothing else), and the VPN matters more than the web UI,
+  so it warns and brings the tunnel up. The way back is to install the newer version again, or to
+  restore a backup made by this one (a restore refuses a newer backup). Until then the web UI is
+  down and the VPN is up.
 - **Remove and purge:**
   - `remove` stops both units and deletes the interface and nft table.
   - `purge` also deletes `/var/lib/drawbridge` and `/etc/drawbridge`.
@@ -1428,6 +1448,8 @@ home LAN. The UI is therefore treated as a high-value target:
 | AdGuard Home client | Name sync (add, rename, delete, retry after an outage) and query log parsing | `go test` against a fake `/control` server; checked against a real AdGuard Home before each release |
 | Frontend | Component tests | Vitest |
 | E2E | Browser flows (setup, the client lifecycle with the QR code and the download, pausing, settings, logs, logins, and password changes) against `drawbridge serve --backend fake`, failing on any script error or CSP violation | Playwright: `make test-e2e`, and CI's "E2E (browser)" job |
+| Upgrade matrix (data) | A database as each earlier release left it (schema 1 to the latest), for a host that was used and one never set up, opened by this build, and restored from an old backup and an old snapshot. Every row is kept and reads back through the current store (secrets, times in the old formats, the password hash), the schema equals a new install's, the pre-migration snapshot is the old database row for row, and the host is as usable as before. Also: migrations are append-only and numbered without gaps, a new migration needs a fixture, a migration that fails halfway changes nothing, and two processes upgrading at once both succeed. The old data is written by hand (`internal/store/storetest`), because a release can't be run again from the squashed history before schema 5 | `go test`, every push: `internal/store`, `internal/backup` |
+| Upgrade matrix (tunnel) | A real older build sets up a host with a connected client, and this build takes over the way the package does: the daemon is swapped and nothing else is restarted. The interface, key, port, and peers don't change, the client's fetches through the tunnel never fail, every row the older build stored is kept, the account logs in with its old password and the browser's login survives, and after a restart of the tunnel the client reconnects with the config it had. One run for each build in `test/integration/upgrade-from.txt` (one merge on main per schema so far, a release's tag from the first one on) | `make test-upgrade`, and a step of CI's "Integration" job |
 | On hardware | Manual checklist for each release (below) | The reference platform (§2) |
 
 The on-hardware checklist:
@@ -1586,10 +1608,14 @@ Each milestone ends in a usable, tested state.
   growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the
   dashboard's warnings are built (§6.6).* Of the backups, `backup
   create|restore`, the local snapshots (nightly, and before a migration), and the System page's
-  download and snapshot list are built.
+  download and snapshot list are built. *The upgrade matrix is built (§12): the data half in
+  `go test`, and the tunnel half, with a real older build and a connected client, in
+  `make test-upgrade`.*
 - **Exit:**
   - The security checklist passes.
-  - Upgrading from v0.x keeps all data and keeps the tunnel up.
+  - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build
+    there is, and by hand on the reference platform with a package upgrade, docs/MANUAL_CHECKLIST.md
+    §2 and §18)*.
   - Restoring onto a fresh host works.
 
 ### M6: Extras (pick as needed)
@@ -1661,6 +1687,7 @@ Each milestone ends in a usable, tested state.
 | TLS certificate | The admin may install their own certificate (web and CLI), served at once without a restart; it stays in use after it expires, and is never replaced unasked | A browser warning about a self-signed certificate trains people to click through, and the UI is reachable only from the LAN and the VPN, so a public CA can issue for it only by DNS-01. The web install asks for the password again because a hijacked session could otherwise present a certificate whose key it holds. The private key sits in `tls/` beside the self-signed one, because the TLS stack needs it at startup (2026-10-04) |
 | Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/two-factor.md, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
+| Downgrades | A database from a newer Drawbridge is never changed by an older one. The daemon, which writes, refuses to start on it, says which schema it found, and exits with status 78, which `drawbridge.service` doesn't restart on. `drawbridge-tunnel.service`, which only reads, warns and brings the VPN up. A restore refuses a newer backup | The VPN matters more than the web UI, so a downgrade (or a rollback after a bad release) mustn't take it down. An older build that writes to a schema it doesn't know could damage rows the newer one relies on, so only the reader goes on. That the tunnel only reads is structural: the reconciler's state has `Settings` and `Clients` and nothing else (§11, 2026-10-04) |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |
 | IPv6 endpoint | Supported when the router allows inbound UDP 51820 to the host's stable address | Verified on the reference platform with a real client (docs/MANUAL_CHECKLIST.md §2, 2026-09-28) |
