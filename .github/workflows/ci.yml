@@ -6,6 +6,9 @@ on:
   # Not every push: `pull_request` only fires for a branch that has an open PR (when it's
   # opened, and again on each later push to it), never for a bare branch push on its own.
   pull_request:
+  # release.yml runs every job here on a release's tag (docs/PLAN.md §11.1), so a release is
+  # exactly what CI passes.
+  workflow_call:
 
 permissions:
   contents: read
@@ -164,6 +167,19 @@ jobs:
       - name: Install, upgrade, downgrade, remove, and purge
         run: make test-packaging
 
+  release-scripts:
+    name: Release scripts
+    # The scripts that decide, check, and install a release (docs/PLAN.md §11.1, §12): shellcheck,
+    # and their tests. The tests install nothing and need no root, only git and dpkg.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # `make lint-shell` skips itself where shellcheck is missing, which must not happen here.
+      - run: shellcheck --version
+      - run: make lint-shell
+      - run: make test-release test-install
+
   spelling:
     name: Spelling (U.S. English)
     runs-on: ubuntu-latest
@@ -176,7 +192,7 @@ jobs:
 
   packages:
     name: Packages
-    needs: [go, web, e2e, spelling, integration, package-scripts]
+    needs: [go, web, e2e, spelling, integration, package-scripts, release-scripts]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import tailwindcss from '@tailwindcss/vite';
 import type { ProxyOptions } from 'vite';
 import { defineConfig } from 'vitest/config';
@@ -16,6 +17,21 @@ const goServer: ProxyOptions = {
 	}
 };
 
+// SvelteKit names each build with the time it was made, and that name ends up in the entry chunks,
+// so two builds of the same source differ in every file that imports one. The commit makes the
+// build a function of its source, which a release's reproducible package needs (docs/PLAN.md
+// §10). The app doesn't read the name; SvelteKit only compares it to spot a new deployment.
+function buildName(): string {
+	try {
+		return execFileSync('git', ['rev-parse', 'HEAD'], {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore']
+		}).trim();
+	} catch {
+		return 'unknown';
+	}
+}
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
@@ -27,7 +43,8 @@ export default defineConfig({
 			},
 			// A single-page app: the Go server returns 200.html for every path that isn't a
 			// file, and the client-side router takes over (internal/api, internal/webui).
-			adapter: adapter({ fallback: '200.html' })
+			adapter: adapter({ fallback: '200.html' }),
+			version: { name: buildName() }
 		})
 	],
 	server: {

@@ -897,3 +897,48 @@ has watched systemd.
   units on `remove`, so installing this build afterward leaves both disabled (a reinstall goes by
   their state, and they're off). `sudo systemctl enable --now drawbridge-tunnel drawbridge` is the
   fix. Only a host that removed a build from before 2026-10-04 and installs this one sees it.
+
+## 20. Releases (the tenth M5 slice)
+
+`release.yml`, `scripts/install.sh`, and their tests are built (docs/PLAN.md §11.1), and CI runs the
+scripts' tests. What only a real tag on GitHub shows can't run until one is pushed, so these are
+for the first release. It goes out as a release candidate, `v0.1.0-rc.1`, first: a draft's files
+need the maintainer's login, so `install.sh` can't try a draft, and a published release can't be
+changed. A pre-release is public and never "latest", which makes it the rehearsal. The draft's own
+files are what to install, not a build from the tree.
+
+- `[UNVERIFIED]` A dry run (`release.yml` started by hand on a branch, or on a pull request that
+  touches it) passes in Actions: the build, the check of the files, and the second build, whose
+  packages match the first's byte for byte on a different machine.
+- `[UNVERIFIED]` Pushing the tag runs the whole workflow, `ci.yml` included, and leaves a **draft**
+  release (not published, not "latest") with seven files: both packages, their SBOMs, the web
+  app's SBOM, `install.sh`, and `SHA256SUMS`, and the notes are the changelog's section and the
+  footer.
+- `[UNVERIFIED]` GitHub kept every file's name. The workflow's last check fails when it didn't (the
+  likely cause is the `~` in a pre-release's file names, as in `drawbridge_0.1.0~rc.1_arm64.deb`,
+  which is why the release candidate is the test), and then `install.sh` and `SHA256SUMS` wouldn't
+  agree with the release.
+- `[UNVERIFIED]` `gh attestation verify drawbridge_<version>_<arch>.deb --repo stuffam/drawbridge`
+  succeeds for each package, `install.sh`, and `SHA256SUMS`, and fails for a file that was changed.
+- `[UNVERIFIED]` `sha256sum -c --ignore-missing SHA256SUMS` passes for the downloaded files.
+- `[UNVERIFIED]` The draft's `.deb`, downloaded with `gh release download`, installs on the reference
+  platform the way docs/install.md says (`sudo apt install ./drawbridge_*.deb`), and
+  `drawbridge version` reports the tag's version, and the commit.
+- `[UNVERIFIED]` The same on an amd64 host (the package has only run in CI on that architecture, never
+  on a real machine).
+- `[UNVERIFIED]` With `v0.1.0-rc.1` published, `sh install.sh --version v0.1.0-rc.1`, on a host
+  without Drawbridge, downloads it from GitHub, checks it, and installs it, with the setup token at
+  the end. Run again, it says it's already installed. With no `--version` it says there's no
+  release yet, because a pre-release is never "latest".
+- `[VERIFIED 2026-10-05]` The two URL shapes `install.sh` relies on, against GitHub itself:
+  `/releases/latest` redirects to `/releases/tag/<tag>` on a repository with releases, and to
+  `/releases` on one without (this one, then), and `/releases/download/<tag>/<file>` resolves to the
+  file.
+- `[UNVERIFIED]` After v0.1.0 is published, `curl -fsSL
+  https://github.com/stuffam/drawbridge/releases/latest/download/install.sh | sh` asks on the
+  terminal (it can't read standard input for it), and picks v0.1.0 and not the release candidate.
+- `[UNVERIFIED]` The package's upgrade over the previous release keeps the tunnel up and the data
+  (§2 and §18 do it for builds from the tree; this is the same with the released file). The first
+  release has nothing before it, so this waits for the second.
+- `[UNVERIFIED]` The repository's settings are in place: a tag ruleset on `v*` that blocks updates and
+  deletions, and immutable releases, so a published release's files can't be changed.

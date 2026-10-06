@@ -1,0 +1,201 @@
+name: Release
+
+# How a version tag becomes a release (docs/PLAN.md §11.1). Pushing a tag v* checks it, runs every
+# CI job on it, builds both packages twice (on two machines, and the two builds must match byte
+# for byte), and makes a DRAFT GitHub release holding the packages, their SBOMs, install.sh, the
+# checksums of all of them, and build provenance for each, with the version's section of
+# CHANGELOG.md as the notes.
+#
+# Nothing is published here. The maintainer installs the draft's own files on real hardware, fresh
+# and as an upgrade, and then publishes the draft by hand.
+#
+# A run on a pull request that touches the release machinery, or started by hand on any ref, is a
+# dry run: it builds and checks the files, and keeps them as a workflow artifact.
+#
+# Repository settings, the maintainer's and set once (they can't be set from here): a tag ruleset
+# on v* that blocks updates and deletions, and immutable releases, so a tag and a published
+# release's files can't change under someone who has installed them.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - packaging/**
+      - scripts/**
+      - Makefile
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  # A release in progress is never canceled by another push.
+  cancel-in-progress: false
+
+env:
+  # Keep in step with ci.yml.
+  GO_VERSION: "1.27.x"
+  NODE_VERSION: "24"
+
+jobs:
+  check:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.info.outputs.tag }}
+      version: ${{ steps.info.outputs.version }}
+      deb_version: ${{ steps.info.outputs.deb_version }}
+      prerelease: ${{ steps.info.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The whole history, to tell whether the tag's commit is on main.
+          fetch-depth: 0
+      - name: A version, on main, with a changelog section
+        # A dry run has no tag, and no outputs: the build below goes by 0.0.0-dev.
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: info
+        run: scripts/release-check.sh "$GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tags, so the build gets its version from `git describe`.
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the web app, the packages, the SBOMs, and the checksums
+        run: make release-files
+      - name: Check the files against the tag's version
+        env:
+          # A dry run has no tag, and builds 0.0.0-dev.
+          DEB_VERSION: ${{ needs.check.outputs.deb_version || '0.0.0~dev' }}
+        run: scripts/release-verify.sh dist/release "$DEB_VERSION"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: dist/release
+          if-no-files-found: error
+          retention-days: 7
+      - name: Say what this run was
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          echo "A dry run: the files are the release-files artifact, and nothing was published." >>"$GITHUB_STEP_SUMMARY"
+
+  rebuild:
+    name: Build again
+    # The same commit has to give the same packages on another machine, or what was tested isn't
+    # what's shipped, and nobody can check the provenance by building it themselves.
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: make deb
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-files
+          path: first
+      - name: The packages are byte for byte the first build's
+        run: |
+          (cd dist && sha256sum drawbridge_*.deb | LC_ALL=C sort) >second.sums
+          (cd first && grep '\.deb$' SHA256SUMS | LC_ALL=C sort) >first.sums
+          echo "first build:"; cat first.sums; echo "second build:"; cat second.sums
+          diff first.sums second.sums
+
+  release:
+    name: Draft the release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, ci, build, rebuild]
+    runs-on: ubuntu-latest
+    permissions:
+      # The draft, and the build provenance (a signed statement, from GitHub, that these files
+      # were built by this workflow from this tag).
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.check.outputs.tag }}
+      DEB_VERSION: ${{ needs.check.outputs.deb_version }}
+      PRERELEASE: ${{ needs.check.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-files
+          path: dist/release
+      - name: The files are still what the build checked
+        run: |
+          chmod +x dist/release/install.sh
+          scripts/release-verify.sh dist/release "$DEB_VERSION"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/release/*
+      - name: Draft the release
+        run: |
+          notes=$(mktemp)
+          {
+            scripts/release-notes.sh "$TAG"
+            cat <<'EOF'
+
+          ---
+
+          **Install:** follow the [install guide](https://stuffam.github.io/drawbridge/install/).
+          **Check what you downloaded:** `sha256sum -c --ignore-missing SHA256SUMS`, and
+          `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
+          EOF
+          } >"$notes"
+          args=(--draft --verify-tag --title "Drawbridge $TAG" --notes-file "$notes")
+          if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
+          gh release create "$TAG" "${args[@]}" dist/release/*
+      - name: GitHub kept every file's name
+        run: |
+          # GitHub rewrites some characters in an asset's name, and SHA256SUMS and install.sh go by
+          # the names the files had.
+          want=$(find dist/release -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)
+          got=$(gh release view "$TAG" --json assets --jq '.assets[].name' | LC_ALL=C sort)
+          if [ "$want" != "$got" ]; then
+            echo "The release's files aren't named as they were built. Delete the draft." >&2
+            diff <(echo "$want") <(echo "$got") >&2 || true
+            exit 1
+          fi
+      - name: Say what to do next
+        run: |
+          {
+            echo "### The draft for $TAG is ready"
+            echo
+            echo "It isn't published. Install **its own files** on real hardware, fresh and as an"
+            echo "upgrade over the previous release, with a client connected, and then publish it:"
+            echo
+            echo "    gh release download $TAG --repo $GITHUB_REPOSITORY"
+            echo "    gh release edit $TAG --repo $GITHUB_REPOSITORY --draft=false"
+          } >>"$GITHUB_STEP_SUMMARY"

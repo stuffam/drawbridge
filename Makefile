@@ -8,6 +8,15 @@ NPM ?= npm
 GIT_TAG := $(shell git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null)
 VERSION ?= $(if $(GIT_TAG),$(patsubst v%,%,$(GIT_TAG)),0.0.0-dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(if $(shell git status --porcelain 2>/dev/null),-dirty)
+# The Debian version nfpm makes of VERSION: the first - becomes ~, so 1.0.0-rc.1 sorts before 1.0.0.
+DEB_VERSION := $(subst -,~,$(VERSION))
+# The time of the commit being built. nfpm puts it on every file in a package, where it would put
+# the time of the checkout, so the same commit gives the same package, byte for byte (docs/PLAN.md
+# §11.1). Go's own output doesn't depend on it.
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null)
+ifneq ($(SOURCE_DATE_EPOCH),)
+export SOURCE_DATE_EPOCH
+endif
 
 PKG     := github.com/stuffam/drawbridge
 # Drawbridge's own Go packages. Not ./..., which would include Go files that npm
@@ -25,6 +34,7 @@ BIN                   := $(CURDIR)/bin
 GOLANGCI_LINT_VERSION := v2.14.0
 NFPM_VERSION          := v2.47.0
 MISSPELL_VERSION      := v0.8.0
+CYCLONEDX_GOMOD_VERSION := v1.12.0
 
 ARCHES := arm64 amd64
 
@@ -37,7 +47,7 @@ help: ## Show this help.
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
 .PHONY: tools
-tools: $(BIN)/golangci-lint $(BIN)/nfpm $(BIN)/misspell ## Install the pinned build tools into ./bin.
+tools: $(BIN)/golangci-lint $(BIN)/nfpm $(BIN)/misspell $(BIN)/cyclonedx-gomod ## Install the pinned build tools into ./bin.
 
 # Each tool installs on first use. After changing a version above, run `make clean-tools`.
 $(BIN)/golangci-lint:
@@ -46,6 +56,8 @@ $(BIN)/nfpm:
 	GOBIN=$(BIN) $(GO) install github.com/goreleaser/nfpm/v2/cmd/nfpm@$(NFPM_VERSION)
 $(BIN)/misspell:
 	GOBIN=$(BIN) $(GO) install github.com/golangci/misspell/cmd/misspell@$(MISSPELL_VERSION)
+$(BIN)/cyclonedx-gomod:
+	GOBIN=$(BIN) $(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@$(CYCLONEDX_GOMOD_VERSION)
 
 .PHONY: clean-tools
 clean-tools: ## Delete ./bin, so the next build installs the pinned tool versions again.
@@ -95,6 +107,28 @@ package: $(BIN)/nfpm ## Build binaries and .deb packages from the already-embedd
 	done
 	@rm -rf dist/package
 
+# What a release holds (docs/PLAN.md §11.1), in dist/release/: both packages, an SBOM for each
+# package's binary (its Go modules) and one for the web app (its npm packages), install.sh, and
+# SHA256SUMS for all of them.
+RELEASE := dist/release
+
+.PHONY: sbom
+sbom: deb $(BIN)/cyclonedx-gomod $(WEB_DEPS) ## Write an SBOM for each package's binary and one for the web app, beside the packages in dist/.
+	@for arch in $(ARCHES); do \
+		$(BIN)/cyclonedx-gomod bin -json -noserial -notimestamp -version v$(VERSION) \
+			-output dist/drawbridge_$(DEB_VERSION)_$$arch.sbom.json dist/linux-$$arch/drawbridge || exit 1; \
+	done
+	cd web && $(NPM) sbom --sbom-format cyclonedx > ../dist/drawbridge-web_$(DEB_VERSION).sbom.json
+
+.PHONY: release-files
+release-files: sbom ## Gather what a release holds into dist/release/, with its SHA256SUMS, and check it.
+	rm -rf $(RELEASE)
+	mkdir -p $(RELEASE)
+	cp dist/drawbridge_$(DEB_VERSION)_*.deb dist/drawbridge*_$(DEB_VERSION)*.sbom.json scripts/install.sh $(RELEASE)/
+	cd $(RELEASE) && for f in *; do echo "$$f"; done | LC_ALL=C sort | xargs sha256sum > ../SHA256SUMS.tmp
+	mv dist/SHA256SUMS.tmp $(RELEASE)/SHA256SUMS
+	scripts/release-verify.sh $(RELEASE) $(DEB_VERSION)
+
 .PHONY: test
 test: test-go test-web ## Run all tests.
 
@@ -119,6 +153,16 @@ test-upgrade: build ## Upgrade a host from each older build in test/integration/
 .PHONY: test-packaging
 test-packaging: ## Run the .deb's maintainer scripts through real dpkg and a fake systemctl (root; a throwaway Debian container or VM only).
 	DRAWBRIDGE_PACKAGING_TEST=1 $(if $(filter 0,$(shell id -u)),,sudo -E )test/packaging/test.sh
+
+# The release scripts' tests (docs/PLAN.md §12). They install nothing and need no root: git, and
+# dpkg-deb for part of the first, and dpkg for the second (a Debian-family host, or a container).
+.PHONY: test-release
+test-release: ## Test the scripts that decide and check a release (needs git; dpkg-deb for part of it).
+	test/release/test.sh
+
+.PHONY: test-install
+test-install: ## Test scripts/install.sh against a fake release page (needs a Debian-family dpkg; installs nothing).
+	test/install/test.sh
 
 .PHONY: test-web
 test-web: $(WEB_DEPS) ## Run the web app's unit tests.
@@ -149,12 +193,21 @@ docs-serve: $(DOCS_VENV)/bin/zensical ## Preview the docs site at http://localho
 	$(DOCS_VENV)/bin/zensical serve
 
 .PHONY: lint
-lint: lint-go lint-web spell ## Run every linter and the spelling check.
+lint: lint-go lint-web lint-shell spell ## Run every linter and the spelling check.
 
 .PHONY: lint-go
 lint-go: $(BIN)/golangci-lint ## Lint and format-check the Go code.
 	$(BIN)/golangci-lint run $(GO_LINT)
 	$(BIN)/golangci-lint fmt --diff $(GO_PKGS) ./test/...
+
+# The release scripts and their tests. CI has shellcheck; a machine without it skips this and says so.
+SHELL_FILES := scripts/install.sh scripts/release-notes.sh scripts/release-check.sh scripts/release-verify.sh \
+	test/install/test.sh test/release/test.sh
+
+.PHONY: lint-shell
+lint-shell: ## Run shellcheck on the release scripts and their tests (skipped if it isn't installed).
+	@if command -v shellcheck >/dev/null 2>&1; then shellcheck $(SHELL_FILES); \
+	else echo "lint-shell: shellcheck isn't installed, so the shell scripts weren't checked"; fi
 
 .PHONY: lint-web
 lint-web: $(WEB_DEPS) ## Lint, format-check, and type-check the web app.
