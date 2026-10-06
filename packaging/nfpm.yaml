@@ -22,6 +22,10 @@ depends:
 recommends:
   # `wg show` for debugging; Drawbridge itself talks to the kernel over netlink.
   - wireguard-tools
+  # TLS certificates, WireGuard handshakes, and two-factor codes all depend on the clock, and a
+  # host without a battery-backed one (a Raspberry Pi) needs network time. A host that keeps time
+  # another way (chrony, ntpd) provides time-daemon, so apt asks nothing of it.
+  - systemd-timesyncd | time-daemon
 
 contents:
   - src: dist/package/drawbridge

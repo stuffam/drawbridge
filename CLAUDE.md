@@ -266,6 +266,7 @@ make test-go    # Go tests, with the race detector
 make test-web   # the web app's unit tests (Vitest)
 make lint       # golangci-lint; Prettier, ESLint, and svelte-check; misspell
 make spell      # the U.S. English check on every tracked file
+make vuln       # known vulnerabilities the Go code can reach (govulncheck; needs the network)
 make fmt        # format Go (gofmt, goimports) and the web app (Prettier)
 make deb        # web build, arm64 and amd64 binaries, and both .deb files in dist/
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
@@ -635,6 +636,19 @@ preinstalled, running as root):
     root, names with apostrophes included.
   - `tunnel up` failed with the "is the wireguard module loaded" hint, as it should without
     kernel WireGuard.
+
+**govulncheck and the package's dependencies** (2026-10-06, Go 1.26.8, govulncheck v1.8.0, the
+vulnerability database as of 2026-10-01):
+
+- The Go packages have no vulnerability they can reach, and `govulncheck` exits 0. It reports one
+  more in a module the code requires and doesn't call (GO-2026-5932, x/crypto's unmaintained
+  `openpgp` package, with no fix). A reachable finding makes it exit non-zero (3, by its documentation; not
+  observed here), and CI's "Vulnerabilities (Go)" job fails on it, so a vulnerability newly disclosed in a dependency can fail a change that
+  didn't cause it: update what the finding names.
+- nfpm writes an alternative through to the control file: `recommends: systemd-timesyncd |
+  time-daemon` gives `Recommends: wireguard-tools, systemd-timesyncd | time-daemon`. The package's
+  fields are `Depends: nftables` and those recommendations, and `scripts/release-verify.sh` checks
+  them in every package it's given (a substring like `libnftables1` doesn't count as `nftables`).
 
 **Reproducible builds and the release tools** (2026-10-05, in Docker with Go 1.26 and Node 24, by
 building twice with every source file's modification time changed between the builds):

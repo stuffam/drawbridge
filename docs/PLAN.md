@@ -447,8 +447,10 @@ changes.
   (`vpn4.example.com`) when it's on a network with broken IPv6.
 - **Dynamic IPv4 address:** a dynamic DNS client the admin already runs (ddclient, or the
   router's built-in one) keeps the A record current, so Drawbridge doesn't include its own DDNS
-  updater. Diagnostics compare the A record with the current public IPv4 address (looked up only
-  when the check runs) and warn when they differ.
+  updater. Diagnostics warn when the endpoint name resolves to an address a client on the internet
+  can't reach (private, CGNAT, or link-local), which catches a record that points at the LAN. They
+  don't compare the A record with the current public IPv4 address, which takes a lookup at a third
+  party (§16, still open).
 - **AAAA record:** with a stable IPv6 prefix, the simplest setup is a static AAAA record
   pointing at the host's stable address. If a dynamic DNS client updates AAAA too, it must use
   the host's *stable* address. An external "what's my IP" lookup returns the temporary (privacy)
@@ -1394,7 +1396,7 @@ home LAN. The UI is therefore treated as a high-value target:
   subnets.
 - **Supply chain:**
     - Dependencies are pinned (`go.sum`, lockfile).
-    - CI runs `govulncheck` and `npm audit`.
+    - CI runs `govulncheck` (`make vuln`) and `npm audit`.
     - Builds are reproducible (`-trimpath`, `SOURCE_DATE_EPOCH`), and releases ship an SBOM and
       checksums.
 - **Before v1.0:** a security review against a checklist covering authentication, sessions,
@@ -1410,8 +1412,12 @@ home LAN. The UI is therefore treated as a high-value target:
       `drawbridge_<ver>_arm64.deb`.
     - An amd64 package is also built for testing in VMs.
 - **Package metadata:**
-    - `Depends: nftables, wireguard-tools`
-    - `Recommends: systemd-timesyncd`
+    - `Depends: nftables`, which applies the firewall (ADR 0006).
+    - `Recommends: wireguard-tools` (`wg show` is handy for debugging; Drawbridge talks to the
+      kernel over netlink) and `systemd-timesyncd | time-daemon` (certificates, handshakes, and
+      two-factor codes go by the clock; a host that keeps time with chrony or ntpd provides
+      `time-daemon`, so `apt` asks nothing of it).
+    - `release-verify.sh` checks each of these in every package it's given (§11.1).
 - **`postinst`:**
     1. Create the `drawbridge` system user from `/usr/lib/sysusers.d/drawbridge.conf`
        (`systemd-sysusers`, falling back to `adduser`), and the directories.
@@ -1818,16 +1824,16 @@ Each milestone ends in a usable, tested state.
 | Risk | Mitigation |
 |---|---|
 | An admin locks themselves out by changing settings over the VPN | Safe apply with a 60 s automatic rollback, plus local CLI recovery (`drawbridge admin`, `drawbridge apply`) |
-| Enabling IPv6 forwarding breaks the host's own SLAAC (ifupdown hosts) | The installer sets `accept_ra=2` on a kernel-SLAAC uplink (§5.5); `doctor` will check it (M5). `docs/REQUIREMENTS.md` has a manual workaround for setups it doesn't detect |
+| Enabling IPv6 forwarding breaks the host's own SLAAC (ifupdown hosts) | The installer sets `accept_ra=2` on a kernel-SLAAC uplink (§5.5); `drawbridge doctor` checks it (§6.6). `docs/REQUIREMENTS.md` has a manual workaround for setups it doesn't detect |
 | The host firewall or Docker drops forwarded traffic | Drawbridge uses its own table and adds only restrictive rules. Diagnostics detect `policy drop` and a rootful Docker's `FORWARD DROP`, with fix hints. Rootless Docker doesn't touch the host firewall |
 | NetworkManager tries to manage `wg0` | The installer marks `wg0` as unmanaged in NetworkManager |
 | The admin UI is put behind a reverse proxy on the same host | Documented as unsupported. Drawbridge serves the UI only on its own port and ignores forwarded-for headers |
 | `nftables.service` restarts flush the Drawbridge table | 30 s drift loop, and `drawbridge-tunnel` is ordered after `nftables.service` |
-| The dynamic public IPv4 address changes | The admin's dynamic DNS client updates the A record. Diagnostics compare it with the current address, and the docs explain client reconnect behavior |
+| The dynamic public IPv4 address changes | The admin's dynamic DNS client updates the A record. Diagnostics warn when the name resolves somewhere a client can't reach, but can't tell an old public address from the current one (§16, still open), and the docs explain client reconnect behavior |
 | The AAAA record points at a temporary IPv6 address | A static AAAA record for the stable address is recommended, and diagnostics warn about temporary addresses |
 | CGNAT or DS-Lite (no inbound IPv4) | Documented: use an IPv6-only endpoint or a relay VPS |
 | The router's IPv6 firewall lets inbound traffic reach the host | The admin UI is blocked from non-LAN, non-VPN sources both in the app and in Drawbridge's nftables table |
-| No resolver answers on the VPN addresses | New servers default to public resolvers, and the wizard and Settings check the VPN addresses before offering them (§6.3). Planned: diagnostics that repeat the check, with fix hints for AdGuard Home's `bind_hosts` and startup order |
+| No resolver answers on the VPN addresses | New servers default to public resolvers, and the wizard and Settings check the VPN addresses before offering them (§6.3). `drawbridge doctor` repeats the check, and its fix names AdGuard Home's `bind_hosts` and the VPN's subnets (docs/REQUIREMENTS.md covers starting after the tunnel exists) |
 | AdGuard Home is down or its API changes | VPN management doesn't depend on it. Name sync retries, and the integration is tested against the real AdGuard Home before each release |
 | SD card wear from logging | Batched writes, downsampling, retention limits, and a write budget test. An SSD is recommended where available |
 | No battery-backed clock, so the time is wrong at boot | timesyncd check in diagnostics. TOTP allows ±1 time step |
@@ -1846,7 +1852,7 @@ Each milestone ends in a usable, tested state.
 |---|---|---|
 | Stack | Go + Svelte | D1 and D2 confirmed |
 | Network defaults | NAT44 and NAT66 | They work with any ISP and router. Routed IPv4 and routed IPv6 are later options (§5.2, §5.3) |
-| Dynamic DNS | Not built in | Existing clients (ddclient, or a router's built-in one) cover it. Diagnostics check the A and AAAA records (§5.6) |
+| Dynamic DNS | Not built in | Existing clients (ddclient, or a router's built-in one) cover it. Diagnostics check where the endpoint's records point (§5.6) |
 | Admin UI exposure | Home network and VPN only, never the internet; plus extra private-range sources the admin adds, such as a Tailscale tailnet | D11: enforced in the app and in nftables (§5.3, §6.5) |
 | DNS | Public resolvers by default; a resolver on the host (such as AdGuard Home) at the server's VPN addresses when a check finds one answering | D12: the wizard offers the host's resolver only when it works, and there's optional AdGuard Home name sync and per-client DNS logs (§6.3) |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown | The installer marks `wg0` unmanaged for NetworkManager. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5) |

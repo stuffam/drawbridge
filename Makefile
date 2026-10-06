@@ -35,6 +35,7 @@ GOLANGCI_LINT_VERSION := v2.14.0
 NFPM_VERSION          := v2.47.0
 MISSPELL_VERSION      := v0.8.0
 CYCLONEDX_GOMOD_VERSION := v1.12.0
+GOVULNCHECK_VERSION   := v1.8.0
 
 ARCHES := arm64 amd64
 
@@ -47,7 +48,7 @@ help: ## Show this help.
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
 .PHONY: tools
-tools: $(BIN)/golangci-lint $(BIN)/nfpm $(BIN)/misspell $(BIN)/cyclonedx-gomod ## Install the pinned build tools into ./bin.
+tools: $(BIN)/golangci-lint $(BIN)/nfpm $(BIN)/misspell $(BIN)/cyclonedx-gomod $(BIN)/govulncheck ## Install the pinned build tools into ./bin.
 
 # Each tool installs on first use. After changing a version above, run `make clean-tools`.
 $(BIN)/golangci-lint:
@@ -58,6 +59,8 @@ $(BIN)/misspell:
 	GOBIN=$(BIN) $(GO) install github.com/golangci/misspell/cmd/misspell@$(MISSPELL_VERSION)
 $(BIN)/cyclonedx-gomod:
 	GOBIN=$(BIN) $(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@$(CYCLONEDX_GOMOD_VERSION)
+$(BIN)/govulncheck:
+	GOBIN=$(BIN) $(GO) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 
 .PHONY: clean-tools
 clean-tools: ## Delete ./bin, so the next build installs the pinned tool versions again.
@@ -128,6 +131,12 @@ release-files: sbom ## Gather what a release holds into dist/release/, with its 
 	cd $(RELEASE) && for f in *; do echo "$$f"; done | LC_ALL=C sort | xargs sha256sum > ../SHA256SUMS.tmp
 	mv dist/SHA256SUMS.tmp $(RELEASE)/SHA256SUMS
 	scripts/release-verify.sh $(RELEASE) $(DEB_VERSION)
+
+# Known vulnerabilities in the Go code and what it imports (docs/PLAN.md §10), from the Go vulnerability
+# database, so it needs the network. It reports only what the code can reach, and fails on that.
+.PHONY: vuln
+vuln: $(BIN)/govulncheck ## Check the Go packages and their dependencies for known vulnerabilities (needs the network).
+	$(BIN)/govulncheck $(GO_PKGS)
 
 .PHONY: test
 test: test-go test-web ## Run all tests.
@@ -227,7 +236,7 @@ fmt: $(BIN)/golangci-lint $(WEB_DEPS) ## Format the Go code and the web app.
 	cd web && $(NPM) run format
 
 .PHONY: check
-check: lint test ## Run everything CI runs, except the package build.
+check: lint test vuln ## Run everything CI runs, except the package build.
 
 .PHONY: clean
 clean: ## Delete build output (not ./bin or node_modules).
