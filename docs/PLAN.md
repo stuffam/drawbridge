@@ -1468,9 +1468,9 @@ home LAN. The UI is therefore treated as a high-value target:
 
 ### 11.1 Releases: tag, build, publish, install
 
-*Planned for M5. Until it's built, the only ways to get a package are `make deb` and CI's
-`drawbridge-deb` artifact (ADR 0010), which is how docs/install.md's "Get the package" section is
-written. That section changes when this exists.*
+*Built (2026-10-05): `release.yml`, `scripts/install.sh`, and the scripts and tests behind them. No
+release has used them yet, so docs/install.md's "Get the package" section still has admins build
+the package or take CI's, and it changes when the first release is published.*
 
 The goal is that someone with a Debian-family host installs a tested, checksummed `.deb` from
 GitHub, by hand or with one script, and upgrades the same way. Nothing here changes what the
@@ -1478,10 +1478,11 @@ package does once it's installed (above).
 
 - **Versions and tags.**
     - A version is `vMAJOR.MINOR.PATCH` (semantic versioning, with the `v` the project uses
-      everywhere, CLAUDE.md). A suffix, as in `v1.0.0-rc.1`, makes it a pre-release.
+      everywhere, CLAUDE.md). A suffix, as in `v1.0.0-rc.1`, makes it a pre-release. The first
+      release is v0.1.0 (§16).
     - The tag, made on a commit on `main`, decides the version. `make` reads it with `git
-      describe` (it already does), so the binary reports `1.0.0` and the package's Debian version
-      is the bare string. nfpm turns `-rc.1` into `~rc.1`, so a pre-release sorts before its
+      describe`, so the binary reports `1.0.0` and the package's Debian version is the bare
+      string. nfpm turns `-rc.1` into `~rc.1` (checked), so a pre-release sorts before its
       release, as `0.0.0~dev` sorts before `0.0.0`.
     - A release before v1.0 is an ordinary GitHub release, not a pre-release: the "latest" release
       that `install.sh` reads skips pre-releases, and M5's exit criterion (upgrading from v0.x)
@@ -1501,29 +1502,62 @@ package does once it's installed (above).
        and stops at a draft.
     4. Install the draft's own files: fresh on a real host, and as an upgrade over the previous
        release with a client connected (the upgrade matrix's by-hand half, §12). Then publish it.
+       `install.sh` can't be tried on a draft, because a draft's files need the maintainer's
+       login, and a published release can't be changed. So the first release goes out as a
+       release candidate: `v0.1.0-rc.1` is a pre-release, public but never "latest", and `install.sh
+       --version v0.1.0-rc.1` takes the path users take, with a `~` in the file names (which
+       GitHub might rewrite), before `v0.1.0` is tagged.
     5. Add the tag to `test/integration/upgrade-from.txt`.
 - **`release.yml`** runs when a tag `v*` is pushed. A run on a pull request that touches the
-  workflow, the packaging, or the Makefile, or started by hand on any ref, is a dry run: only
-  steps 3 and 4 (CI has already run on that commit), with the files kept as a workflow artifact.
+  workflow, the packaging, the scripts, or the Makefile, or started by hand on any ref, is a dry
+  run: steps 3 and 4 only (CI has already run on that commit), with the files kept as a workflow
+  artifact.
     1. It refuses unless the tag is a valid version, its commit is on `main`, and `CHANGELOG.md` has
-       a section for the version.
+       a section for the version (`scripts/release-check.sh`).
     2. It runs CI's jobs on the tagged commit, by calling `ci.yml` as a reusable workflow
        (`workflow_call`), so a release is exactly what CI passes, the kernel and package-script
-       tests included, with the tag's version in the binary.
-    3. It builds both packages with `make package`, with `SOURCE_DATE_EPOCH` set to the commit's
-       time, so the same commit gives the same files (§10).
-    4. It writes `SHA256SUMS` for the packages, and an SBOM for each.
-    5. It creates a draft GitHub release for the tag, holding the packages, `SHA256SUMS`, the
-       SBOMs, `install.sh`, and the version's `CHANGELOG.md` section as its notes, marked a
-       pre-release when the version has a suffix. Only this job gets `contents: write`; CI's jobs
-       stay read-only.
-- **What's in a release:** `drawbridge_<version>_arm64.deb`, `drawbridge_<version>_amd64.deb`,
-  `SHA256SUMS`, the SBOMs, and `install.sh`. The script has a fixed name, so
-  `https://github.com/stuffam/drawbridge/releases/latest/download/install.sh` is always the latest
-  release's own copy.
-- **What a checksum proves.** `sha256sum -c SHA256SUMS` catches a damaged or truncated download. It
-  can't show who built the file, because the file and its sums come from the same place. What
-  would is build provenance (§16, still open).
+       tests included.
+    3. It builds the web app, both packages, the SBOMs, and `SHA256SUMS` with `make
+       release-files`, then checks what it made (`scripts/release-verify.sh`): exactly a release's
+       files, every checksum right, and each package's name, `Version` (the tag's, as nfpm writes
+       it), and `Architecture`.
+    4. It builds the packages again on another machine, and they have to be byte for byte the
+       first build's.
+    5. It makes build provenance for every file and creates a draft GitHub release for the tag,
+       holding the files, with the version's `CHANGELOG.md` section as its notes, marked a
+       pre-release when the version has a suffix. Then it checks that GitHub kept every file's
+       name, because `SHA256SUMS` and `install.sh` go by the names the files were built with.
+       Only this job gets `contents: write` and the attestation permissions; CI's jobs stay
+       read-only.
+- **Why the same commit gives the same package.** Two builds differed until three things were
+  fixed, each where it came from (2026-10-05, in Docker, by building twice with every source
+  file's modification time changed between them):
+    - nfpm puts each file's modification time in the package, which is the time of the checkout.
+      The Makefile sets `SOURCE_DATE_EPOCH` to the commit's time, which nfpm uses instead. Without
+      it the two `.deb` files differed and the binaries inside them didn't.
+    - SvelteKit names each build with the time it was made, and that name is in the entry chunks,
+      so two builds of the same source differed in dozens of files. `web/vite.config.ts` names the
+      build for the commit, which nothing in the app reads.
+    - Go's output, with `-trimpath` and no cgo, was the same each time already.
+
+    The rebuild in `release.yml` keeps it true: a change that makes a build depend on the time or
+    the machine fails the next dry run.
+
+- **What's in a release:**
+    - `drawbridge_<version>_arm64.deb` and `drawbridge_<version>_amd64.deb`.
+    - An SBOM (CycloneDX) for each package's binary, listing its Go modules, and one for the web
+      app, listing its npm packages: `drawbridge_<version>_<arch>.sbom.json` and
+      `drawbridge-web_<version>.sbom.json`.
+    - `install.sh`, a fixed name, so
+      `https://github.com/stuffam/drawbridge/releases/latest/download/install.sh` is always the
+      latest release's own copy.
+    - `SHA256SUMS`, which lists every file above.
+- **What a checksum proves, and what provenance adds.** `sha256sum -c --ignore-missing SHA256SUMS`
+  catches a damaged or truncated download. It can't show who built the file, because the file and
+  its sums come from the same place. `gh attestation verify drawbridge_<version>_<arch>.deb --repo
+  stuffam/drawbridge` can: it checks the signed statement, made by GitHub from this workflow's
+  run, that this repository's `release.yml` built that file from that tag (§16). There is no key
+  for the project to keep or lose.
 - **`install.sh`** is the convenience path. The install guide leads with the by-hand one (download
   the `.deb` and `SHA256SUMS`, check them, `apt install ./the-file.deb`), because a script piped
   from the internet into a shell asks for trust that a web page can't earn. The script is plain
@@ -1534,12 +1568,14 @@ package does once it's installed (above).
     - Picks the latest published release that isn't a pre-release: `/releases/latest` redirects to
       its tag, which avoids the API's rate limit and parsing JSON. `--version vX.Y.Z` picks any
       release, a pre-release included.
-    - Downloads the package and `SHA256SUMS` over HTTPS into a temporary directory, checks the sum
-      and stops before `dpkg` runs on a mismatch, says what it will install (the version, and the
-      one already installed), and asks first unless given `--yes`.
+    - Takes the package's name from `SHA256SUMS`, and only if it is a package's name (nothing from
+      the network goes into a path or a URL unchecked). It downloads the package, checks its sum
+      and stops before `dpkg` runs on a mismatch, says what it will install (and what it replaces),
+      and asks first unless given `--yes`. It asks on the terminal, so `curl | sh` can; with none,
+      it stops and says to use `--yes`.
     - Installs with `apt-get install ./file.deb`, so `apt` brings the dependencies, and leaves
       `dpkg`'s output as it is: the setup token is in it. An install over an existing one is the
-      upgrade.
+      upgrade, and the same version is left alone.
     - Never downgrades. A database from a newer Drawbridge can't be written by an older one (see
       Downgrades, above), so it refuses and says that.
 - **A bad release** is fixed forward. A downgrade isn't an option once a migration has run, so
@@ -1547,7 +1583,6 @@ package does once it's installed (above).
   "latest" (and `install.sh`) goes back to the last good one, with a note saying why, and the fix
   ships as the next patch version. Installing the draft's own files before publishing (step 4)
   is what keeps this rare.
-
 ---
 
 ## 12. Testing strategy
@@ -1564,8 +1599,9 @@ package does once it's installed (above).
 | Upgrade matrix (tunnel) | A real older build sets up a host with a connected client, and this build takes over the way the package does: the daemon is swapped and nothing else is restarted. The interface, key, port, and peers don't change, the client's fetches through the tunnel never fail, every row the older build stored is kept, the account logs in with its old password and the browser's login survives, and after a restart of the tunnel the client reconnects with the config it had. One run for each build in `test/integration/upgrade-from.txt` (one merge on main per schema so far, a release's tag from the first one on) | `make test-upgrade`, and a step of CI's "Integration" job |
 | Package scripts | The real `postinst`, `prerm`, and `postrm` through real `dpkg`, against a fake `systemctl` that models enabled by the link systemd reads, active, and a unit that won't start: a first install, an upgrade, a downgrade, a remove, a reinstall after remove, a purge, an install after purge, and an aborted upgrade, each with the units enabled, disabled, stopped, and failing. An admin's `systemctl disable` survives an upgrade, the tunnel is never restarted, and a daemon that won't start doesn't leave the package half-configured. What it can't say is whether systemd does what the fake does | `make test-packaging` (a throwaway Debian container or VM), and CI's "Package scripts" job |
 | Docs site | The site builds strictly (a broken link, anchor, or page fails it), and every list on every page has the depth GitHub gives it: the checker reads each source page the way GitHub does and compares it with the built page, because Zensical's parser needs 4-space nesting and a blank line before a list, and a page that breaks either still builds, with its bullets flattened | `make docs`, and CI's "Docs" workflow on every pull request that touches `docs/` |
-| Release workflow | A dry run (on a pull request that touches the workflow, the packaging, or the Makefile, or started by hand) builds the packages and checks what it made: each package's `Version` and `Architecture` (`dpkg-deb --field`), that `SHA256SUMS` verifies, and that the notes are the changelog's section. The refusals (a tag that isn't a version, a commit that isn't on `main`, a version with no changelog section) are tried with a throwaway tag before the first release | CI, and by hand before the first release |
-| `install.sh` | `shellcheck`, and the real script in a throwaway Debian with a fake `curl` that serves a built package, as the package scripts' test does with `systemctl`: a first install, an upgrade, a pinned version, a pre-release skipped by default, a bad checksum that stops before `dpkg`, a downgrade refused, and a host without systemd or on another architecture refused | `make test-install`, and CI |
+| Release scripts | The scripts that decide and check a release, each against a throwaway repository or directory: the changelog's section for a version (trimmed, and not another version's), a tag that isn't a version or isn't on `main` or has no section, the outputs for a release and a pre-release (`1.0.0~rc.1`), and a release's files (exactly the set, `SHA256SUMS` listing them all and matching, each package's name, `Version`, and `Architecture`, a changed or missing or extra file) | `make test-release`, and CI's "Release scripts" job |
+| `install.sh` | The real script, against a fake release page and a PATH of only the tools it uses (the fake `curl` serves a directory, `apt-get` records what it was asked and the file's checksum at that moment): the latest release and a pinned one, a pre-release only when asked, each architecture, a first install, an upgrade, the same version, a downgrade refused, root and sudo, the terminal's answers and no terminal, and every refusal (an architecture without a package, no systemd, not Debian-family, no curl, no release, no such version, a missing or tampered package, no package for the architecture, a package name with a path or shell character in it, two packages). It never reaches `apt-get` on a refusal, and asks for nothing but this repository's releases over https. Each case was checked by breaking the script (no checksum check, no downgrade guard, no name check, no prompt, wrong architecture, `sudo` as root) and seeing the suite fail | `make test-install`, and CI's "Release scripts" job; `shellcheck` on all of them (`make lint-shell`) |
+| Release workflow | A dry run (on a pull request that touches the workflow, the packaging, the scripts, or the Makefile, or started by hand) builds the packages, the SBOMs, and the checksums, checks them, and builds the packages again on another machine, which must match byte for byte. `actionlint` checks the workflow's syntax. What only a real tag shows (the draft, the provenance, GitHub keeping each file's name) is tried with the first release, and is in docs/MANUAL_CHECKLIST.md §20 | CI, and by hand with the first release |
 | On hardware | Manual checklist for each release (below) | The reference platform (§2) |
 
 The on-hardware checklist:
@@ -1735,10 +1771,10 @@ Each milestone ends in a usable, tested state.
   `make test-upgrade`. The package scripts keep an admin's `systemctl disable` across upgrades
   (§11), with their own test (§12). The install guide is written (`docs/install.md`); router setup
   and troubleshooting aren't.*
-- Releases (§11.1): a version tag builds both packages and drafts a GitHub release with checksums,
-  SBOMs, and notes from `CHANGELOG.md`, and `install.sh` installs the latest one. It comes with
-  its tests, and the first release is cut with it (§16 says which version). *Planned: until then
-  docs/install.md has admins build the package or take CI's.*
+- Releases (§11.1): a version tag builds both packages twice, and drafts a GitHub release with
+  checksums, SBOMs, build provenance, and notes from `CHANGELOG.md`, and `install.sh` installs the
+  latest one. *Built (2026-10-05), with its tests. The first release, v0.1.0, isn't cut yet, so
+  docs/install.md still has admins build the package or take CI's.*
 - **Exit:**
     - The security checklist passes.
     - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build there
@@ -1820,7 +1856,7 @@ Each milestone ends in a usable, tested state.
 | Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/two-factor.md, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Downgrades | A database from a newer Drawbridge is never changed by an older one. The daemon, which writes, refuses to start on it, says which schema it found, and exits with status 78, which `drawbridge.service` doesn't restart on. `drawbridge-tunnel.service`, which only reads, warns and brings the VPN up. A restore refuses a newer backup | The VPN matters more than the web UI, so a downgrade (or a rollback after a bad release) mustn't take it down. An older build that writes to a schema it doesn't know could damage rows the newer one relies on, so only the reader goes on. That the tunnel only reads is structural: the reconciler's state has `Settings` and `Clients` and nothing else (§11, 2026-10-04) |
-| Releases | A `vX.Y.Z` tag on `main` starts `release.yml`, which runs CI's jobs on the tag, builds both `.deb`s reproducibly, and drafts a GitHub release with `SHA256SUMS`, SBOMs, `install.sh`, and notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware, then publishes. `install.sh` checks the checksum and never downgrades, and the by-hand download is the documented default. Tags and published files are never changed | A package can't be taken back from a host once a migration has run, because an older build won't write the newer database (Downgrades, above), so what ships has to be tried first, as the files users will get. A script piped into a shell is a convenience, not something the guide should open with. Fixing forward means no tag or file ever changes under someone who already installed it (§11.1, 2026-10-04) |
+| Releases | A `vX.Y.Z` tag on `main` starts `release.yml`, which runs CI's jobs on the tag, builds both `.deb`s twice (the two builds must match byte for byte), and drafts a GitHub release with `SHA256SUMS`, SBOMs, `install.sh`, build provenance (GitHub artifact attestations), and notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware, then publishes. `install.sh` checks the checksum and never downgrades, and the by-hand download is the documented default. Tags and published files are never changed. The first release is **v0.1.0** (an ordinary release, not a pre-release), after **v0.1.0-rc.1** has tried `install.sh` and the file names on GitHub | A package can't be taken back from a host once a migration has run, because an older build won't write the newer database (Downgrades, above), so what ships has to be tried first, as the files users will get. A script piped into a shell is a convenience, not something the guide should open with. Fixing forward means no tag or file ever changes under someone who already installed it. Provenance gives a checksum something to stand on, costs one workflow step, and has no key to keep. v0.1.0 because the plan has called the web UI's release v0.1 since M3, M5's exit assumes v0.x releases, a real tag is what lets the upgrade matrix list releases instead of merges, and "latest", which `install.sh` reads, skips pre-releases (§11.1, decided 2026-10-05) |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |
 | IPv6 endpoint | Supported when the router allows inbound UDP 51820 to the host's stable address | Verified on the reference platform with a real client (docs/MANUAL_CHECKLIST.md §2, 2026-09-28) |
@@ -1838,13 +1874,3 @@ Each milestone ends in a usable, tested state.
    temporary address. That catches a stale record only when it points somewhere unroutable, not
    when it points at an old public address. The choices are to leave it, or to add the lookup as
    an opt-in setting that names the service.
-3. **Whether releases carry build provenance (§11.1).** GitHub's artifact attestations sign a
-   statement that a file was built by this workflow from this tag, with no key for the project to
-   keep, and `gh attestation verify` checks it. It's one more step in `release.yml`, and it's what
-   would give a checksum something to stand on. Recommended: add it, because it costs one step and
-   no key, and the first release is when people start relying on the files. The alternative is
-   checksums alone, as §10 says.
-4. **The first release's version.** Recommended: v0.1.0. The plan has called the web UI's release
-   v0.1 since M3, M5's exit assumes v0.x releases, and a real tag is what lets the upgrade matrix
-   (§12) list releases instead of merges. The alternative is to wait for v1.0.0, which leaves admins
-   building their own packages until M5 is done.

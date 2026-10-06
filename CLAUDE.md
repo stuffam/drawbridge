@@ -124,8 +124,17 @@ setups.** What exists:
   depth GitHub gives it (`test/docs/check_lists.py`).
   The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
   from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
-  upgrading, and removing. Left in M5: router setup, troubleshooting, and the release pipeline
-  (docs/PLAN.md §11.1: a version tag, `release.yml`, `CHANGELOG.md`, and `install.sh`).
+  upgrading, and removing. Left in M5: router setup and troubleshooting, and cutting the first
+  release.
+- The release pipeline (2026-10-05, the tenth slice of M5, docs/PLAN.md §11.1): a `vX.Y.Z` tag on
+  `main` starts `.github/workflows/release.yml`, which checks the tag (`scripts/release-check.sh`),
+  runs every CI job on it (`ci.yml` has a `workflow_call` trigger), builds both packages with
+  their SBOMs and `SHA256SUMS` (`make release-files`), builds the packages again on another
+  machine (they must match byte for byte), and drafts a GitHub release with build provenance and
+  the notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware
+  and publishes it. `scripts/install.sh` installs the latest release after checking its checksum.
+  The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job). Nothing has been released yet, and the first release goes out as v0.1.0-rc.1, then v0.1.0
+  (§11.1, docs/MANUAL_CHECKLIST.md §20).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -262,6 +271,10 @@ make deb        # web build, arm64 and amd64 binaries, and both .deb files in di
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
 make test-upgrade       # upgrade from each older build (test/integration/upgrade-from.txt)
 make test-packaging     # the .deb's scripts through real dpkg, fake systemctl (a throwaway Debian)
+make release-files      # the packages, SBOMs, install.sh, and SHA256SUMS in dist/release/, checked
+make test-release       # the scripts that decide and check a release (git; dpkg-deb for part)
+make test-install       # scripts/install.sh against a fake release page (a Debian-family dpkg)
+make lint-shell         # shellcheck on those scripts (skipped where it isn't installed)
 make docs               # the docs site: its tests, a strict build into site/, the list check
 make docs-serve         # preview the docs site at http://localhost:8000
 make test-e2e   # the web app in Chromium against `serve --backend fake` (Playwright)
@@ -530,6 +543,17 @@ These are the rules most likely to get silently broken.
   goes wrong has nothing to go back to otherwise. The nightly snapshots are one DB-sized file
   written a day (`--snapshot-interval 0` turns them off), so they stay inside the SD card rule
   above, and `snapshot.Prune` touches only files whose names it made.
+- **A build is a function of its commit, and a release is never changed.** `release.yml` builds the
+  packages twice on two machines and fails unless they match byte for byte, so nothing may put the
+  time or the machine into a build. Three things did, and each is fixed where it came from: nfpm
+  puts every file's modification time in the package (the Makefile exports `SOURCE_DATE_EPOCH`, the
+  commit's time), SvelteKit names each build for the time it was made (`web/vite.config.ts` names it
+  for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are made
+  with `-noserial -notimestamp`; the SBOMs aren't compared). A tag is never moved and a published
+  release's files are never replaced: a mistake is fixed by the next version, because an older build
+  won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older version
+  over a newer one, never lets a name from the network into a path or URL unchecked, and never
+  reaches `apt-get` before the package's checksum matches; its tests break the script to prove each.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -611,6 +635,32 @@ preinstalled, running as root):
     root, names with apostrophes included.
   - `tunnel up` failed with the "is the wireguard module loaded" hint, as it should without
     kernel WireGuard.
+
+**Reproducible builds and the release tools** (2026-10-05, in Docker with Go 1.26 and Node 24, by
+building twice with every source file's modification time changed between the builds):
+
+- Without `SOURCE_DATE_EPOCH` the two `.deb` files differed and the Go binaries inside them
+  didn't. With it, both packages and both binaries were identical. The web build differed in dozens of
+  files until its version name stopped being the build's time (`_app/version.json` held a
+  `Date.now()`); named for the commit, 43 files were identical across builds.
+- nfpm v2.47.0 turns the versions `0.1.0`, `1.0.0-rc.1`, and `0.0.0-dev` into the Debian versions
+  `0.1.0`, `1.0.0~rc.1`, and `0.0.0~dev`.
+- `cyclonedx-gomod` v1.12.0 (`bin` mode, on a stripped binary: the build info survives `-s -w`) has
+  no `-reproducible` flag; `-noserial -notimestamp` makes two runs identical. It lists the modules
+  (21 here) and the main module at the `-version` given.
+- `npm sbom --sbom-format cyclonedx` fails with `EINVALIDPURLTYPE` when `package.json` has no
+  `version`, which is why `web/package.json` has one (`0.0.0`, which nothing else reads).
+- GitHub (checked against a repository with releases, and this one, with none): `/releases/latest`
+  redirects to `/releases/tag/<tag>`, or to `/releases` when there's no release, and
+  `/releases/download/<tag>/<file>` resolves to the file. A draft release's files need a login, so
+  `install.sh` can't be tried on one. Not checked: whether GitHub keeps a `~` in an asset's name
+  (the release job fails when it doesn't).
+- CI's ubuntu-24.04 runner has ShellCheck 0.9.0, which is stricter than the current one in places:
+  it flags `[ a ] && [ b ] || {` (SC2015), where 0.11 doesn't. Lint with both, `koalaman/shellcheck:v0.9.0`
+  and `:stable`.
+- actionlint (rhysd/actionlint 1.7.12) checks `release.yml` and `ci.yml` and runs shellcheck over
+  their `run:` blocks. Run it in Docker: `docker run --rm -v "$PWD":/repo -w /repo
+  rhysd/actionlint:latest`.
 
 **Build tooling:**
 
@@ -760,7 +810,7 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/install.md` is the admin's install guide, from getting the package to a first client. Its
   "Get the package" section describes how to get a `.deb` before there's a release; change it
-  when `release.yml` and `install.sh` (docs/PLAN.md §11.1) exist.
+  when the first release is published.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
 - `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
 - `docs/two-factor.md` is the admin's guide to two-factor authentication: turning it on, the
@@ -816,6 +866,11 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `zensical.toml` configures the docs site (the nav, the theme, the Markdown extensions) and
   `requirements-docs.txt` pins its build tools. `test/docs/` has the list check and its tests.
   `docs/index.md` is the site's home page.
+- `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
+  and `release-check.sh`, `release-notes.sh`, and `release-verify.sh` (what `release.yml` runs).
+  `test/release/test.sh` and `test/install/test.sh` test them with throwaway repositories and a fake
+  release page, and install nothing. `CHANGELOG.md` has a section for each release, which is the
+  release's notes. `.github/workflows/release.yml` is the workflow.
 - `test/packaging/test.sh` runs the maintainer scripts through real `dpkg`, with a fake
   `systemctl` that models what the scripts use (a unit is enabled when its link resolves, active
   by a marker, and a flag makes it fail to start), and records the calls.
