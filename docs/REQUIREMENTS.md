@@ -142,6 +142,7 @@ internet).
 TLS certificates, WireGuard's handshakes, and two-factor authentication's codes
 (docs/two-factor.md) depend on the time. A host without a battery-backed
 clock, such as a Raspberry Pi without its RTC battery, needs network time
-(`systemd-timesyncd`) running before it can be trusted. `drawbridge doctor` recognizes only
-`systemd-timesyncd`: on a host that keeps time with chrony or ntpd, its clock check warns even
-when the clock is right.
+(`systemd-timesyncd`) running before it can be trusted. The package recommends
+`systemd-timesyncd`, or any other time daemon, so a plain `apt install` brings one to a host that
+has none. `drawbridge doctor` recognizes only `systemd-timesyncd`: on a host that keeps time with
+chrony or ntpd, its clock check warns even when the clock is right.

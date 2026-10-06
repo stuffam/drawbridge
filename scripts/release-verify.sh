@@ -1,7 +1,7 @@
 #!/bin/sh
 # Checks what `make release-files` made, before it's published (docs/PLAN.md §11.1): that the
 # directory holds exactly a release's files, that SHA256SUMS covers all of them and matches, and
-# that each package is what its name says. It needs dpkg-deb.
+# that each package is what its name says and declares what it needs. It needs dpkg-deb.
 #
 #   scripts/release-verify.sh DIR DEB_VERSION     DEB_VERSION is 0.1.0, or 1.0.0~rc.1
 #
@@ -65,6 +65,15 @@ for arch in arm64 amd64; do
 		problem "$deb has Version $(dpkg-deb --field "$deb" Version), not $ver"
 	[ "$(dpkg-deb --field "$deb" Architecture)" = "$arch" ] ||
 		problem "$deb has Architecture $(dpkg-deb --field "$deb" Architecture), not $arch"
+	# What the package needs on the host (docs/PLAN.md §11): nft applies its firewall, and a time
+	# daemon keeps the clock that certificates, handshakes, and two-factor codes go by. Without
+	# the dependency, an install succeeds on a host where the VPN then can't come up.
+	dpkg-deb --field "$deb" Depends | grep -Eq '(^|, )nftables($|,| )' ||
+		problem "$deb doesn't depend on nftables"
+	dpkg-deb --field "$deb" Recommends | grep -qF 'systemd-timesyncd | time-daemon' ||
+		problem "$deb doesn't recommend systemd-timesyncd | time-daemon"
+	dpkg-deb --field "$deb" Recommends | grep -Eq '(^|, )wireguard-tools($|,| )' ||
+		problem "$deb doesn't recommend wireguard-tools"
 done
 
 for sbom in "$dir"/*.sbom.json; do

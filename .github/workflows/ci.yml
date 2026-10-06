@@ -167,6 +167,19 @@ jobs:
       - name: Install, upgrade, downgrade, remove, and purge
         run: make test-packaging
 
+  vulncheck:
+    name: Vulnerabilities (Go)
+    # Known vulnerabilities that the Go code can reach (docs/PLAN.md §10). It goes by a database
+    # that changes, so a new finding can fail a change that didn't cause it: the fix is the
+    # dependency (or the Go version) it names.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: make vuln
+
   release-scripts:
     name: Release scripts
     # The scripts that decide, check, and install a release (docs/PLAN.md §11.1, §12): shellcheck,
@@ -192,7 +205,7 @@ jobs:
 
   packages:
     name: Packages
-    needs: [go, web, e2e, spelling, integration, package-scripts, release-scripts]
+    needs: [go, web, e2e, spelling, integration, package-scripts, release-scripts, vulncheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

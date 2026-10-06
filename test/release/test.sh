@@ -147,13 +147,17 @@ if ! command -v dpkg-deb >/dev/null 2>&1; then
 	echo "SKIP: release-verify.sh's cases (no dpkg-deb)"
 else
 	ver=1.0.0~rc.1
-	# A package with the given version and architecture.
+	# A package with the given version and architecture, and the dependencies the real one has
+	# unless a case gives others (an empty one leaves the field out).
 	make_deb() {
 		local out=$1 v=$2 arch=$3 tree
+		local depends=${4-nftables} recommends=${5-wireguard-tools, systemd-timesyncd | time-daemon}
 		tree=$(mktemp -d "$work/deb.XXXXXX")
 		mkdir -p "$tree/DEBIAN"
 		printf 'Package: drawbridge\nVersion: %s\nArchitecture: %s\nMaintainer: t <t@example.com>\nDescription: test\n' \
 			"$v" "$arch" >"$tree/DEBIAN/control"
+		[ -z "$depends" ] || printf 'Depends: %s\n' "$depends" >>"$tree/DEBIAN/control"
+		[ -z "$recommends" ] || printf 'Recommends: %s\n' "$recommends" >>"$tree/DEBIAN/control"
 		dpkg-deb --build "$tree" "$out" >/dev/null 2>&1
 	}
 	# A directory holding a release, which a case then spoils in one way.
@@ -208,6 +212,31 @@ else
 	make_deb "$work/arch/drawbridge_${ver}_amd64.deb" "$ver" arm64
 	resum "$work/arch"
 	expect "verify: a package of another architecture" 1 'has Architecture arm64, not amd64' "$verify" "$work/arch" "$ver"
+
+	make_release "$work/nodep"
+	make_deb "$work/nodep/drawbridge_${ver}_amd64.deb" "$ver" amd64 "" "wireguard-tools, systemd-timesyncd | time-daemon"
+	resum "$work/nodep"
+	expect "verify: a package that doesn't depend on nftables" 1 "doesn't depend on nftables" "$verify" "$work/nodep" "$ver"
+
+	make_release "$work/othernft"
+	make_deb "$work/othernft/drawbridge_${ver}_arm64.deb" "$ver" arm64 "libnftables1" "wireguard-tools, systemd-timesyncd | time-daemon"
+	resum "$work/othernft"
+	expect "verify: a package that depends on something merely like nftables" 1 "doesn't depend on nftables" "$verify" "$work/othernft" "$ver"
+
+	make_release "$work/notime"
+	make_deb "$work/notime/drawbridge_${ver}_amd64.deb" "$ver" amd64 nftables "wireguard-tools"
+	resum "$work/notime"
+	expect "verify: a package that doesn't recommend a time daemon" 1 "doesn't recommend systemd-timesyncd" "$verify" "$work/notime" "$ver"
+
+	make_release "$work/nowg"
+	make_deb "$work/nowg/drawbridge_${ver}_amd64.deb" "$ver" amd64 nftables "systemd-timesyncd | time-daemon"
+	resum "$work/nowg"
+	expect "verify: a package that doesn't recommend wireguard-tools" 1 "doesn't recommend wireguard-tools" "$verify" "$work/nowg" "$ver"
+
+	make_release "$work/alsodeps"
+	make_deb "$work/alsodeps/drawbridge_${ver}_amd64.deb" "$ver" amd64 "libc6 (>= 2.31), nftables (>= 1.0), adduser" "wireguard-tools, systemd-timesyncd | time-daemon"
+	resum "$work/alsodeps"
+	expect "verify: nftables among other dependencies, with a version" 0 'release files OK' "$verify" "$work/alsodeps" "$ver"
 
 	make_release "$work/sbom"
 	echo 'not json' >"$work/sbom/drawbridge_${ver}_amd64.sbom.json"
