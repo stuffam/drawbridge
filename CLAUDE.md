@@ -655,6 +655,9 @@ building twice with every source file's modification time changed between the bu
   `/releases/download/<tag>/<file>` resolves to the file. A draft release's files need a login, so
   `install.sh` can't be tried on one. Not checked: whether GitHub keeps a `~` in an asset's name
   (the release job fails when it doesn't).
+- CI's ubuntu-24.04 runner has ShellCheck 0.9.0, which is stricter than the current one in places:
+  it flags `[ a ] && [ b ] || {` (SC2015), where 0.11 doesn't. Lint with both, `koalaman/shellcheck:v0.9.0`
+  and `:stable`.
 - actionlint (rhysd/actionlint 1.7.12) checks `release.yml` and `ci.yml` and runs shellcheck over
   their `run:` blocks. Run it in Docker: `docker run --rm -v "$PWD":/repo -w /repo
   rhysd/actionlint:latest`.

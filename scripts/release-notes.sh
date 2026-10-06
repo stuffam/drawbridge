@@ -6,10 +6,10 @@
 #   scripts/release-notes.sh v1.0.0 [CHANGELOG.md]
 set -eu
 
-[ $# -ge 1 ] && [ $# -le 2 ] || {
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
 	echo "usage: release-notes.sh VERSION [CHANGELOG]" >&2
 	exit 2
-}
+fi
 tag=$1
 file=${2:-$(dirname "$0")/../CHANGELOG.md}
 [ -r "$file" ] || {
