@@ -179,6 +179,13 @@ everything it's missing at once. `make test-integration` runs the same check loc
 - `[NEXT]` The Integration job passes on such a runner.
 - `[NEXT]` A run leaves the host's own network untouched: afterward, `ip link` and
   `sudo nft list tables` on the host show nothing new.
+- `[VERIFIED 2026-10-05]` The kernel tests (`make test-integration`'s command, minus the two
+  journald tests, which write test entries into the host's real journal) pass on the reference
+  platform itself: every test, in 86.7 s at the lowest priority on Linux 6.18, with the real tunnel
+  up beside them. They left the host's own network as it was: no namespace afterward, and the same
+  interfaces, `nft list tables`, `wg0` with its peers, sysctls, listeners, and files in
+  `/var/lib/drawbridge`. That isn't the `[NEXT]` run above (a self-hosted runner), only the same
+  tests on this machine.
 
 ## 5. The admin API (M2)
 
@@ -268,9 +275,13 @@ M3's exit criteria: everything can be done from a phone or a desktop browser, in
   With no resolver on the host, it reports nothing listening and preselects the public resolvers.
   The unit and browser tests cover both outcomes with a stand-in resolver and the fake backend;
   a real resolver on the host hasn't been asked.
-- `[UNVERIFIED]` `sudo drawbridge server set --dns server` on a host with AdGuard Home listening on
-  all addresses saves both VPN addresses; with the resolver stopped it refuses and says nothing
-  answers, and `--force` saves them anyway. The tests cover both with a stand-in resolver.
+- `[VERIFIED 2026-10-05]` `sudo drawbridge server set --dns server` on a host with AdGuard Home
+  listening on all addresses saves both VPN addresses. It printed "DNS check: 10.8.0.1: A resolver
+  answered." and the same for the IPv6 address, and left the setting as both addresses (they were
+  already saved, so nothing changed and nothing was logged). `--force` did the same.
+- `[UNVERIFIED]` With the resolver stopped, `server set --dns server` refuses and says nothing
+  answers, and `--force` saves them anyway. The tests cover both with a stand-in resolver. (Trying
+  it means stopping the host's resolver, which the home network's DNS depends on, so it was left.)
 - `[VERIFIED 2026-09-27]` The same pages work on the phone itself, through the VPN at
   `https://10.8.0.1:51821`, and are usable at phone width.
 - `[VERIFIED 2026-09-27]` Account → the laptop's and the phone's sessions are listed; logging the
@@ -311,17 +322,28 @@ only sign a session actually ended.
   not already idled out) closes that session immediately, rather than waiting for the idle
   timeout: pausing a client connected 28m ago (last handshake 18s prior) produced
   `client.disconnected` with `duration: 28m31s` at the same timestamp as `client.paused`, not
-  the 3-minute idle wait.
+  the 3-minute idle wait. On 2026-10-05, with a throwaway client connected from a network namespace
+  over the loopback (§13 describes it), `client.disconnected` came 4 s after `client.paused`, on
+  the next 5 s poll, so the close happens within one poll and isn't always in the same second.
+  Rotating that client's keys closed the session in the same second, and after `client resume` its
+  next handshake came about 13 s later (WireGuard's own retry), as a new session.
 - `[UNVERIFIED]` The Logs page's "Client connections" filter, clicked through a real browser,
   shows the same connect/disconnect/roam events `drawbridge events` does. (Needs a real
   logged-in browser session; see §5.)
-- `[UNVERIFIED]` Under the installed units' sandbox (`ProtectSystem=strict`, only `CAP_NET_ADMIN`),
-  the daemon's events reach the journal as fields: `sudo journalctl -u drawbridge
+- `[VERIFIED 2026-10-05]` Under the installed units' sandbox (`ProtectSystem=strict`, only
+  `CAP_NET_ADMIN`), the daemon's events reach the journal as fields: `sudo journalctl -u drawbridge
   DRAWBRIDGE_CLIENT=<a client's name>` lists that client's events (added, paused, connected,
   disconnected), `-o json` shows `DRAWBRIDGE_EVENT`, `DRAWBRIDGE_CATEGORY`, `DRAWBRIDGE_VIA`, and
   `PRIORITY`, and a wrong password at the login shows under `journalctl -u drawbridge -p warning`.
   Real journald accepts the entries (the integration tests check that against the runner's
-  journald, with a fake backend), but the unit's sandbox hasn't been run against it.
+  journald, with a fake backend), and the unit's sandbox has now been run against it. All of it was
+  seen: a throwaway client's `client.added`, `client.paused`, `client.resumed`, `client.renamed`,
+  `client.deleted`, `client.connected`, and `client.disconnected` matched by `DRAWBRIDGE_CLIENT`
+  (and a real client's roamed, connected, and disconnected events from earlier days), with
+  `PRIORITY` 6 and the category, the way (`cli` or `system`), and the actor as fields. One wrong
+  password for a made-up username (a 401, from the loopback) was logged at `PRIORITY` 4 as
+  `auth.login_failed` with `DRAWBRIDGE_ACTOR` the typed name, `DRAWBRIDGE_VIA=web`, and
+  `DRAWBRIDGE_SOURCE_IP`. The password is nowhere in the journal or the event log.
 - `[UNVERIFIED]` The Logs page's Event, Client, and When filters narrow the list as they say, and
   Export CSV saves `drawbridge-events.csv` with a header row and one row per matching event
   (not just the 50 shown), in a spreadsheet: times in UTC, details as JSON, and a failed login
@@ -339,20 +361,46 @@ only sign a session actually ended.
   at most as much again for checkpoints. (The test measures the log of a simulated day against
   a real database; the real daemon's number includes the checkpoints, the nftables copy it saves
   on each apply, and anything else it writes.)
-- `[UNVERIFIED]` The live stream (`GET /api/stream`) on the reference platform, with the dashboard
-  open on a laptop: a real phone turning its tunnel on shows as Online within about 6 seconds with
-  no touch of the page, `sudo drawbridge client pause NAME` on the host changes the tiles within a
-  second, and the Logs page lists a `client.connected` row at the top as it happens. The stream
-  and its fallback are tested against a fake backend in a headless browser.
+- `[VERIFIED 2026-10-05]` The live stream (`GET /api/stream`) on the reference platform, with the
+  dashboard open on a laptop: a real phone turning its tunnel on shows as Online within about 6
+  seconds with no touch of the page, `sudo drawbridge client pause NAME` on the host changes the
+  tiles within a second, and the Logs page lists a `client.connected` row at the top as it
+  happens. The stream and its fallback are tested against a fake backend in a headless browser.
+  Run with the maintainer's laptop (through the reverse proxy) watching, and a throwaway client
+  connected from a network namespace (§13 describes it) standing in for the phone. A client added
+  with `client add` appeared in the client list by itself (before it was mentioned). When it
+  connected it showed Online in under 6 s with no touch (the daemon logged the session 2.4 s
+  after the connect), and the Logs page had the `client.connected` row at the top as it happened.
+  `client pause` changed the tiles within about a second.
 - `[UNVERIFIED]` The stream through the real network and the real daemon: a dashboard left
   visible stays current overnight and stays logged in until twelve hours after login, while a
-  hidden tab idles out after an hour. `sudo systemctl restart drawbridge` with a page open
-  brings the page back to live by itself within seconds, and `sudo systemctl stop drawbridge`
-  with a page open returns at once, not after ten seconds.
+  hidden tab idles out after an hour.
+- `[VERIFIED 2026-10-05]` `sudo systemctl restart drawbridge` with a page open brings the page back
+  to live by itself within seconds, and `sudo systemctl stop drawbridge` with a page open returns
+  at once, not after ten seconds. With the dashboard open through the reverse proxy, a restart
+  brought the page back live within a few seconds with no reload, and the connected throwaway
+  stayed Online. `stop` returned in 0.03 to 0.04 s with a page's stream open (0.02 s with none),
+  and after a `start` the web UI's `/healthz` answered 0.11 s later and the control socket 0.12 s
+  later. While the daemon is away, the dashboard shows a red alert at the top of the page. A 10 s
+  stop went unnoticed because the page was scrolled down; in a 45 s stop with a second window open
+  directly on port 51821 as well, the alert showed in both windows, and the reverse proxy's log
+  has the page's polls answered 502 every 5 s throughout.
 - `[UNVERIFIED]` A connected client's session bytes on the dashboard still grow at every 5 second
-  refresh although the database gets them once a minute, and after `sudo systemctl restart
-  drawbridge` the session carries on (no new `connected` event) and its bytes are right again at
-  the first poll.
+  refresh although the database gets them once a minute. (The daemon's session counters were seen
+  advancing on its 5 second poll; the dashboard, and the database's once-a-minute write, weren't
+  looked at.)
+- `[VERIFIED 2026-10-05]` After `sudo systemctl restart drawbridge` the session carries on (no new
+  `connected` event) and its bytes are right again at the first poll. With a throwaway client
+  connected from a network namespace over the loopback (§13 describes it) and pinged five times a
+  second, `systemctl restart drawbridge` (the journal has "Drawbridge stopping" and "Drawbridge
+  started" 0.1 s apart) left the session's start time unchanged, and the event log still had one
+  `client.connected` and no `client.disconnected` for it. The session's byte counters carried on
+  rather than resetting (15,008 bytes before, 23,584 a few seconds after). After a `systemctl stop`
+  and `start` with the traffic quiet, the baseline between the kernel's totals and the session's
+  counters (the kernel's total minus the session's bytes: 308 received, 220 sent) was exactly what
+  it was before, and the session's counters matched the kernel's after the next poll. The pings
+  never dropped: 342 of 342 answered, with at most 0.21 s between two, straight through the
+  restart.
 
 ## 8. Diagnostics: `drawbridge doctor` (the first M5 slice)
 
@@ -371,13 +419,30 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   off fails for IPv4 and for IPv6, another table's forward chain with `policy drop` warns until a
   rule accepts `wg0` (and stays warning for a rule that accepts only one destination port), and
   `tunnel down` fails the tunnel check.
-- `[UNVERIFIED]` `sudo drawbridge doctor` against the installed daemon on the reference platform
-  (the sandboxed run above used the fake backend, so it didn't see the real `wg0`).
+- `[VERIFIED 2026-10-05]` `sudo drawbridge doctor` against the installed daemon on the reference
+  platform (the sandboxed run above used the fake backend, so it didn't see the real `wg0`). All 13
+  checks passed, first on the build that was installed (`afff457`) and again after the in-place
+  upgrade to `17e7932`: `wg0` up with its peers, the WireGuard module, both forwarding sysctls, the
+  uplink for IPv4 and IPv6, `accept_ra` 0 under NetworkManager, the VPN's subnets against the LAN's,
+  the table loaded, no other firewall dropping forwarded traffic, both VPN addresses answering DNS,
+  the endpoint's A and AAAA records, `systemd-timesyncd` synchronized, free disk space, and the
+  admin's own certificate.
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
   same order, with the same results as `sudo drawbridge doctor`, and **Run again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
   Forwarding sysctls as Failed, with the command that turns it back on; running that command
-  clears it on the run after.
+  clears it on the run after. (The command-line half was run on 2026-10-05; see the next item.)
+- `[VERIFIED 2026-10-05]` With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the
+  next `sudo drawbridge doctor` show Forwarding sysctls as Failed, with the command that turns it
+  back on, and running that command clears it on the run after. `doctor` printed "FAIL
+  Forwarding sysctls: IPv4 forwarding is off, so VPN clients' traffic isn't routed. Fix: sudo
+  sysctl -w net.ipv4.ip_forward=1. The package sets them at boot in
+  /usr/lib/sysctl.d/90-drawbridge.conf; if they turn off again, another file in /etc/sysctl.d is
+  overriding it", with 12 passed and 1 failed, and exited 1. The command it printed, run as
+  printed, put forwarding back (it had been off for about 0.1 s), and the next run was 13 passed
+  and exit 0. With the tunnel stopped, `doctor` also fails DNS for clients (nothing answers on the
+  VPN addresses once `wg0` is gone), so the dashboard's banner would name that check while its own
+  "tunnel is stopped" banner is up (10 passed, 2 failed, 1 skipped).
 - `[UNVERIFIED]` On a host with ufw (default forward policy `DROP`), firewalld, or rootful Docker,
   the host firewall check warns, and the printed command (`ufw route allow`, the trusted zone,
   `DOCKER-USER`) clears it. The parser is tested on nft output shaped like each tool's, not on a
@@ -387,13 +452,26 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
 - `[UNVERIFIED]` An endpoint name whose AAAA record is a temporary address warns.
 - `[UNVERIFIED]` A host that keeps time with chrony or ntpd shows the clock warning even when the
   clock is right (a known limit, docs/REQUIREMENTS.md).
+- `[VERIFIED 2026-10-05]` With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the
+  dashboard's banner name Forwarding sysctls (at once when the page is reloaded), and turning it
+  back on clears the banner the same way. Forwarding was off for 60 s, `doctor` read 12 passed and
+  1 failed, and on the maintainer's dashboard a reload showed the banner naming Forwarding
+  sysctls; after forwarding was back on, a reload cleared it. The five-minute timer, and a save as
+  the trigger, weren't tried.
+- `[VERIFIED 2026-10-05]` With the tunnel stopped, the dashboard's own "tunnel is stopped" banner
+  appears and the diagnostics banner doesn't name the Tunnel check a second time. The tunnel was
+  stopped for 60 s. On the maintainer's phone (a screenshot of the dashboard) there were two red
+  boxes: "The tunnel is stopped, so no client can connect. Changes are saved and
+  apply when it starts: sudo systemctl start drawbridge-tunnel", and, apart from it, "1 check
+  needs attention", listing only "DNS for clients" (which `doctor` fails while `wg0` is gone, along
+  with Tunnel) with a "See System" link. The Tunnel card read "Stopped" in red, and the banners
+  cleared after the start. One wart: that check's detail repeats "Nothing answered within two
+  seconds." once for each address (IPv4 and IPv6), without saying which is which.
 - `[UNVERIFIED]` The dashboard raises what the System page shows as Warning or Failed, in one
   banner (red when anything failed, amber otherwise) that names each check and links to the System
-  page, and shows no banner when every check passes or is skipped. With nobody connected,
-  `sudo sysctl -w net.ipv4.ip_forward=0` makes the banner name Forwarding sysctls within five
-  minutes (or at once when any setting is saved, or the page is reloaded); turning it back on
-  clears the banner the same way. With the tunnel stopped, the dashboard's own "tunnel is stopped"
-  banner appears and the diagnostics banner doesn't name the Tunnel check a second time.
+  page, and shows no banner when every check passes or is skipped. (Red for a failure, the naming,
+  the link, and the banner clearing when every check passed again were seen; a banner for a
+  warning alone, which should be amber, wasn't.)
 
 ## 9. Traffic history and the charts (an M4 slice, built ahead of the rest of it)
 
@@ -487,7 +565,11 @@ nothing here is `[VERIFIED]` yet.
   AdGuard Home's block lists doesn't load, as before the sync. (In a container, with real DNS
   queries, a synced client's blocked domain was answered `0.0.0.0` like any other address.)
 - `[UNVERIFIED]` Renaming a client in Drawbridge renames it in AdGuard Home within a few
-  seconds, keeping tags, upstreams, and settings set there. Deleting it deletes its name.
+  seconds, keeping tags, upstreams, and settings set there. Deleting it deletes its name. Seen from
+  Drawbridge's side on 2026-10-05, with name sync already on: a throwaway client's add, rename, and
+  delete each logged `integration.adguard_name_added`, `integration.adguard_name_renamed` (from and
+  to), and `integration.adguard_name_removed`, from the system, one or two seconds later. What
+  AdGuard Home itself showed, and whether tags and upstreams survived the rename, wasn't looked at.
 - `[UNVERIFIED]` With a client of the admin's named like a Drawbridge client, Settings and the
   dashboard say one client couldn't be named, and nothing in AdGuard Home changes. Deleting the
   admin's client there, then *Sync now*, names the Drawbridge client.
@@ -539,20 +621,39 @@ hardware. Every step below has since passed on the reference platform, with a re
   totals"), with the same token that reads the status, and they work well. The run didn't note the
   status numbers falling when a client is paused (a paused client has left the tunnel; the tests
   pin that), so that part is still tested and not observed on hardware.
+- `[VERIFIED 2026-10-05]` The gate holds across the whole route table, with a token made for the
+  purpose and revoked afterward. On the installed daemon, the 8 routes a token may use (the status,
+  the client list and one client, a client's traffic and sessions, and the three traffic totals)
+  returned 200, and 18 others returned 403 with "an API token can't use this endpoint": a client's
+  config, the event log, the live stream, the settings, the account's own routes (the token list
+  included), the System routes (diagnostics, the snapshot list, the backup), the integrations, and
+  a client's DNS log. No client row carries a secret field. Per-client routes were tried with a
+  throwaway client's id only. On a scratch daemon (`serve --backend fake`, its own database, a
+  token made through its API) every non-public route in `internal/api/api.go` was tried, 48 in
+  all: 8 answered 200 and 40 answered 403, and none differed. A cookie sent along with the token
+  didn't widen it.
 
 ## 12. Backup and restore (the second M5 slice)
 
 `drawbridge backup create` makes one encrypted file with the database and the secret key, and
 `sudo drawbridge backup restore FILE` puts it back (docs/PLAN.md §6.6, docs/backup-restore.md). The
-tests run both against a real SQLite database, a real key, and the real command line. None of it
-has run on the reference platform, so nothing here is `[VERIFIED]` yet.
+tests run both against a real SQLite database, a real key, and the real command line. The hardware
+pass of 2026-10-05 and 2026-10-06 ran most of it on the reference platform, and each item says what
+was seen.
 
-- `[UNVERIFIED]` `sudo drawbridge backup create` against the installed daemon asks for the
+- `[VERIFIED 2026-10-05]` `sudo drawbridge backup create` against the installed daemon asks for the
   passphrase twice with nothing echoed, and writes a file that only root can read. The daemon
   makes it inside its sandbox (a private `/tmp`, and the key read through the `drawbridge`
   group), so check that it doesn't fail on the key or on the temporary files. Note how long it
-  takes, and how big the file is, with a few days of traffic history.
-- `[UNVERIFIED]` The event log has `Made a backup`, from the CLI's account.
+  takes, and how big the file is, with a few days of traffic history. The maintainer ran it in a
+  terminal: the prompt appeared twice and nothing was echoed, and the file was `root:root` 0600 and
+  115,943 bytes. Neither the key nor the temporary files failed. A run with `--passphrase-file`
+  took 0.45 s and made 115,790 bytes, from a database of 0.8 MB. Claude Code's `!` shell has no
+  terminal, so there the command stops with "no passphrase: give one on the terminal, with
+  --passphrase-file, or as the first line of standard input" before it creates anything.
+- `[VERIFIED 2026-10-05]` The event log has `Made a backup`, from the CLI's account. `sudo
+  drawbridge events` lists it as `backup.created` by `root (cli)`, with the file's size and nothing
+  secret. (The Logs page's wording wasn't looked at.)
 - `[UNVERIFIED]` **The web download:** on the System page, the Backup card with a wrong password
   shows "the current password is wrong" and saves nothing, and with the right one your browser
   saves `drawbridge-<time>.backup`. Do it through the reverse proxy you use for the UI too (a
@@ -562,7 +663,13 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   nor the passphrase. `sudo drawbridge backup restore` of the file you downloaded (with the
   daemon stopped, as in the exit criterion below) works with its passphrase. Note how long the
   click takes on the Pi, since it makes the snapshot and the encryption before the download
-  starts.
+  starts. Run so far (2026-10-05): one download with the right password, made through the
+  maintainer's reverse proxy from the home network. Its event is in the log from the maintainer's
+  web account (115,809 bytes, with no password or passphrase in it). The file arrived whole and
+  opens with its passphrase: `backup restore` into scratch paths as a normal user (`--db` and
+  `--secret-key` in a scratch directory, `--control` at no socket, `--owner none`) gave a database
+  that passes SQLite's integrity check, at schema 11, with every client and the host's own key. Not
+  yet run: the wrong password, the VPN, the click's time, and the card's last-backup line.
 - `[UNVERIFIED]` The System page's Snapshots card lists the files in
   `/var/lib/drawbridge/backups/` with the right kind, time, and size, newest first, and has no way
   to download one. With `--snapshot-interval 0`, it says the nightly snapshot is off.
@@ -571,31 +678,115 @@ has run on the reference platform, so nothing here is `[VERIFIED]` yet.
   and `sudo systemctl restart drawbridge-tunnel.service drawbridge.service` bring the old
   server back: log in with the old account, see every client, and a client that was connected
   before reconnects with the config it already has, without being re-added. `ls -l` shows the
-  database as `drawbridge:drawbridge` 0600 and `secret.key` as `root:drawbridge` 0640.
-- `[UNVERIFIED]` The same on the host the backup came from, after adding a client: the new
-  client is gone, the others work, and the `*.before-restore-*` files are there.
-- `[UNVERIFIED]` A wrong passphrase, a file with one byte changed, and a file cut short are each
-  refused, and the host's database and key are as they were.
-- `[UNVERIFIED]` With the daemon running, `restore` refuses and says to stop it.
+  database as `drawbridge:drawbridge` 0600 and `secret.key` as `root:drawbridge` 0640. Not run on a
+  fresh card yet. On the host the backup came from (2026-10-06), the same-host item and the
+  snapshot item below saw the file modes as listed and a client reconnect with the config it
+  already had.
+- `[VERIFIED 2026-10-06]` The same on the host the backup came from, after adding a client: the new
+  client is gone, the others work, and the `*.before-restore-*` files are there. Run with only the
+  daemon stopped (the tunnel unit and `wg0` stayed up, with a throwaway client connected from a
+  network namespace over the loopback), after a fresh tar of the state, on the live default paths.
+  The backup (131,840 bytes, made in 0.5 s) was made about 2 s before the stop, and a second
+  throwaway client was added after it. `sudo drawbridge backup restore FILE` took 0.5 s and printed
+  "Restored the backup made ...", "Every login in it was ended (1)", and the two files it kept,
+  `drawbridge.db.before-restore-<time>` and `secret.key.before-restore-<time>`. On copies of the
+  restored files, SQLite's integrity check passed, the schema was 11, the clients were the five real
+  ones and the first throwaway without the one added after the backup, and every table matched a
+  scratch restore of the same backup except the event log, which has the restore's own event. The
+  real clients' rows (keys, addresses, config record), the server's settings and key, and the admin
+  account were identical to before. The key's sha256 was the one recorded before the pass,
+  `secret.key` was `root:drawbridge` 0640, and the database `drawbridge:drawbridge` 0600. The daemon
+  was started alone with `systemctl start drawbridge.service` (the restore's own printed next step
+  restarts both units, which would have recreated `wg0`). The web UI answered 0.12 s later, the
+  daemon had been away for 3.4 s in all, and the kernel's peers followed the restored database
+  within 0.14 s: the peer of the client added after the backup was removed, and logged as
+  `tunnel.drift_corrected`, a warning in the journal. `wg0`, the tunnel unit, and the firewall
+  revision didn't change, `drawbridge doctor` passed 13 of 13, and the journal said the installed
+  TLS certificate was in use. The connected throwaway client lost nothing: across the stops it had
+  675 replies with a longest gap of 0.21 s, and its session carried on with no new event. With name
+  sync on, the AdGuard Home entry made for the client added after the backup stayed after the
+  restore: the restored database has no record of it, so nothing removes it. Adding a client of the
+  same name again, which got the same addresses, adopted the entry with no write, and deleting that
+  client removed it a second later. The guide's "Not in a backup" says the names "come back with the
+  next sync", which is the other direction, and doesn't mention this leftover.
+- `[VERIFIED 2026-10-05]` A wrong passphrase, a file with one byte changed, and a file cut short are
+  each refused, and nothing is written. Run against scratch paths, as a non-root user (`--db` and
+  `--secret-key` in a scratch directory, `--control` at no socket, `--owner none`), on a backup made
+  for the purpose. A wrong passphrase, a byte flipped in the first chunk (at offset 100, and in the
+  middle), and a file cut in half were each refused with "wrong passphrase, or the backup is
+  damaged. Nothing was changed". A byte flipped in the last chunk, and a file one byte short, were
+  refused with "the backup is damaged or cut short. Nothing was changed". The exit status was 1 each
+  time and the scratch directory stayed empty. (The first chunk is what proves the passphrase, so
+  damage there reads as a wrong passphrase.)
+- `[VERIFIED 2026-10-06]` The same against the live files, with the daemon stopped: the host's
+  database and key are as they were. Run as root on the live default paths, after a fresh tar, with
+  the same five bad inputs on a 131,591-byte backup made for the purpose. Each was refused with exit
+  status 1 and "Nothing was changed": a wrong passphrase ("wrong passphrase, or the backup is
+  damaged"), a flipped byte in the middle, a file cut in half, a flipped last byte, and a file one
+  byte short (the last four "the backup is damaged or cut short"). After each, a fingerprint of
+  `/etc/drawbridge` and `/var/lib/drawbridge` (every name, owner, mode, and size, and the sha256 of
+  every file) was identical to the one taken before the first, so nothing was written and no
+  temporary file was left behind. Which message a damaged file gets depends on the chunk the damage
+  is in: the middle of a 130,812-byte file read as a wrong passphrase in a scratch run, and the
+  middle of this one, 800 bytes longer, as "damaged or cut short".
+- `[VERIFIED 2026-10-05]` With the daemon running, `restore` refuses and says to stop it. `sudo
+  drawbridge backup restore FILE`, on the live default paths with nothing on standard input,
+  printed "the Drawbridge daemon is running. Stop it first: sudo systemctl stop drawbridge.service"
+  and exited 1. The key and the database were untouched.
 - `[UNVERIFIED]` A backup made by the previous release restores onto this one, and the database is
   migrated (`TestRestoreFromEverySchema` checks this for every earlier schema, with data written
   by hand; §18 has the part that needs a real older build).
-- `[UNVERIFIED]` After a restore, the browser tab that was logged in to the old host is logged out,
-  and an API token made before the backup still works.
-- `[UNVERIFIED]` Nightly snapshots: a minute after the daemon starts on a host with none, one
-  appears in `/var/lib/drawbridge/backups/` (0600, in a 0700 directory, owned by `drawbridge`), and
-  a restart doesn't make another. With `--snapshot-interval 1m` (a scratch run), a new one comes
+- `[VERIFIED 2026-10-06]` After a restore, the browser tab that was logged in to the old host is
+  logged out. The maintainer's tab, logged in through their reverse proxy, went to the login page
+  by itself after a restore (their report; the second restore of the day ended the login they had
+  made after the first). Each restore printed "Every login in it was ended", and no row was left
+  in the login table.
+- `[VERIFIED 2026-10-06]` An API token made before the backup still works after a restore. The
+  maintainer's dashboard (Homepage, which reaches the API by address and port, not through the
+  reverse proxy) uses the one API token, made two days before the backups. After the restores its
+  Drawbridge widget showed numbers that matched Drawbridge's own dashboard (their report). The
+  database also had the token's row, identical, before and after every restore.
+- `[VERIFIED 2026-10-05]` Nightly snapshots: a minute after the daemon starts on a host with none,
+  one appears in `/var/lib/drawbridge/backups/` (0600, in a 0700 directory, owned by `drawbridge`),
+  and a restart doesn't make another. With `--snapshot-interval 1m` (a scratch run), a new one comes
   every few minutes and only the newest `--snapshot-keep` stay. (Seen in a container with the fake
   backend: the daemon made one 60 seconds after it started, mode 0600 in a 0700 directory, a restart
-  made no second one, and `backup restore` took it. Not on the Pi.)
+  made no second one, and `backup restore` took it. Now seen on the Pi too.) On the Pi, a scratch
+  daemon (`serve --backend fake` as a normal user, a fresh database, `--snapshot-interval 1m
+  --snapshot-keep 3`) made its first snapshot exactly 60 s after it started and one more each
+  minute after that, deleted the oldest from the fourth on, and never held more than 3 in 7 minutes
+  (the files were 0600 in a 0700 directory). The installed daemon's own snapshots, a day apart, are
+  0600 in a 0700 directory owned by `drawbridge`, and two restarts of it (a stop and a start, and an
+  upgrade's `systemctl restart`) made no new one.
 - `[UNVERIFIED]` An upgrade that adds a migration (the next release that does) leaves a
   `pre-migration-v<n>-*.db` before the schema changes, made by `drawbridge-tunnel.service` or the
   daemon, whichever opened the database first, and the journal says "upgraded the database". With
   the directory made unwritable, the upgrade is refused with a message that says the snapshot
   failed, and the old version of the database is untouched.
-- `[UNVERIFIED]` `sudo drawbridge backup restore` of a nightly snapshot, with the daemon stopped,
-  asks for no passphrase, keeps the host's key, and brings the clients back as they were when it
-  was made; a client added since is gone.
+- `[VERIFIED 2026-10-06]` `sudo drawbridge backup restore` of a nightly snapshot, with the daemon
+  stopped, asks for no passphrase, keeps the host's key, and brings the clients back as they were
+  when it was made; a client added since is gone. Run on the newest nightly snapshot (7 hours old),
+  on the live default paths, after a fresh tar, with nothing on standard input. It printed "Restored
+  the snapshot made ...", said the key was unchanged ("a snapshot opens with this host's own key"),
+  and kept only a copy of the database: no copy of the key was made, and `secret.key` was
+  byte-identical to the one in the tar. Before the restore, the snapshot's real-client rows, server
+  settings, and admin account were checked equal to the live ones, so nothing real could be lost.
+  Afterward every table matched the snapshot except the event log, which has the restore's own
+  event (`source: snapshot`), and the two throwaway clients added since were gone. With the daemon
+  started on it (the web UI answered 0.12 s later), the kernel's peers were the five real ones
+  within 0.12 s, the real peers' endpoints, handshakes, and byte counters were exactly as before,
+  and `wg0` and the firewall revision hadn't changed. A throwaway client connected from a namespace
+  got no replies for 8.6 s, until a second restore, of a fresh backup, put its client back: it
+  shook hands again 0.41 s after the daemon started, with the config it already had and without
+  being re-added, and the daemon closed its old session and opened a new one in the same second
+  (a re-added peer's byte counters start again). That second restore put back everything the
+  snapshot had replaced: every table matched the backup except the event log, and the real
+  clients' rows, the settings, and the account were identical to what they had been at the start.
+  One wart: a real client's session was open in the snapshot, and the daemon on the snapshot's
+  data ended it at once with a `client.disconnected` event dated that moment, with a duration of
+  9 hours counted from the start of the session in the snapshot, and its byte counts. The daemon
+  can't know when it really ended. The backup restore after it threw that event away with the
+  rest of what the snapshot had replaced.
 
 ## 13. Outdated configs and client key rotation (the third M5 slice)
 
@@ -615,41 +806,81 @@ was viewed.
   to_schema=9`, `/var/lib/drawbridge/backups/` has `pre-migration-v8-*.db`, the tunnel stays up
   and a connected client stays connected. This is the first release that adds a migration, so it
   is also the first real run of the snapshot-before-migrating step (§12's last items). Every
-  client reads "no record" for its config at first, and none is flagged outdated.
-- `[UNVERIFIED]` **Handing out a config sets the baseline:** `drawbridge client show NAME` says
-  the config is current, with when it was last handed out, after `client config NAME`, after
-  `client qr NAME`, after "Download .conf" in the web UI, and after "Show QR code" there.
-- `[UNVERIFIED]` **A server change flags it:** change the MTU (`drawbridge server set --mtu`) and
-  the client's row and page get a "Config outdated" badge within a few seconds, the dashboard's
-  Outdated tile counts it and opens the list filtered to it, and `client list` says `outdated`.
-  Putting the MTU back leaves the client current again, with no new download. Changing the
-  endpoint, the DNS servers, and the keepalive does the same; turning client isolation on or off
-  does not (the firewall isn't in the config).
+  client reads "no record" for its config at first, and none is flagged outdated. The maintainer's
+  own upgrade on 2026-10-04 (not watched) is in the journal: `upgraded the database` with
+  `from_schema=8 to_schema=9` and the snapshot `pre-migration-v8-20261004-172941.db`, which is
+  still in `backups/`. The tunnel unit did not restart, and nobody was connected.
+- `[VERIFIED 2026-10-05]` **Handing out a config sets the baseline, from the command line:**
+  `drawbridge client show NAME` says "no record of it being handed out" for a new client, and
+  "current, last handed out 0s ago" right after `client config NAME` and, on another new client,
+  right after `client qr NAME`. `client list` shows `current` in its CONFIG column.
+- `[VERIFIED 2026-10-06]` **The same from the web UI:** after "Download .conf", and after "Show QR
+  code". The maintainer tried both in the browser and reported that each worked as expected (the
+  browser side is theirs; it wasn't watched here). The server's log has three `client.config_viewed`
+  events from their web session, 17 s apart in all, on two real clients, and the one that had never
+  been handed a config reads `current` in `client list` since (it read `-` before). They then
+  imported the downloaded `.conf` on a laptop and scanned the QR code on a phone, and both devices
+  connected within a minute of the last view (`client.connected`) and ran traffic through the
+  tunnel for three minutes each: by the server's counters the phone received 264 MiB and sent
+  202 MiB, and the laptop 145 MiB and 166 MiB.
+- `[VERIFIED 2026-10-05]` **A server change flags it, for the DNS servers:** with a throwaway client
+  that had been handed its config, `drawbridge server set --dns 1.1.1.1,1.0.0.1` made `client show`
+  say "outdated (last handed out 0s ago; the server's settings or the client's keys changed
+  since). Hand out the new one with `client qr` or `client config`" and `client list` say
+  `outdated`, at once; `server set --dns server` put it back to `current` with no new download. The
+  event log has both changes, as `dns: [..] → [..]`.
+- `[UNVERIFIED]` **The rest:** change the MTU (`drawbridge server set --mtu`) and the client's row
+  and page get a "Config outdated" badge within a few seconds, the dashboard's Outdated tile counts
+  it and opens the list filtered to it. Putting the MTU back leaves the client current again, with
+  no new download. Changing the endpoint and the keepalive does the same; turning client isolation
+  on or off does not (the firewall isn't in the config). Only the DNS change was tried on the real
+  server. The badge and the tile were seen in the browser only after a key rotation, not after a
+  change like these (§15).
 - `[UNVERIFIED]` **With a real phone:** import a config in the WireGuard app, change the MTU, and
   the badge appears; scan the new QR code, the badge goes, and the app shows the new MTU.
 - `[UNVERIFIED]` **Rotating keys:** on a connected phone, "Rotate keys" on its page (the popup asks
   first; Cancel changes nothing) cuts it off within a handshake interval, shows the new QR code at
   once, and the old config never connects again. Scanning the new code reconnects it. The event
   log has `Rotated a client's keys` from the admin and the new public key, and no secret. The
-  client's session closes with a `Disconnected` event, then a new one opens.
-- `[UNVERIFIED]` `sudo drawbridge client rotate-keys NAME` asks `[y/N]` on a terminal, refuses
-  without `--yes` when its input isn't one, and prints the commands for the new QR code and
-  config.
-- `[UNVERIFIED]` A read-only API token gets 403 from `POST /api/clients/{id}/rotate-keys`, and
-  sees `config_outdated` and the `outdated` count in the client list and the status (they hold no
-  secret).
+  client's session closes with a `Disconnected` event, then a new one opens. Seen on the Pi, on the
+  server's side, with a throwaway client connected from a network namespace: its WireGuard
+  interface is created in the host's namespace (so its UDP socket stays there), then moved into the
+  client's, and its endpoint is `127.0.0.1:51820`, so nothing is added to the host's network.
+  `client rotate-keys NAME --yes` cut it off at once (it pinged the server's VPN addresses fine just
+  before; the old config got no answer in four tries over 16 s, and the server's new peer never
+  had a handshake from it). `client.keys_rotated` and a `client.disconnected` with the session's
+  duration and bytes were logged in the same second. The event holds the new public key, and
+  neither the old nor the new private key is in the journal or the event log. The new config (from
+  `client config`) pinged over IPv4 and IPv6 and opened a new session 2 s later. Not run: the
+  popup, the QR code on the page, and a phone.
+- `[VERIFIED 2026-10-05]` `sudo drawbridge client rotate-keys NAME` asks `[y/N]` on a terminal,
+  refuses without `--yes` when its input isn't one, and prints the commands for the new QR code and
+  config. On a pseudo-terminal, `n` printed "Keys not rotated." and exited 1 with the key
+  unchanged, and `y` rotated the keys and printed "Show its QR code:   drawbridge client qr NAME"
+  and "Save its config:    drawbridge client config NAME > NAME.conf". With `y` on a pipe it
+  printed "not a terminal; add --yes to go ahead without asking" and exited 1, with the key
+  unchanged. With standard input at `/dev/null` it printed the prompt, read nothing, and answered
+  no (exit 1, keys unchanged), so only a pipe gets the "not a terminal" message.
+- `[VERIFIED 2026-10-05]` A read-only API token gets 403 from `POST /api/clients/{id}/rotate-keys`,
+  and sees `config_outdated` and the `outdated` count in the client list and the status (they hold
+  no secret). With a throwaway client's id the POST returned 403, and no keys were rotated. After
+  a DNS change (the flag item above) the client list had `config_outdated: true` on the throwaway
+  and `/api/server/status` said `outdated: 2` (the throwaway and the one real client that had been
+  handed a config); after the DNS setting was put back, the field was gone and the count was 0. No
+  client row carries a private key or a preshared key.
 
 ## 14. Safe apply and `drawbridge apply` (the fourth M5 slice)
 
 A settings change that could cut the admin off (the listen port, removing a source from the admin
 UI's allowlist) is applied on probation: undone after 60 seconds unless it's kept (docs/PLAN.md
-§4.3). Nothing here has run on the reference platform, so nothing is `[VERIFIED]` yet. What has run,
-away from it: `TestEndToEnd`'s two new steps pass in network namespaces on a 7.0 aarch64 kernel
-(Docker Desktop's VM). With real kernel WireGuard, a `server set --port 51999 --safe` cut the
-client off (its fetches through the tunnel failed), the daemon put the port back when the window
-(4 seconds there) ran out, and the client was back without being touched. `apply --dry-run` listed
-a drifted MTU and left it alone, and `apply` fixed it. And the browser tests drive the Keep, Undo
-now, and not-kept paths against the daemon with the fake backend and a 10-second window.
+§4.3). The hardware pass of 2026-10-05 and 2026-10-06 ran most of it on the reference platform, and
+each item says what was seen. Before that, what had run, away from it: `TestEndToEnd`'s two new
+steps pass in network namespaces on a 7.0 aarch64 kernel (Docker Desktop's VM). With real kernel
+WireGuard, a `server set --port 51999 --safe` cut the client off (its fetches through the tunnel
+failed), the daemon put the port back when the window (4 seconds there) ran out, and the client was
+back without being touched. `apply --dry-run` listed a drifted MTU and left it alone, and `apply`
+fixed it. And the browser tests drive the Keep, Undo now, and not-kept paths against the daemon with
+the fake backend and a 10-second window.
 
 - `[UNVERIFIED]` **From a phone on the VPN, the case it is for:** connect the phone to the VPN,
   open the web UI through it, and change the listen port in Settings. The UI answers once and then
@@ -657,69 +888,261 @@ now, and not-kept paths against the daemon with the fake backend and a 10-second
   the old port. Within a minute the daemon puts the port back, the tunnel comes back by itself
   (WireGuard retries within about 15 seconds), and the Settings page shows the old port. The event
   log has `Changed server settings` (with `waiting to be kept: 1m0s`) and then `Undid a settings
-  change (not kept in time)`, from Drawbridge.
-- `[UNVERIFIED]` **From the LAN:** the same change shows a bar on every page with a countdown.
-  **Keep changes** leaves the new port in place past the minute (check `sudo wg show`), and the log
-  has `Kept a settings change` from the admin. **Undo now** puts the old port back at once.
-- `[UNVERIFIED]` The bar is readable on a phone and in dark mode, and its countdown is right when
-  the browser's clock is wrong by a few minutes (set one wrong to try).
-- `[UNVERIFIED]` **A reboot inside the window:** change the port from the LAN, don't keep it, and
-  `sudo reboot` straight away. After the boot the tunnel has the new port for a moment
+  change (not kept in time)`, from Drawbridge. The next item ran the same change with a throwaway
+  client in place of a phone; a real phone, and the router, still haven't.
+- `[VERIFIED 2026-10-06]` **The listen port itself, with a throwaway client standing in for the
+  phone.** The real server's port moved from 51820 to 51999 (nothing else listens there) with
+  `sudo drawbridge server set --port 51999 --safe`, four times, with a fresh tar of the state
+  before the first and the second, and no real client on the VPN (the newest handshake was over
+  four hours old). The throwaway was in a network namespace on the host with its endpoint on the
+  loopback, and fetched the web UI through the VPN once a second. Each time the command returned
+  in 0.04 to 0.06 s, `wg show` had the new port, only the new port was listening (looked at by
+  hand in the first window), the firewall's revision was the same (its ruleset has no WireGuard
+  port in it), and `server show` listed the change with its countdown. The client's pings and
+  fetches failed within seconds. **Not kept:** the daemon put the port back 61.07 s after the
+  change, and logged
+  `server.settings_expired` from `drawbridge (system)` ("not kept within 1m0s"); the change's own
+  event, from `root (cli)`, carries `waiting_to_be_kept: 1m0s`. **Kept:** `server confirm`, 13 s in,
+  printed "Kept the change." and logged `server.settings_kept`; 72 s after the change the new port
+  was still in place with nothing waiting, and then `server set --port 51820` put it back at once.
+  **Undone:** `server revert`, 11 s in, printed "Undid the change. The settings are back as they
+  were." and logged `server.settings_undone`; the port was back in 0.04 s, and the client's tunnel
+  carried on 0.08 s later. **A daemon restart inside the window:** see the item on restarting the
+  daemon below. What the client did: after the port moved, its tunnel was dead for about 15 s and
+  then came back by itself on the new port, with the change still waiting. A packet from the
+  server's new port had reached it: `wg show` on both ends had a handshake about 15 s into the
+  window, and the client's endpoint for the server read `127.0.0.1:51999`. (The likely sender is
+  the server's retry after 15 s without a reply.) After the port went back, it was dead for 10 to
+  15.5 s and
+  came back by itself again (the first ping reply came 15.4, 10.3, and 15.0 s after the port was
+  back in the three windows that lasted long enough; a revert inside 15 s resumed the old session
+  at once). On the host, the real peers' endpoints, handshakes, and byte counters were the same
+  before and after, the tunnel unit and `wg0` were never touched, and the journal had no warning.
+  This run had no router or NAT. Through a NAT, a packet from a new port may not reach a phone, so
+  the phone item above stays `[UNVERIFIED]`.
+- `[VERIFIED 2026-10-05]` **From the LAN:** the same change shows a bar on every page with a
+  countdown. **Keep changes** leaves the new port in place past the minute (check `sudo wg show`),
+  and the log has `Kept a settings change` from the admin. **Undo now** puts the old port back at
+  once. Run with a harmless change in place of the port, which would have cut real clients off: an
+  extra admin source (`100.64.10.0/24`) added, then removed with `server set --admin-allow none
+  --safe`. The bar showed on every page the maintainer visited, with a countdown. **Keep changes**
+  (pressed 26 s into one window and 8 s into another) kept the change, and the log has
+  `server.settings_kept` from the maintainer's web account. **Undo now** (20 s into a third) put the
+  extra source back at once, in the setting and in the firewall's `admin_allowed4` set, and the log
+  has `server.settings_undone` from the web account. A window nobody touched was undone by the
+  daemon at 61 s (`server.settings_expired`). The port itself wasn't changed in that run; it was on
+  2026-10-06, from the command line (the previous item).
+- `[VERIFIED 2026-10-05]` The bar is readable in dark mode (on the maintainer's laptop: "looks
+  fine"), as it was in light mode.
+- `[UNVERIFIED]` The bar is readable on a phone, and its countdown is right when the browser's clock
+  is wrong by a few minutes (set one wrong to try).
+- `[VERIFIED 2026-10-06]` **A reboot inside the window:** change the port from the LAN, don't keep
+  it, and `sudo reboot` straight away. After the boot the tunnel has the new port for a moment
   (`drawbridge-tunnel.service` applies what the database says), and then the daemon undoes it: the
-  port is back to the old one, and `server show` has nothing waiting.
-- `[UNVERIFIED]` **Restarting the daemon:** `sudo systemctl restart drawbridge.service` inside the
-  window leaves the change waiting, with the countdown carrying on from where it was.
+  port is back to the old one, and `server show` has nothing waiting. Run on the real port with
+  `server set --port ... --safe` and `systemctl reboot` 45 s into the window (the Pi reaches
+  userspace in about 12 s, so an earlier reboot could be back before the deadline). The tunnel
+  unit's `tunnel up` logged `listen_port=51999` at boot, 0.2 s before the daemon started. The
+  daemon logged `server.settings_expired` (from `drawbridge (system)`, "not kept within 1m0s") 9 s
+  after it started, and `applied the undone settings` (`set the listen port to 51820`) 40 ms later,
+  so the port was wrong for about 9 s. Afterward the kernel's port was 51820, nothing was waiting,
+  and `server show`, the firewall's revision, `wg show` (key, port, peers, allowed IPs, keepalive),
+  `client list`, and the secret key were the same as just before the change; doctor was at 13 of
+  13 and both units were new invocations. **The clock matters:** the wall clock at boot started
+  near the time of the shutdown and was stepped forward about two minutes later, so the daemon saw
+  the deadline 9 s ahead and let the countdown run out, rather than finding it already past. The
+  events from those minutes carry the early clock (the expiry reads 19:58:05 though it happened
+  about two minutes later by the real time). Also seen: at boot the tunnel unit applied firewall
+  revision `4bf62ca2c278` and the daemon corrected it to the steady-state one a couple of minutes
+  later (`tunnel.drift_corrected`); the same revision is in the journal of the 2026-10-03 boot.
+  No real client was connected, so a phone's reaction wasn't seen.
+- `[VERIFIED 2026-10-06]` **Restarting the daemon:** `sudo systemctl restart drawbridge.service`
+  inside the window leaves the change waiting, with the countdown carrying on from where it was.
+  Run on the real listen port, 12 s into a window, when the countdown read 45 s. The CLI answered
+  again 0.12 s after the restart began, `server show` still listed the change, the countdown was
+  still counting down (not back at 60 s), and the kernel still had the new port. The daemon undid
+  the change 60.30 s after it was made, at the original deadline and not a minute after the
+  restart, and logged `server.settings_expired`. (By the code, the deadline is a time saved with the
+  change, so a restart that outlasts it should undo the change as soon as the daemon starts; the
+  reboot item below is where that gets run.)
 - `[UNVERIFIED]` Removing the source the browser is on from the admin UI's allowlist
   (`sudo drawbridge server set --admin-allow none --safe`, then reload from that source) locks the
   browser out; a minute later the source works again, with nothing done.
-- `[UNVERIFIED]` While a change waits, another settings change from the web UI or `server set` is
+- `[VERIFIED 2026-10-05]` While a change waits, another settings change from `server set` is
   refused and says to keep or undo the first, and adding, pausing, and deleting clients still work.
-- `[UNVERIFIED]` `sudo drawbridge server show` lists a waiting change, with who made it and the
-  seconds left; `sudo drawbridge server confirm` and `revert` work from a terminal, and from the
-  web UI's bar when the change was made with `--safe`.
-- `[UNVERIFIED]` `sudo drawbridge apply --dry-run` after `sudo ip link set wg0 mtu 1500` (and
-  before the daemon's 30-second check notices) lists the MTU and changes nothing; `sudo
-  drawbridge apply` puts it back. With the tunnel stopped, both say so and start nothing.
+  A removal of an extra admin source made with `--safe` waited, and a real DNS change made then was
+  refused with "a settings change is waiting to be kept or undone; keep it or undo it first. Keep
+  it with `drawbridge server confirm`, or undo it with `drawbridge server revert`." (exit 1, and
+  the DNS setting unchanged). A throwaway client was added, paused, resumed, and deleted inside
+  the same window. (`client delete` asks `[y/N]`, and with no terminal it needs `--yes`.)
+- `[UNVERIFIED]` The same refusal from the web UI's Settings. (Tried once on 2026-10-05, during a
+  window, and the message wasn't noticed. A save's result shows in a box directly above the **Save
+  settings** button at the bottom of the form, not at the top of the page.)
+- `[VERIFIED 2026-10-05]` `sudo drawbridge server show` lists a waiting change, with who made it and
+  the seconds left; `sudo drawbridge server confirm` and `revert` work from a terminal. The change
+  was a harmless one: adding `--admin-allow 100.64.10.0/24` (applied at once), then removing it
+  with `--safe`. `server show` printed "Waiting to be kept (made by root via cli): admin allowed:
+  [100.64.10.0/24] → none. It is undone in 60 s unless you keep it." and ten seconds later "undone
+  in 51 s", and the firewall's `admin_allowed4` set lost the prefix at once. `server confirm`
+  ("Kept the change.") kept it and logged `server.settings_kept` from `root (cli)`. A second time,
+  `server revert` ("Undid the change. The settings are back as they were.") put the prefix back at
+  once and logged `server.settings_undone`. A third time, with neither, the daemon undid it 60 s
+  after it was made (still waiting at 58 s, undone by 61 s) and logged `server.settings_expired`
+  from `drawbridge (system)`, "not kept within 1m0s". The change's own event carries
+  `waiting_to_be_kept: 1m0s`. Afterward `server show`, the nft table, and the peers were the same
+  as before the test.
+- `[VERIFIED 2026-10-05]` The web UI's bar does the same for a change made with `--safe` on the
+  command line: **Keep changes** and **Undo now** from a browser (the run is described under
+  "From the LAN" below).
+- `[VERIFIED 2026-10-05]` `sudo drawbridge apply --dry-run` after `sudo ip link set wg0 mtu 1500`
+  (and before the daemon's 30-second check notices) lists the MTU and changes nothing; `sudo
+  drawbridge apply` puts it back. With the tunnel stopped, both say so and start nothing. After the
+  drift, `apply --dry-run` printed "Would change: set the MTU to 1420" and `wg0` was still at 1500
+  right after it; `apply` printed "Changed: set the MTU to 1420", logged `tunnel.applied` from `root
+  (cli)`, and `wg0` read 1420; a second dry run said "Nothing to change: the tunnel and the
+  firewall match the settings." With `drawbridge-tunnel.service` stopped (`wg0` and the nft table
+  gone, the daemon still active), both commands printed "The tunnel is stopped, so there is nothing
+  to apply. Start it with: sudo systemctl start drawbridge-tunnel" and exited 0, and `wg0` was
+  still absent afterward. `systemctl start` then brought back `wg0` as a new interface (a new
+  index) with the same peers and keys, and the same nft revision, 2.6 s after the stop began.
+  (`doctor` with the tunnel stopped failed the Tunnel check, "so no client can connect".) What
+  doesn't come back is the kernel's per-peer runtime state, which belongs to the interface: after
+  the stop and start every client read "never" for its handshake, no endpoint, and 0 B received and
+  sent (the totals in `client list`; one client had had 5.5 GiB). Configs, keys, settings, and the
+  database's traffic history are untouched, and a phone's next handshake brings its endpoint back.
 - `[UNVERIFIED]` An upgrade from the previous release (schema 9) takes `pre-migration-v9-*.db`
-  and adds the `pending_apply` table; nothing is waiting afterward.
+  and adds the `pending_apply` table; nothing is waiting afterward. The maintainer's own upgrade on
+  2026-10-04 (not watched) is in the journal (`from_schema=9 to_schema=10`, the snapshot
+  `pre-migration-v9-20261004-183703.db`, still in `backups/`); the database has the `pending_apply`
+  table with no rows, and `server show` lists nothing waiting.
 
 ## 15. Rotating the server's key (the fifth M5 slice)
 
 `drawbridge server rotate-key`, the **Rotate the key…** button in Settings, and
 `POST /api/server/rotate-key` give the server a new key pair (docs/PLAN.md §6.2). Every client's
 config holds the old public key, so every client stops until it imports its new config. The web UI
-always puts the rotation on safe apply (§14 above). Nothing here has run on the reference
-platform, so nothing is `[VERIFIED]` yet. What has run, away from it: `TestEndToEnd`'s two new steps
-pass in network namespaces on a 7.0 aarch64 kernel (Docker Desktop's VM). With real kernel
-WireGuard, after `server rotate-key` the kernel had the new private key and the same peer, a
-connected client's fetches through the tunnel failed at once (WireGuard drops the current sessions
-when the interface's key changes), and the new config connected over IPv4 and IPv6. After
-`rotate-key --safe` with nothing kept, the daemon put the old key back when the window (4 seconds
-there) ran out, and the client reconnected with the config it already had. And the browser tests
-drive the dialog, Undo now, and Keep against the daemon with the fake backend.
+always puts the rotation on safe apply (§14 above). The hardware pass of 2026-10-05 and
+2026-10-06 ran most of it on the reference platform, and each item says what was seen. Before
+that, what had run, away from it: `TestEndToEnd`'s two new steps pass in network namespaces on a
+7.0 aarch64 kernel (Docker Desktop's VM). With real kernel WireGuard, after `server rotate-key` the
+kernel had the new private key and the same peer, a connected client's fetches through the tunnel
+failed at once (WireGuard drops the current sessions when the interface's key changes), and the
+new config connected over IPv4 and IPv6. After `rotate-key --safe` with nothing kept, the daemon
+put the old key back when the window (4 seconds there) ran out, and the client reconnected with
+the config it already had. And the browser tests drive the dialog, Undo now, and Keep against the
+daemon with the fake backend.
 
-- `[UNVERIFIED]` **From the LAN, with a phone on the VPN:** in Settings, **Rotate the key…** asks
-  first (Cancel changes nothing), and **Rotate the key** shows the bar with both public keys. The
-  phone's tunnel stops carrying traffic at once. Keep it, and `sudo wg show` has the new public
+- `[VERIFIED 2026-10-06]` **From the LAN, the web dialog:** in Settings, **Rotate the key…** asks
+  first (Cancel changes nothing), and **Rotate the key** shows the bar with both public keys. Run
+  by the maintainer in their browser, through their reverse proxy, with a throwaway client in a
+  network namespace standing in for the phone. The dialog warned that every client stops working
+  at once, and **Cancel** changed nothing (their report; the server's key was the same afterward,
+  nothing was logged, and nothing waited). **Rotate the key** changed the kernel's public key and
+  logged `server.key_rotated` from their web account, with `waiting_to_be_kept: 1m0s` and the old
+  and the new public key. `server show` listed "Waiting to be kept (made by <the account> via web):
+  server public key: <old> → <new>. It is undone in 59 s unless you keep it." They reported that
+  the bar showed both public keys and a countdown, and that the note appeared on Settings. The
+  throwaway's tunnel stopped within seconds (its pings got no replies, and a fetch of the web UI
+  through the VPN failed). Nothing was pressed, the daemon put the old key back 60.63 s after the
+  change (`server.settings_expired` from `drawbridge (system)`), and after a reload Settings
+  showed the original key again (their report).
+- `[VERIFIED 2026-10-06]` **The case it is for, with a throwaway client standing in for the
+  phone:** rotate the key, and the web UI fetched through the VPN stops answering; within a minute
+  the daemon puts the old key back, and the client's old config works again without being touched.
+  Run three times on the real server (the web dialog above, and `server rotate-key --safe --yes`
+  twice), with a client in a network namespace that sent a ping every 0.2 s and fetched the web UI
+  through the VPN once a second. Each time the pings and the fetches failed until the old key was
+  back: 60.63 s after the change when nobody touched it, 60.32 s in a window with a daemon restart
+  in it, and 0.02 s after `server revert`. The client got through again 0.01, 0.01, and 0.07 s
+  after the old key was back (it was sending all the time), and the web UI through the VPN
+  answered again within 0.09 to 0.62 s. The log has `server.key_rotated`, and then
+  `server.settings_expired` (from `drawbridge (system)`) or `server.settings_undone`. This had no
+  phone and no router, so the next item stays `[UNVERIFIED]`.
+- `[UNVERIFIED]` **A real phone, and Keep from the bar:** with the web UI open through the VPN on a
+  phone, rotate the key. The UI stops answering (the phone's tunnel is dead). Within a minute the
+  daemon puts the old key back, the tunnel comes back by itself, and the phone's old config works
+  again without being touched. Keep a rotation from the bar, and `sudo wg show` has the new public
   key; the phone stays off until it imports its new config (the client's page shows **Config
-  outdated**, and its QR code is the new one).
-- `[UNVERIFIED]` **The case it is for:** with the web UI open through the VPN on a phone, rotate the
-  key. The UI stops answering (the phone's tunnel is dead). Within a minute the daemon puts the old
-  key back, the tunnel comes back by itself within about 15 seconds, and the phone's old config
-  works again without being touched. The log has `Rotated the server's key` and then `Undid a
-  settings change (not kept in time)`, from Drawbridge.
-- `[UNVERIFIED]` After a kept rotation, the dashboard's Outdated count is the number of clients
-  that had been handed a config, and `sudo drawbridge client list` shows the same. A client that
-  was never handed a config isn't flagged. Importing each new config clears its flag.
-- `[UNVERIFIED]` `sudo drawbridge server rotate-key` asks `[y/N]` on a terminal and refuses without
-  one unless given `--yes`; without `--safe` it applies at once and waits for nothing, and with it
+  outdated**, and its QR code is the new one). Seen so far, with the throwaway and no phone: from
+  the command line (`server confirm`), the new key was in the kernel past the minute, the
+  throwaway's old config stayed off, and its new config connected (the items below). From the bar,
+  on 2026-10-06 the maintainer pressed **Keep changes** 30 s after a rotation (the log has
+  `server.settings_kept` from their web session): the new key was in the kernel past the minute and
+  stayed until the original was restored 3 min 52 s after the rotation, and the maintainer saw the
+  page of the real client that had been handed a config say **Config outdated**. Not seen: a phone,
+  and the new QR code.
+- `[VERIFIED 2026-10-06]` After a kept rotation, `sudo drawbridge client list` shows the clients
+  that had been handed a config as outdated, and a client that was never handed a config isn't
+  flagged. Importing each new config clears its flag. Run on the real server, kept with `server
+  confirm`: of six clients, the two that had been handed a config (one real, one throwaway) read
+  `outdated`, and the four that never had still read `-`. The rotation's own message said "2 of the
+  clients hold a config with the old key." Handing out the throwaway's new config (`client config`)
+  made it `current` again and left the other `outdated`, and that config connected over IPv4 and
+  IPv6 (the first reply 3.7 s after its client was recreated), while its old config had stayed off.
+- `[VERIFIED 2026-10-06]` The dashboard's Outdated count is that same number. In a second kept
+  rotation on the real server, the maintainer read it in the browser: 2 while the rotation was
+  kept, 1 after the throwaway's new config was handed out, and 0 after the original key was back
+  (the restore ended their login, and they logged in again). The new key was held 3 min 52 s. The
+  backup made seconds before was restored with only the daemon stopped (away 0.73 s in all), the
+  original key was back in the kernel 0.14 s after the daemon started, the real clients' rows were
+  identical to before, `drawbridge doctor` was at 13 of 13, and the throwaway's original config
+  connected again (3.65 s after its client was recreated).
+- `[VERIFIED 2026-10-05]` `sudo drawbridge server rotate-key` asks `[y/N]` on a terminal and
+  refuses without one unless given `--yes`. It was only ever answered no, and always with
+  `--safe`, so that a mistake could not have lasted. On a pseudo-terminal, `n` printed "The key was
+  not rotated." and exited 1. With `n` on a pipe it printed "drawbridge: not a terminal; add --yes
+  to go ahead without asking" and exited 1. With standard input at `/dev/null` it printed the
+  prompt, read nothing, and printed "The key was not rotated." (exit 1). The server's key, the nft
+  revision, and the lack of a waiting change were the same afterward, and no rotation was logged.
+- `[VERIFIED 2026-10-06]` Without `--safe` it applies at once and waits for nothing, and with it
   `server confirm` and `server revert` work. While a rotation waits, another settings change is
-  refused.
-- `[UNVERIFIED]` A read-only API token gets 403 from `POST /api/server/rotate-key`.
-- `[UNVERIFIED]` A restart or a reboot inside the window undoes a rotation like any other
-  change on probation: the old key is back afterward, and `sudo wg show` agrees.
-- `[UNVERIFIED]` A backup made before a rotation holds the old key. Restoring it onto a fresh host
-  brings the old key back, and the clients' configs from before the rotation work again.
+  refused. Run on the real server, which cut the real clients off for a minute and a half while the
+  rotation was kept. `server rotate-key --yes` printed "The server has a new key. Public key: ...
+  2 of the clients hold a config with the old key. Hand each one its new config ..."; nothing was
+  waiting afterward, the kernel had the new key, and the event had no `waiting_to_be_kept`. With
+  `--safe`, `server confirm` printed "Kept the change." and logged `server.settings_kept` from `root
+  (cli)`, and the new key was still in the kernel at 72 s; `server revert` printed "Undid the
+  change. The settings are back as they were.", put the old key back in 0.02 s, and logged
+  `server.settings_undone`. While a rotation waited, `server set --keepalive 25` (the value it
+  already had, so a mistake would have changed nothing) exited 1 with "a settings change is waiting
+  to be kept or undone; keep it or undo it first. Keep it with `drawbridge server confirm`, or undo
+  it with `drawbridge server revert`.", and the rotation was still waiting afterward.
+- `[VERIFIED 2026-10-05]` A read-only API token gets 403 from `POST /api/server/rotate-key`. The
+  handler needs no body and no password, so a failed gate would have rotated the real server's key
+  (on probation). The request was sent only while a harmless change was waiting to be kept (an
+  extra admin source removed with `--safe`), which refuses any second change, so that even a
+  failed gate couldn't rotate anything. It returned 403, and so did `POST /api/server/apply/confirm`
+  and `/revert`: the change stayed waiting, and the server's key and the nft revision were the same
+  afterward.
+- `[VERIFIED 2026-10-06]` A restart inside the window leaves a rotation on probation, and the old
+  key is back at its deadline, like any other change on probation. `sudo systemctl restart
+  drawbridge.service` 10 s into a rotation window on the real server: the CLI answered again 0.11 s
+  after the restart began, the rotation was still waiting with the countdown carried on (49 s left
+  before and after), and the kernel still had the new key. The daemon put the old key back 60.32 s
+  after the change, at the original deadline and not a minute after the restart, `sudo wg show`
+  agreed, and `server.settings_expired` was logged from `drawbridge (system)`.
+- `[UNVERIFIED]` A reboot inside the window undoes a rotation like any other change on probation:
+  the old key is back afterward, and `sudo wg show` agrees. (§14 has the same item for the port.)
+- `[VERIFIED 2026-10-06]` A backup made before a rotation holds the old key, and restoring it
+  brings the old key back, and the clients' configs from before the rotation work again. Run on
+  the host the backup came from, not a fresh one. A backup was made about 1 s before the first of
+  two rotations that were both kept (one with `--safe` and `server confirm`, one without `--safe`),
+  after a fresh tar of the state. With only the daemon stopped, `sudo drawbridge backup restore`
+  of it put the server's row (its settings and the sealed key), every real client's row, and the
+  throwaway's row back exactly as they were before the first rotation. The daemon, started alone
+  with `systemctl start`, set the kernel's private key back 0.14 s after it started (the event
+  `tunnel.drift_corrected: set the private key`, a warning in the journal), so the tunnel unit
+  didn't need a restart. The throwaway's config from before the rotation connected again over IPv4
+  and IPv6 (the first reply 3.7 s after its client was recreated), `client list` was as at the
+  start, `drawbridge doctor` passed 13 of 13, and the real peers' endpoints, handshakes, and byte
+  counters were exactly as they had been before the rotations. The restore ended two logins.
+- `[UNVERIFIED]` The same onto a fresh host (§12's exit criterion is that restore).
+- `[VERIFIED 2026-10-06]` A rotation puts no private key where an admin can read it. After each of
+  five rotations on the real server (one from the web, three with `--safe`, one without), the
+  server's old private key, the key it was rotated to, and the current one appeared nowhere in the
+  event log, `server show`, the journal of both units, or the CLI's own output: no match for any
+  of them (the keys were read into a shell variable and compared there, and never printed). The
+  event carries only the old and the new public key.
 
 ## 16. Your own TLS certificate (the sixth M5 slice)
 
@@ -748,8 +1171,11 @@ authority, no real browser trust store, and no ACME client has been involved.
 - `[UNVERIFIED]` A certificate file without the intermediates (just the leaf, from a CA that has
   them) installs with the note about the missing chain, and an Android or iOS browser's behavior
   with it is as the note says (some fetch the intermediates, some don't).
-- `[UNVERIFIED]` `sudo systemctl restart drawbridge` keeps the installed certificate: the journal's
-  `web UI TLS certificate` line says `source=uploaded`, and the System page still shows it.
+- `[VERIFIED 2026-10-05]` `sudo systemctl restart drawbridge` keeps the installed certificate: the
+  journal's `web UI TLS certificate` line says `source=uploaded`. It did on both restarts made that
+  day (a stop and a start, and the package's `systemctl restart` during an upgrade), and on the
+  three the maintainer made after installing the certificate on 2026-10-04.
+- `[UNVERIFIED]` After a restart, the System page still shows the installed certificate.
 - `[UNVERIFIED]` A certificate within 30 days of its end makes the System page's TLS check (and
   the dashboard's banner) warn and say to install a renewed one, and an expired one makes it
   fail; the daemon keeps serving it either way, and doesn't swap in the self-signed one.
@@ -764,8 +1190,12 @@ authority, no real browser trust store, and no ACME client has been involved.
 - `[UNVERIFIED]` A damaged `uploaded.pem` (truncate it by hand) doesn't stop the daemon: it starts,
   logs `can't use the uploaded TLS certificate`, and serves the self-signed one until `tls reset`
   or a new install.
-- `[UNVERIFIED]` A read-only API token gets 403 from all three methods on
-  `/api/system/certificate`.
+- `[VERIFIED 2026-10-05]` A read-only API token gets 403 from all three methods on
+  `/api/system/certificate`. On the installed daemon, GET and PUT (with an empty JSON body)
+  returned 403. DELETE ran against a scratch daemon with a certificate installed in it, because it
+  needs no password, so on the installed daemon a failed gate would have deleted the maintainer's
+  own certificate. It returned 403, the scratch certificate stayed installed, and the admin's
+  session got 200 from the same DELETE.
 
 ## 17. Two-factor authentication (the seventh M5 slice)
 
@@ -804,9 +1234,17 @@ real authenticator app has scanned the QR code, and no phone's clock has been in
   keeps it on: the same app's codes log in, and an unused recovery code works.
 - `[UNVERIFIED]` Upgrading from the previous `.deb` keeps the account and its password, with 2FA
   off; the journal says `upgraded the database` and `backups/` has the snapshot from before
-  the migration.
-- `[UNVERIFIED]` A read-only API token (docs/api-tokens.md) still reads `/api/server/status` with
-  2FA on, and gets 403 from all four `/api/auth/totp/*` routes.
+  the migration. The maintainer's own upgrade on 2026-10-04 (not watched) is in the journal
+  (`from_schema=10 to_schema=11`, the snapshot `pre-migration-v10-20261004-223428.db`, still in
+  `backups/`); the one account is still there, was logged in to with its password the next day,
+  and has 2FA off.
+- `[VERIFIED 2026-10-05]` A read-only API token (docs/api-tokens.md) still reads
+  `/api/server/status` with 2FA on, and gets 403 from all four `/api/auth/totp/*` routes. On the
+  installed daemon (2FA off) a token got 403 from all four, with an empty body. On a scratch daemon
+  with 2FA turned on through its API (a code made from the enrolled secret by a separate script
+  turned it on, and a login with the right password and no code was then refused with
+  `totp_required`), the token still read `/api/server/status` (200) and still got 403 from the four
+  routes.
 - `[UNVERIFIED]` Over the VPN from a phone: the login's code step and the Account page work in the
   phone's browser, and the browser's password manager doesn't fill the code field with the
   password.
@@ -833,27 +1271,109 @@ printed; the TLS certificate was the same file; and after `tunnel down` and `tun
 reconnected with the config it had. A mutation check of each: a migration that loses rows, one that
 rewrites a value, and a tunnel restarted during the swap each fail the tests that should.
 
-- `[UNVERIFIED]` CI's "Integration" job passes with the new "Upgrade tests" step, on a GitHub-hosted
-  runner (Ubuntu's kernel, not Docker Desktop's).
-- `[UNVERIFIED]` `make test-upgrade` on the reference platform passes for every build in the list.
-  It needs root, the wireguard module, and the whole history (`git fetch --unshallow` on a shallow
-  clone), and takes about 25 seconds of test and one build for each.
-- `[UNVERIFIED]` The package half, which the tests don't cover: `sudo apt install
-  ./drawbridge_*.deb` over the previous release, with a client connected, as in §2's `[VERIFIED
-  2026-09-27]` step, now also with the journal saying `upgraded the database` and `backups/` holding
-  the snapshot (§13's first step). The matrix swaps the daemon the way `postinst` does; it doesn't
-  run `postinst`.
-- `[UNVERIFIED]` A downgrade, on the reference platform: after `sudo apt install ./drawbridge_*.deb`
-  of an older build over a newer one (the newer one must have a migration the older lacks), the
-  tunnel is up and a connected client stays connected, `journalctl -u drawbridge-tunnel` has the
-  "newer Drawbridge" warning, and `drawbridge.service` is `failed` with exit status 78, tried once
-  and not again (`RestartPreventExitStatus=78`), with the journal naming both schemas. `apt`
-  succeeds and says "the web UI didn't start; see why with: journalctl -u drawbridge" (§19: a
-  daemon that won't restart doesn't fail `postinst`; before 2026-10-04 it did, and left the
-  package half-configured). Installing the newer build again brings the daemon back, with the
-  database untouched. What has run, away from it: `TestANewerDatabaseStopsTheDaemonNotTheTunnel`
-  does the tunnel half in network namespaces, and `systemd-analyze verify` (systemd 257) accepts
-  the unit with the new line. Nothing has watched systemd honor it.
+- `[VERIFIED 2026-10-05]` CI's "Integration" job passes with the new "Upgrade tests" step, on a
+  GitHub-hosted runner (Ubuntu's kernel, not Docker Desktop's). Run 37396847671, on main at
+  `17e7932`, succeeded in every job. Its step "Upgrade tests (each older build, then this one, with
+  the tunnel up)" is `success`, on a GitHub-hosted `ubuntu-24.04` runner (read with `gh run view`).
+- `[VERIFIED 2026-10-05]` `make test-upgrade` on the reference platform passes for every build in
+  the list. It needs root, the wireguard module, and the whole history (`git fetch --unshallow` on a
+  shallow clone), and takes about 25 seconds of test and one build for each. All 7 builds (schemas
+  5 to 11) passed at the lowest CPU and IO priority, 21 to 23 s of test each and 3 min 39 s in all
+  with the builds, on Linux 6.18 with the real tunnel up beside them. Afterward the host's own
+  network was as before: no namespace or worktree left, and the same interfaces, nft tables, `wg0`
+  with its peers, sysctls, and files in `/var/lib/drawbridge`.
+- `[VERIFIED 2026-10-05]` The package half without a migration: `sudo apt install --reinstall
+  ./drawbridge_*.deb` of a build from `17e7932` over `afff457`. (The two packages had the same
+  version, so a plain `apt install` says "already the newest version" and does nothing.) apt took
+  3.4 s and exited 0, `dpkg --audit` was clean, and `postinst` did what its script says: the daemon
+  alone restarted (78 ms from "Drawbridge stopping" to "Drawbridge started" in the journal), the
+  tunnel unit was neither stopped nor restarted (the same `InvocationID` and start time), no setup
+  token was printed, and the certificate the maintainer had installed was kept. A watcher polling
+  ten times a second saw `wg0` at the same interface index with all its peers on every one of 73
+  samples, and the web UI's `/healthz` answered 200 on every one (the gap was shorter than the
+  sampling). Afterward `server show`, `wg show` (without handshakes and counters), `client list`,
+  the nft table's revision, and the secret key's hash were the same as before. Nobody was connected,
+  and the two builds had the same schema, so nothing was migrated.
+- `[UNVERIFIED]` The same with a client connected, and across a migration: `sudo apt install
+  ./drawbridge_*.deb` over the previous release, as in §2's `[VERIFIED 2026-09-27]` step, now also
+  with the journal saying `upgraded the database` and `backups/` holding the snapshot (§13's first
+  step). The matrix swaps the daemon the way `postinst` does; it doesn't run `postinst`. The
+  maintainer's own upgrades on 2026-10-04 (schemas 8 to 9, 9 to 10, and 10 to 11, each with its
+  `pre-migration-v<n>-*.db` in `backups/`) are in the journal as `upgraded the database`, and the
+  tunnel unit's start time didn't change through them or through the 19 daemon starts since
+  2026-10-03, but nobody was connected, and they weren't watched.
+- `[VERIFIED 2026-10-06]` A downgrade, on the reference platform: after `sudo apt install
+  ./drawbridge_*.deb` of an older build over a newer one (the newer one must have a migration the
+  older lacks), the tunnel is up and a connected client stays connected, and `drawbridge.service`
+  is `failed` with exit status 78, tried once and not again (`RestartPreventExitStatus=78`), with
+  the journal naming both schemas. `apt` succeeds and says "the web UI didn't start; see why with:
+  journalctl -u drawbridge" (§19: a daemon that won't restart doesn't fail `postinst`; before
+  2026-10-04 it did, and left the package half-configured). Installing the newer build again
+  brings the daemon back, with the database untouched. **What the older build was:** no real one
+  exists, because the guard arrived (`77b9486`) after schema 11. A build from before it, `3f0314d`
+  (schema 10), doesn't refuse: run on a copy of the database in scratch space, it started, and
+  the copy changed. So the older build here is this tree's build with its newest migration (0011)
+  removed, which has the guard and knows schema 10 only, packaged with this tree's maintainer
+  scripts and units at the installed version, so `apt install --reinstall`. Beforehand, in scratch
+  space against a copy of the database, it exited 78 in 0.03 s with "the database is from a newer
+  Drawbridge: it's at schema 11 and this build knows up to 10; run the Drawbridge that last used
+  it, or restore a backup made by this one", and the copy's sha256 didn't change. On the host,
+  after a fresh tar with only the daemon stopped: apt exited 0 in 3.5 s, printed systemd's "Job for
+  drawbridge.service failed because the control process exited with error code" and then
+  "drawbridge: the web UI didn't start; see why with: journalctl -u drawbridge", `dpkg -l` said
+  `ii`, and `dpkg --audit` was clean. The journal had the error above, "Main process exited,
+  code=exited, status=78/CONFIG", and "Failed to start". The unit stayed `failed` for the 30 s
+  watched, with the same invocation and no restart counted. The tunnel unit kept its invocation
+  and start time, `wg0` its interface index, the firewall its revision, and the real peers their
+  endpoints, handshakes, and byte counters (a digest of them was the same). A throwaway client
+  connected from a namespace answered every ping (220 replies, the longest gap 0.21 s at a 0.2 s
+  interval). A fingerprint of `/etc/drawbridge` and `/var/lib/drawbridge` (every name, owner, mode,
+  size, and sha256) was identical to the one taken before the install: nothing was written, not
+  even a `-wal` file or a snapshot. The CLI said "can't reach the Drawbridge daemon at
+  /run/drawbridge/control.sock; is drawbridge.service running?". Installing the current package
+  again (apt exit 0 in 3.4 s) brought the web UI back 3.5 s later, 41 s after the daemon was
+  stopped (30 of them a wait), with `/usr/bin/drawbridge` byte-identical to the original and
+  `drawbridge doctor` at 13 of 13. A fresh backup, restored in scratch space, passed the integrity
+  check at schema 11, with the real clients' rows, the server's row, and the admin account as they
+  were before the older build was installed.
+- `[VERIFIED 2026-10-06]` After that downgrade, `journalctl -u drawbridge-tunnel` has the "newer
+  Drawbridge" warning, and the older build brings the VPN up. It can't come from the install:
+  `postinst` never restarts the tunnel unit, so the older build's `tunnel up` didn't run (the
+  unit's journal had no new line). It shows when the unit runs the older build: after a reboot,
+  say, or `systemctl restart drawbridge-tunnel`, or `systemctl reload drawbridge-tunnel`, whose
+  `ExecReload` is `drawbridge tunnel up`. In scratch space first, the same build's `tunnel up`, as
+  root in an empty network namespace against a copy of the database, exited 0 in 0.05 s with the
+  warning (`schema=11 known=10`), created `wg0` with the database's peers and its firewall table,
+  and left the copy unchanged. **On the host,** the same older-schema build was installed the same
+  way (a fresh tar first, only the daemon stopped, and a throwaway client connected from a
+  namespace; the daemon failed with exit status 78 again, and the unit's journal had no new line).
+  Then `systemctl reload drawbridge-tunnel` exited 0 in 0.09 s, and the unit's journal got
+  `level=WARN msg="the database is from a newer Drawbridge than this one: going on, because the
+  tunnel only reads it, but the web UI won't start until Drawbridge is upgraded again"
+  schema=11 known=10` and `tunnel up ... changes=[]`. The unit kept its invocation and start time,
+  `wg0` was never away (a watcher sampling every 50 ms saw it on every sample) and kept its
+  interface index, the firewall kept its revision, the peers were as before, and the throwaway
+  kept answering (16 replies in the window, the longest gap 0.21 s at a 0.2 s interval). Then
+  `systemctl restart drawbridge-tunnel` (`ExecStop` is `tunnel down`, `ExecStart` is `tunnel up`,
+  both the older build's) exited 0 in 0.47 s. The journal had the warning twice, once from each of
+  the two, and `tunnel up` said it created `wg0`, applied the firewall, set the key and the port,
+  added all six peers (the five real clients and the throwaway) and both addresses, and brought
+  `wg0` up. `wg0` was away 0.3 s, and came back as a new interface with the same key, port, peers,
+  allowed IPs, and keepalive, and the firewall table with the same revision. `drawbridge.service`
+  stayed failed (78), with the same invocation. A fingerprint of `/etc/drawbridge` and
+  `/var/lib/drawbridge` (every name, owner, mode, size, and sha256) was identical to the one taken
+  before the install after the install, after the reload, and after the restart: the older build
+  wrote nothing. The throwaway reconnected by itself, with the config it had, 15.3 s after `wg0`
+  was back, which fits WireGuard's own timer (a client that sent data and heard nothing for 15 s
+  starts a handshake; the handshake wasn't captured). No real client was connected (none had shaken
+  hands since `wg0` was last recreated, earlier that day), so a phone's reaction wasn't seen.
+  Installing the current package again (apt exit 0 in 3.4 s) brought the web UI back 3.4 s after it
+  began, 27 s after the daemon was stopped, with `/usr/bin/drawbridge` byte-identical to the
+  original, `drawbridge doctor` at 13 of 13, `client list` and `server show` as before, the web UI
+  answering through the VPN from the throwaway's namespace, and a fresh backup, restored in
+  scratch space, passing the integrity check at schema 11 with the same rows as before the older
+  build was installed. Not seen: a reboot with the older build installed (the same `ExecStart`,
+  from a stopped unit).
 
 ## 19. The package scripts keep the admin's choices (the ninth M5 slice)
 
@@ -871,28 +1391,86 @@ without the link deletion, the purge checks fail. What it can't show is systemd 
 reads "enabled" from the link in `multi-user.target.wants` the way systemd does, but nothing here
 has watched systemd.
 
-- `[UNVERIFIED]` CI's "Package scripts" job passes, on a GitHub-hosted runner (Ubuntu's `dpkg`, not
-  Debian's).
-- `[UNVERIFIED]` **Disabled across an upgrade:** `sudo systemctl disable --now drawbridge`, then
-  `sudo apt install ./drawbridge_*.deb` over the same or a newer build. `systemctl is-enabled
-  drawbridge` still says `disabled`, `systemctl is-active drawbridge` says `inactive`, and the
-  tunnel is still up with its client connected. The install prints no setup token and doesn't
-  pause for the daemon's socket. Then `sudo systemctl enable --now drawbridge` brings the web UI
-  back, with its data.
-- `[UNVERIFIED]` **The tunnel disabled:** `sudo systemctl disable drawbridge-tunnel` (without
-  `--now`), then an upgrade. The tunnel unit is neither stopped nor restarted, and is still
-  `disabled`; the daemon restarts.
-- `[UNVERIFIED]` **Removing and installing again:** `sudo apt remove drawbridge` stops both units
-  (`systemctl status` says they can't be found), removes `wg0` and the `inet drawbridge` table, and
-  leaves `/etc/systemd/system/multi-user.target.wants/drawbridge*.service` (now pointing at
-  nothing). Installing the package again brings both units, `wg0`, and the table back with every
-  client and setting, with no new setup token. If the daemon was disabled first, it stays
-  disabled after the reinstall.
-- `[UNVERIFIED]` **Purging:** `sudo apt purge drawbridge` also deletes those two links. `ls
+- `[VERIFIED 2026-10-05]` CI's "Package scripts" job passes, on a GitHub-hosted runner (Ubuntu's
+  `dpkg`, not Debian's). In run 37396847671 (main at `17e7932`) the step "Install, upgrade,
+  downgrade, remove, and purge" is `success`, on a GitHub-hosted `ubuntu-24.04` runner.
+- `[VERIFIED 2026-10-06]` **Disabled across an upgrade:** `sudo systemctl disable --now
+  drawbridge`, then `sudo apt install ./drawbridge_*.deb` over the same or a newer build.
+  `systemctl is-enabled drawbridge` still says `disabled`, `systemctl is-active drawbridge` says
+  `inactive`, and the tunnel is still up with its client connected. The install prints no setup
+  token and doesn't pause for the daemon's socket. Then `sudo systemctl enable --now drawbridge`
+  brings the web UI back, with its data. Run on the reference host with the current package put on
+  over itself (`apt install --reinstall`, the same version) after a fresh tar of the state, with a
+  throwaway client connected from a namespace. `disable --now` removed the daemon's boot link
+  (`multi-user.target.wants/drawbridge.service`) and left the tunnel unit's. The install exited 0 in
+  3.3 s, with no setup token in its output, nothing about the web UI failing to start, and no
+  pause (the wait for the daemon's socket is up to 10 s). After it the daemon was still `disabled`
+  and `inactive`, `dpkg -l` said `ii`, `dpkg --audit` was clean, and a fingerprint of
+  `/etc/drawbridge` and `/var/lib/drawbridge` (every name, owner, mode, size, and sha256) was
+  identical to the one taken before it. The tunnel unit kept its invocation and start time, `wg0`
+  its interface index, the firewall its revision, and the real peers their endpoints,
+  handshakes, and byte counters, and the throwaway answered every ping. `enable --now` made the
+  link again, and the web UI answered 0.4 s later (8.3 s after `disable --now`), with `drawbridge
+  doctor` at 13 of 13 and the clients and settings as before.
+- `[VERIFIED 2026-10-06]` **The tunnel disabled:** `sudo systemctl disable drawbridge-tunnel`
+  (without `--now`), then an upgrade. The tunnel unit is neither stopped nor restarted, and is
+  still `disabled`; the daemon restarts. Run the same way, after a fresh tar. `disable` removed the
+  tunnel unit's boot link and the unit stayed `active` (`--now` would have run `tunnel down`: the
+  unit's `ExecStop`). The install exited 0 in 3.4 s. Afterward the tunnel unit was still
+  `disabled` and `active`, with the same invocation and start time, `wg0` kept its index, and the
+  firewall's revision and the real peers' state were unchanged. The daemon had a new invocation
+  and was active (its journal has "Drawbridge stopping" and then "Drawbridge started", and the
+  installed certificate still in use), the throwaway answered every ping (89 replies across both
+  runs, the longest gap 0.21 s), and the clients were as before. `systemctl enable
+  drawbridge-tunnel` (no `--now`) made the link again with the unit untouched.
+- `[VERIFIED 2026-10-06]` **Removing and installing again:** `sudo apt remove drawbridge` stops
+  both units (`systemctl status` says they can't be found), removes `wg0` and the `inet
+  drawbridge` table, and leaves `/etc/systemd/system/multi-user.target.wants/drawbridge*.service`
+  (now pointing at nothing). Installing the package again brings both units, `wg0`, and the table
+  back with every client and setting, with no new setup token. If the daemon was disabled first,
+  it stays disabled after the reinstall. Run twice on the reference host, with a fresh tar of the
+  state each time and a throwaway client connected from a namespace. **Plain:** `apt remove -y`
+  exited 0 in 3.0 s, `dpkg -l` said `rc`, and `systemctl status drawbridge` and `drawbridge-tunnel`
+  each printed "Unit drawbridge.service could not be found." (exit status 4). `wg0` and the table
+  were gone, no daemon process or control socket was left, and the binary was gone. Both boot links
+  were still there and dangling. `/etc/drawbridge` and `/var/lib/drawbridge` were identical (every
+  name, owner, mode, size, and sha256) to before the remove. `apt install -y` of the package again
+  exited 0 in 3.1 s with no setup token, `dpkg -l` said `ii`, and both units were enabled and
+  active. The web UI answered 3.2 s after the install began, 6.3 s after the remove began, and
+  `wg0` had been away 3.7 s. `wg0` was a new interface (a new index) with the same key, port,
+  peers, allowed IPs, and keepalive, the firewall table came back with the same revision, the
+  binary and the secret key were the original, and the tunnel unit's journal had `tunnel down` and
+  then `tunnel up` creating `wg0` and adding all six peers. The clients and settings were as
+  before, `drawbridge doctor` passed 13 of 13, and a fresh backup restored in scratch space passed
+  the integrity check with the real clients' rows, the server's row, and the admin account as
+  before. What doesn't come back is the kernel's per-peer runtime state, which belongs to the
+  interface: every real client's handshake went to "never" and its totals to 0 B (one had had
+  239 MiB received and 5.0 GiB sent), as in §14. The throwaway reconnected by itself, with the
+  config it had, 11.8 s after `wg0` was back. **With the daemon disabled first**
+  (`disable --now`): the same remove left only the tunnel unit's link, dangling, since `disable`
+  had removed the daemon's. The install exited 0 in 3.1 s with no setup token and no "web UI
+  didn't start" message, the daemon stayed `disabled` and `inactive` with no link, the tunnel
+  unit was enabled and active, and `wg0` and the table were back as before. `wg0` was away 3.6 s,
+  and the throwaway reconnected 11.9 s after it was back. `systemctl enable --now drawbridge` then
+  brought the web UI back with its data.
+- `[VERIFIED 2026-10-06]` **Purging:** `sudo apt purge drawbridge` also deletes those two links. `ls
   /etc/systemd/system/multi-user.target.wants/ | grep drawbridge` prints nothing. The next
-  install is a first install: both units enabled and started, and a setup token printed.
-- `[UNVERIFIED]` **A daemon that won't restart:** with the downgrade step above (§18), `apt` reports
-  success, and `dpkg -l drawbridge` says `ii`, not `iF`.
+  install is a first install: both units enabled and started, and a setup token printed. Run on
+  the real host after a fresh tar, and an encrypted backup that was restored in scratch space
+  first: the purge (exit 0 in 3.7 s) removed `/etc/drawbridge`, `/var/lib/drawbridge`, `wg0`, the
+  firewall table, and both links, and kept the system user with the same uid. The install (exit 0
+  in 3.4 s) printed a setup token, enabled and started both units, made a new secret key, and
+  started with no clients. Then, with the daemon stopped, `backup restore` of the backup (exit 0)
+  brought back the original key (same sha256), the clients, the server row, and the admin account
+  (row digests identical), and the installed certificate and the six snapshots, which a backup
+  doesn't hold, were put back from the tar with the right owners and modes. After restarting both
+  units the web UI answered 0.5 s later (8.2 s after the purge began), the journal said the
+  certificate source was `uploaded`, `server show`, `client list`, `wg show`, and the firewall
+  were as before, and `doctor` was at 13 of 13. Not seen: a real client reconnecting.
+- `[VERIFIED 2026-10-06]` **A daemon that won't restart:** with the downgrade step above (§18),
+  `apt` reports success, and `dpkg -l drawbridge` says `ii`, not `iF`. Run with the older-schema
+  build described there: apt exited 0 and printed "drawbridge: the web UI didn't start; see why
+  with: journalctl -u drawbridge", `dpkg -l` said `ii`, and `dpkg --audit` printed nothing.
 - `[UNVERIFIED]` **A package from before this change, removed:** the older `prerm` disables the
   units on `remove`, so installing this build afterward leaves both disabled (a reinstall goes by
   their state, and they're off). `sudo systemctl enable --now drawbridge-tunnel drawbridge` is the
