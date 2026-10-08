@@ -1532,10 +1532,11 @@ and the candidate that's tried is `v0.1.0-rc.2`.
 - `[VERIFIED 2026-10-07]` The sums in `SHA256SUMS` match the downloaded files of `v0.1.0-rc.2`, all
   six of them (`shasum -a 256 -c SHA256SUMS` on a Mac; the same check with `sha256sum -c
   --ignore-missing` on the Pi is the next item's first step).
-- `[UNVERIFIED]` The draft's `.deb`, downloaded with `gh release download`, installs on the reference
-  platform the way docs/install.md says (`sudo apt install ./drawbridge_*.deb`), and
-  `drawbridge version` reports the tag's version, and the commit. Seen so far, not on the Pi: the
-  draft's own arm64 package (2026-10-07, in a Debian 13 container with real systemd, on a Mac) has
+- `[VERIFIED 2026-10-07]` The draft's `.deb` installs on the reference platform and works. The
+  maintainer tried the draft's files on a Raspberry Pi 5 (step 5 of docs/releasing.md) and reported
+  that everything worked as expected; that report didn't record `drawbridge version`'s output or
+  the commands, so the container run below is the detailed record. The draft's own arm64 package
+  (2026-10-07, in a Debian 13 container with real systemd, on a Mac) has
   `Version: 0.1.0~rc.2`; installs with `apt-get install ./drawbridge_0.1.0-rc.2_arm64.deb` and
   starts both units; `drawbridge version` says `v0.1.0-rc.2 (commit 4e52c6d)`; first-run setup
   works with the token the install printed; a client connects and pings the server over IPv4 and
@@ -1547,10 +1548,16 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   on a real machine). Checked without running it: the draft's amd64 package has an x86-64 binary,
   the same file list as the arm64 one, and byte-identical shared files. Docker Desktop on a Mac
   here has no emulation to run it.
-- `[UNVERIFIED]` With `v0.1.0-rc.2` published, `sh install.sh --version v0.1.0-rc.2`, on a host
-  without Drawbridge, downloads it from GitHub, checks it, and installs it, with the setup token at
-  the end. Run again, it says it's already installed. With no `--version` it says there's no
-  release yet, because a pre-release is never "latest".
+- `[VERIFIED 2026-10-07]` With `v0.1.0-rc.2` published (2026-10-08 02:54 UTC, a pre-release,
+  immutable), `sh install.sh --version v0.1.0-rc.2`, on a host without Drawbridge, downloads it from
+  GitHub, checks it, and installs it, with the setup token at the end. The maintainer ran it on a
+  second Raspberry Pi and set up and used the app with no problems. Run in a Debian 13 container
+  with real systemd (the published `install.sh`, with `--yes`), it installed `0.1.0~rc.2`, printed
+  the setup token, and left both units active, and a second run said `Drawbridge 0.1.0~rc.2 is
+  already installed.` and exited 0. With no `--version` it said the repository has no release yet,
+  exited 1, and installed nothing, because a pre-release is never "latest" (`/releases/latest`
+  redirects to `/releases`). The published `install.sh` and `SHA256SUMS` are byte-identical to the
+  draft's.
 - `[VERIFIED 2026-10-05]` The two URL shapes `install.sh` relies on, against GitHub itself:
   `/releases/latest` redirects to `/releases/tag/<tag>` on a repository with releases, and to
   `/releases` on one without (this one, then), and `/releases/download/<tag>/<file>` resolves to the
@@ -1561,7 +1568,9 @@ and the candidate that's tried is `v0.1.0-rc.2`.
 - `[UNVERIFIED]` The package's upgrade over the previous release keeps the tunnel up and the data
   (§2 and §18 do it for builds from the tree; this is the same with the released file). The first
   release has nothing before it, so this waits for the second. Seen so far, with the draft's own
-  file over a build from the tree instead (2026-10-07, the same container host): `v0.0.0-aold`
+  file over a build from the tree instead: the maintainer upgraded an older build on their own
+  Raspberry Pi, with its real VPN, and reported no problems (2026-10-07). In the same container host
+  as above (2026-10-07), `v0.0.0-aold`
   (`3f0314d`, schema 10) with a client connected, then `apt-get install` of the `v0.1.0-rc.2`
   package. The tunnel unit and `wg0` were not restarted (same invocation and interface index), the
   server's key, the nftables revision, the client rows, the settings, the secret key, and the
