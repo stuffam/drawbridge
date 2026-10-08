@@ -713,7 +713,8 @@ was seen.
   restore: the restored database has no record of it, so nothing removes it. Adding a client of the
   same name again, which got the same addresses, adopted the entry with no write, and deleting that
   client removed it a second later. The guide's "Not in a backup" says the names "come back with the
-  next sync", which is the other direction, and doesn't mention this leftover.
+  next sync", which is the other direction; it now also says this leftover stays until it's deleted
+  in AdGuard Home (2026-10-07).
 - `[VERIFIED 2026-10-05]` A wrong passphrase, a file with one byte changed, and a file cut short are
   each refused, and nothing is written. Run against scratch paths, as a non-root user (`--db` and
   `--secret-key` in a scratch directory, `--control` at no socket, `--owner none`), on a backup made
@@ -1490,9 +1491,14 @@ need the maintainer's login, so `install.sh` can't try a draft, and a published 
 changed. A pre-release is public and never "latest", which makes it the rehearsal. The draft's own
 files are what to install, not a build from the tree.
 
-- `[UNVERIFIED]` A dry run (`release.yml` started by hand on a branch, or on a pull request that
-  touches it) passes in Actions: the build, the check of the files, and the second build, whose
-  packages match the first's byte for byte on a different machine.
+- `[VERIFIED 2026-10-05]` A dry run (`release.yml` started by hand on a branch, or on a pull request
+  that touches it) passes in Actions: the build, the check of the files, and the second build, whose
+  packages match the first's byte for byte on a different machine. It did on two pull requests, at
+  00:23 and 00:40 UTC on 2026-10-06: run 37393725846 (the release pipeline's own, #46) and run
+  37395229805 (#48). In each, "Check the tag", "Build", and "Build again" succeeded, including the
+  step "The packages are byte for byte the first build's" on its own runner, and "CI" and "Draft the
+  release" were skipped, as a dry run does. That isn't a tag: the draft, the provenance, and the file
+  names on GitHub are the items below.
 - `[UNVERIFIED]` Pushing the tag runs the whole workflow, `ci.yml` included, and leaves a **draft**
   release (not published, not "latest") with seven files: both packages, their SBOMs, the web
   app's SBOM, `install.sh`, and `SHA256SUMS`, and the notes are the changelog's section and the
@@ -1523,5 +1529,11 @@ files are what to install, not a build from the tree.
 - `[UNVERIFIED]` The package's upgrade over the previous release keeps the tunnel up and the data
   (§2 and §18 do it for builds from the tree; this is the same with the released file). The first
   release has nothing before it, so this waits for the second.
-- `[UNVERIFIED]` The repository's settings are in place: a tag ruleset on `v*` that blocks updates and
-  deletions, and immutable releases, so a published release's files can't be changed.
+- `[VERIFIED 2026-10-07]` The repository's settings are in place: a tag ruleset on `v*` that blocks
+  updates and deletions, and immutable releases, so a published release's files can't be changed.
+  Read back through the API (`gh api repos/stuffam/drawbridge/rulesets/<id>` and
+  `.../immutable-releases`): a ruleset named `release tags`, target `tag`, enforcement `active`,
+  `refs/tags/v*`, with the rules `update`, `deletion`, and `non_fast_forward` and no bypass actors,
+  and immutable releases `enabled`. (The same read found `main protection`, which requires a pull
+  request and passing status checks, with no bypass actors, and the repository has auto-merge off.
+  Nobody has pushed a tag to see it hold.)
