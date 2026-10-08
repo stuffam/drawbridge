@@ -1,0 +1,185 @@
+# Releasing Drawbridge
+
+This is the maintainer's guide to cutting a release. You do three things by hand: write what
+changed, push a tag, and, once you've tried the release's own files on real hardware, publish it.
+CI does the rest. [PLAN.md §11.1](PLAN.md#111-releases-tag-build-publish-install) says why it's
+built this way.
+
+| Step | Who | What |
+| --- | --- | --- |
+| 1. Choose the version | you | `v0.1.0`, `v0.1.1`, `v0.2.0-rc.1` |
+| 2. Write the changelog | you, and the **Prepare release** workflow | `[Unreleased]` becomes the version's section, in a pull request you merge |
+| 3. Tag it | you | `git tag -a`, a check, `git push` |
+| 4. Build and draft | CI | checks the tag, runs every CI job on it, builds both packages twice, makes build provenance, and drafts the release |
+| 5. Try the draft's files | you | on the Pi: fresh, and as an upgrade with a client connected |
+| 6. Publish | you | one command, or one button |
+| 7. Afterward | you | a few lines of bookkeeping |
+
+## Before your first release
+
+You do these once.
+
+| Check | Where | Why |
+| --- | --- | --- |
+| A tag ruleset on `v*` blocks updates, deletions, and non-fast-forward pushes, with no bypass actors | **Settings → Rules → Rulesets** | A tag can never move under someone who installed from it. It also means **a tag you push by mistake stays**: step 3 shows how to check first. |
+| Immutable releases are on | **Settings → General → Releases** | A published release's files can't be replaced. |
+| `gh`, the GitHub command line, is installed and logged in | `gh auth status` | A draft's files need your login, and it's the easiest way to publish. |
+| A host to try the files on | the reference platform (a Raspberry Pi 5 on Debian 13) | Step 5. The checklist in [MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) says what to look at. |
+
+## Step 1: choose the version
+
+A version is `vMAJOR.MINOR.PATCH`, with a lowercase `v`. A suffix, as in `v0.2.0-rc.1`, makes it a
+pre-release: public, but never GitHub's "latest", so `install.sh` skips it unless it's asked for
+with `--version`.
+
+| Change | Example |
+| --- | --- |
+| Bug fixes only | `v0.1.0` → `v0.1.1` |
+| New features, nothing broken | `v0.1.0` → `v0.2.0` |
+| A release candidate, to try the files first | `v0.2.0-rc.1` |
+
+The tag has to look like that. Release workflows start only for a tag that begins with `v`, and
+the first job refuses one that isn't a version.
+
+## Step 2: write the changelog
+
+[CHANGELOG.md](https://github.com/stuffam/drawbridge/blob/main/CHANGELOG.md) is in Keep a
+Changelog's form, and a release's notes on GitHub are its section. Changes go under
+`## [Unreleased]` as they're made. The section for a release leads with what an admin must know
+before installing or upgrading (a downgrade isn't supported, a setting that now means something
+else, a test that was changed on purpose), then what changed, under Added, Changed, Fixed, and the
+like.
+
+To turn `[Unreleased]` into the release:
+
+1. On GitHub, open **Actions → Prepare release → Run workflow**, on `main`.
+2. Type the version (`v0.1.0`) and, if you don't want today's date (UTC), the date.
+3. When it finishes, open its run and use the link in the summary: it opens a pull request from
+   the branch `release/v0.1.0`, with a title and description already filled in.
+4. Read the section the pull request makes. It becomes the release's notes. Fix the wording in the
+   pull request if you need to, wait for CI, and merge it.
+
+The workflow won't run, and says why, if the version isn't one, the changelog already has it, or
+`[Unreleased]` has nothing under it. It stops at a branch because it can't open the pull request
+itself: the setting that lets Actions open pull requests is off, and a pull request opened by
+Actions wouldn't start the CI that `main` requires.
+
+To do the same on your own machine:
+
+```bash
+git switch -c release/v0.1.0
+sh scripts/changelog-release.sh v0.1.0
+git commit -am "Add the changelog for v0.1.0"
+```
+
+## Step 3: tag it
+
+Tag the commit on `main` that the changelog pull request made. A tag can't be deleted or moved
+once it's pushed, so make it, check it, and only then push it:
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only
+git tag -a v0.1.0 -m "Drawbridge v0.1.0"
+scripts/release-check.sh v0.1.0
+```
+
+`release-check.sh` is the first job of the release workflow, run here instead. It prints the
+version it found and exits 0, or says what's wrong: the tag isn't a version, its commit isn't on
+`origin/main`, or the changelog has no section for it. If it complains, delete the tag you just
+made (`git tag -d v0.1.0`), fix the cause, and try again. When it passes:
+
+```bash
+git push origin v0.1.0
+```
+
+GitHub's web page can't make a tag by itself: its release form creates the tag when it publishes
+the release, and with immutable releases that would publish an empty release and stop the
+workflow from making the real one. So the tag is pushed from a terminal.
+
+## Step 4: watch the build
+
+Open **Actions → Release** and the newest run, which is named for your tag. It takes about 15
+minutes.
+
+| Job | What it does |
+| --- | --- |
+| Check the tag | Refuses unless the tag is a version, on `main`, with a changelog section |
+| CI | Every job of CI, on the tagged commit: the lint, the tests, the kernel tests, the package scripts |
+| Build | The web app, both packages, their SBOMs, `install.sh`, and `SHA256SUMS`, checked against the tag |
+| Build again | The packages again, on another machine. They have to match the first build byte for byte |
+| Draft the release | Build provenance for every file, then a **draft** release with the files and the changelog section as its notes, and a check that GitHub kept every file's name |
+
+When it's done, the run's summary says **The draft for the tag is ready**. Nothing is public yet.
+
+## Step 5: try the draft's own files
+
+A draft's files need your login, so a script can't try them; this is what you do by hand. Use the
+draft's files, not a build from your tree: they're what users will get.
+
+```bash
+mkdir /tmp/release && cd /tmp/release
+gh release download v0.1.0 --repo stuffam/drawbridge
+sha256sum -c --ignore-missing SHA256SUMS
+gh attestation verify drawbridge_*_arm64.deb --repo stuffam/drawbridge
+```
+
+Then, on the Pi, install the `.deb` the way [the install guide](install.md) says: fresh, and as an
+upgrade over the previous release with a client connected. `drawbridge version` should say the
+tag's version. The release's own check list is [MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) (§20 for
+what only a real tag shows, and the sections for whatever changed since the last release); record
+what you saw there.
+
+## Step 6: publish
+
+```bash
+gh release edit v0.1.0 --repo stuffam/drawbridge --draft=false
+```
+
+Or open the draft on GitHub and press **Publish release**. After this its files can't be changed
+and its tag can't move, so don't publish until step 5 is done. A pre-release is published the
+same way and is marked as one.
+
+## Step 7: afterward
+
+- Add the tag to `test/integration/upgrade-from.txt`, in its own pull request, so the upgrade
+  tests start from this release too.
+- After the first release candidate, try the path users take: on a host without Drawbridge,
+  `sh install.sh --version v0.1.0-rc.1`. After `v0.1.0`, the same without `--version` should
+  pick `v0.1.0` and not the candidate.
+- After the first release, change what still says there's no release: the install guide's "Get
+  the package", and the status text in CLAUDE.md and PLAN.md.
+
+## If something goes wrong
+
+A tag and a published release can't be changed, so a mistake is fixed by the next version.
+
+| What happened | What to do |
+| --- | --- |
+| **Prepare release** failed: the version isn't one, the changelog has it already, or `[Unreleased]` is empty | Read the message in its log, fix the cause, and run it again |
+| **Prepare release** failed at the push: the branch `release/<version>` exists | Delete that branch (it's an ordinary branch), or merge it if it's the one you want, and run it again |
+| `release-check.sh` fails before you push | Nothing is public: delete the local tag, fix it, tag again |
+| **Check the tag** fails after you pushed | The tag stays. Fix `main`, and release the next version (`v0.1.1`, or `rc.2`) |
+| **CI** fails on the tag | If it's a flaky job, **Re-run failed jobs** on the run, which re-runs the same commit. If it's a real failure, fix `main` and release the next version |
+| **Build again** says the packages differ | Don't publish. A change made a build depend on the time or the machine: find it (docs/PLAN.md §11.1 lists the three that did), fix it, and release the next version |
+| **Draft the release** says GitHub renamed a file | Delete the draft (a draft can be deleted), and release the next version |
+| You published, and found a problem | Delete the release or mark it a pre-release, so "latest" goes back to the last good one, say why in a note, and release the next version |
+
+## What isn't automated, and why
+
+- **Publishing.** A package can't be taken back once a migration has run on a host that installed
+  it, because an older build won't write the newer database. Trying the draft's files first is
+  what keeps a bad release rare.
+- **Stamping the version into the repository.** There's nothing to stamp: the version comes from
+  the tag, and the package, the binary, and the OpenAPI document are built from it.
+- **Committing to `main` from CI.** `main` requires a pull request and passing checks, with no
+  exceptions. That's why the changelog is a pull request, and why the bookkeeping in step 7 is by
+  hand.
+
+## Trying the machinery without a release
+
+Open **Actions → Release → Run workflow** on a branch, or open a pull request that touches the
+release workflow, the packaging, `scripts/`, or the Makefile. Either runs a dry run: it builds and
+checks the files and keeps them as a workflow artifact, without making a draft. `make test-release`
+and `make test-install` test the scripts on your machine.

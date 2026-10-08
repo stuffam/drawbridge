@@ -838,6 +838,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   needs to cover, installing, renewing, and going back.
 - `docs/backup-restore.md` is the admin's guide to backups: making one, keeping it, and restoring
   onto a fresh host.
+- `docs/releasing.md` is the maintainer's guide to cutting a release: the changelog pull request
+  (the **Prepare release** workflow, `.github/workflows/prepare-release.yml`), checking and pushing
+  the tag, trying the draft's own files on the Pi, publishing, and what to do when a step fails.
 - `cmd/drawbridge/` is the binary: `serve` (serve.go), `tunnel`, `server`, `client`,
   `events` and `admin` (admin_cmd.go), `doctor` (doctor_cmd.go), `version`, and `help`.
 - The core engine, in `internal/`:
@@ -886,7 +889,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   `requirements-docs.txt` pins its build tools. `test/docs/` has the list check and its tests.
   `docs/index.md` is the site's home page.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
-  and `release-check.sh`, `release-notes.sh`, and `release-verify.sh` (what `release.yml` runs).
+  and `release-check.sh`, `release-notes.sh`, and `release-verify.sh` (what `release.yml` runs), and
+  `changelog-release.sh` (what the Prepare release workflow runs: it turns `[Unreleased]` into a
+  version's section and rebuilds the links at the foot of `CHANGELOG.md`).
   `test/release/test.sh` and `test/install/test.sh` test them with throwaway repositories and a fake
   release page, and install nothing. `CHANGELOG.md` is in Keep a Changelog's form, with a section
   for each release (`## [vX.Y.Z] — date`) under `[Unreleased]`, which is the release's notes.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Tests the scripts that decide and check a release (docs/PLAN.md §11.1): release-notes.sh,
-# release-check.sh, and release-verify.sh. Each runs against a throwaway git repository and
+# Tests the scripts that decide and check a release (docs/PLAN.md §11.1): changelog-release.sh,
+# release-notes.sh, release-check.sh, and release-verify.sh. Each runs against a throwaway git repository and
 # directory, so nothing here touches the checkout or the host. release-verify.sh needs dpkg-deb
 # (Debian and Ubuntu have it; a laptop usually doesn't), and its cases are skipped without it.
 # `make test-release` runs this.
@@ -8,6 +8,7 @@ set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 notes=$root/scripts/release-notes.sh
+release=$root/scripts/changelog-release.sh
 check=$root/scripts/release-check.sh
 verify=$root/scripts/release-verify.sh
 work=$(mktemp -d)
@@ -125,6 +126,164 @@ same "notes: the last section, without its --- or the link definitions at the fo
 expect "notes: a version with no section" 1 'no section' "$notes" v3.0.0 "$work/CHANGELOG.md"
 expect "notes: no changelog" 1 "can't read" "$notes" v1.0.0 "$work/nope.md"
 expect "notes: a missing argument" 1 'usage' "$notes"
+
+# ---- changelog-release.sh ----
+
+cat >"$work/cl-start.md" <<'EOF'
+# Changelog
+
+Preamble.
+
+---
+
+## [Unreleased]
+
+### Added
+
+- **A feature.** It does a thing.
+
+### Fixed
+
+- **A bug.** It no longer happens.
+
+---
+
+## [v1.1.0] — 2026-10-02
+
+### Added
+
+- Older.
+
+---
+
+## [v1.0.0-rc.1] — 2026-10-01
+
+First.
+
+---
+
+[Unreleased]: https://example.com/o/r/compare/v1.1.0...main
+[v1.1.0]: https://example.com/o/r/compare/v1.0.0-rc.1...v1.1.0
+[v1.0.0-rc.1]: https://example.com/o/r/releases/tag/v1.0.0-rc.1
+EOF
+cat >"$work/cl-want.md" <<'EOF'
+# Changelog
+
+Preamble.
+
+---
+
+## [Unreleased]
+
+---
+
+## [v1.2.0] — 2026-11-01
+
+### Added
+
+- **A feature.** It does a thing.
+
+### Fixed
+
+- **A bug.** It no longer happens.
+
+---
+
+## [v1.1.0] — 2026-10-02
+
+### Added
+
+- Older.
+
+---
+
+## [v1.0.0-rc.1] — 2026-10-01
+
+First.
+
+---
+
+[Unreleased]: https://example.com/o/r/compare/v1.2.0...main
+[v1.2.0]: https://example.com/o/r/compare/v1.1.0...v1.2.0
+[v1.1.0]: https://example.com/o/r/compare/v1.0.0-rc.1...v1.1.0
+[v1.0.0-rc.1]: https://example.com/o/r/releases/tag/v1.0.0-rc.1
+EOF
+
+# fresh NAME: a copy of the starting changelog to run the script on.
+fresh() { cp "$work/cl-start.md" "$work/$1.md"; }
+
+fresh cl
+expect "changelog-release: says what it did" 0 'Turned \[Unreleased\] into \[v1.2.0\] — 2026-11-01' \
+	"$release" v1.2.0 2026-11-01 "$work/cl.md"
+same "changelog-release: [Unreleased] becomes the version, a fresh one above it, and every link is rebuilt" \
+	"$(cat "$work/cl-want.md")" "$(cat "$work/cl.md")"
+out=$("$notes" v1.2.0 "$work/cl.md")
+same "changelog-release: release-notes.sh reads the new section: what was under [Unreleased]" \
+	$'### Added\n\n- **A feature.** It does a thing.\n\n### Fixed\n\n- **A bug.** It no longer happens.' "$out"
+
+fresh cl
+REPO_URL=https://github.com/x/y/ "$release" v1.2.0 2026-11-01 "$work/cl.md" >/dev/null
+expect "changelog-release: REPO_URL sets the links' address" 0 'https://github.com/x/y/compare/v1.2.0\.\.\.main' cat "$work/cl.md"
+fresh cl
+BASE_BRANCH=trunk "$release" v1.2.0 2026-11-01 "$work/cl.md" >/dev/null
+expect "changelog-release: BASE_BRANCH sets what [Unreleased] compares with" 0 'compare/v1.2.0\.\.\.trunk' cat "$work/cl.md"
+
+fresh cl
+"$release" v2.0.0-rc.1 2026-11-01 "$work/cl.md" >/dev/null
+expect "changelog-release: a pre-release is a version" 0 '^## \[v2.0.0-rc.1\] — 2026-11-01$' cat "$work/cl.md"
+fresh cl
+today=$(date -u +%Y-%m-%d)
+"$release" v1.2.0 "" "$work/cl.md" >/dev/null
+tomorrow=$(date -u +%Y-%m-%d) # in case the run crossed midnight UTC
+expect "changelog-release: without a date it's today's, in UTC" 0 "^## \\[v1.2.0\\] — ($today|$tomorrow)\$" cat "$work/cl.md"
+
+# The first release after a release candidate: the release's links compare with the candidate.
+cat >"$work/cl-rc.md" <<'EOF'
+# Changelog
+
+---
+
+## [Unreleased]
+
+- **Something.** New.
+
+---
+
+## [v1.0.0-rc.1] — 2026-10-01
+
+First.
+
+---
+
+[Unreleased]: https://example.com/o/r/compare/v1.0.0-rc.1...main
+[v1.0.0-rc.1]: https://example.com/o/r/releases/tag/v1.0.0-rc.1
+EOF
+"$release" v1.0.0 2026-10-09 "$work/cl-rc.md" >/dev/null
+expect "changelog-release: a release after its candidate compares with it" 0 '^\[v1.0.0\]: https://example.com/o/r/compare/v1.0.0-rc.1\.\.\.v1.0.0$' cat "$work/cl-rc.md"
+expect "changelog-release: ...and the candidate, now the oldest, links to its release page" 0 '^\[v1.0.0-rc.1\]: https://example.com/o/r/releases/tag/v1.0.0-rc.1$' cat "$work/cl-rc.md"
+
+# Refusals leave the file as it was.
+refuses() { # NAME REGEX FILE ARGS...: the script fails with the message, and the file is unchanged
+	local name=$1 re=$2 f=$3
+	shift 3
+	cp "$f" "$f.before"
+	expect "changelog-release: $name" 1 "$re" "$release" "$@" "$f"
+	if cmp -s "$f" "$f.before"; then pass; else fail "changelog-release: $name changed the file"; fi
+}
+printf '# Changelog\n\n## [Unreleased]\n\n### Added\n\n### Fixed\n\n---\n\n## [v1.0.0] — 2026-10-01\n\nOld.\n\n---\n\n[Unreleased]: https://example.com/o/r/compare/v1.0.0...main\n[v1.0.0]: https://example.com/o/r/releases/tag/v1.0.0\n' >"$work/cl-empty.md"
+refuses "an [Unreleased] with only headings" 'has nothing under it' "$work/cl-empty.md" v1.1.0 2026-11-01
+fresh cl
+refuses "a version that already has a section" 'already has a section for v1.1.0' "$work/cl.md" v1.1.0 2026-11-01
+refuses "a version that isn't one" "1.2 isn't a version" "$work/cl.md" 1.2 2026-11-01
+refuses "a version without its v" "1.2.0 isn't a version" "$work/cl.md" 1.2.0 2026-11-01
+refuses "a version with build metadata" "isn't a version" "$work/cl.md" v1.2.0+build 2026-11-01
+refuses "a date that isn't one" 'YYYY-MM-DD, not 1 November' "$work/cl.md" v1.2.0 "1 November"
+printf '# Changelog\n\n## [v1.0.0] — 2026-10-01\n\nOld.\n\n---\n\n[v1.0.0]: https://example.com/o/r/releases/tag/v1.0.0\n' >"$work/cl-none.md"
+REPO_URL=https://example.com/o/r refuses "no [Unreleased] section" 'no \[Unreleased\] section' "$work/cl-none.md" v1.1.0 2026-11-01
+printf '# Changelog\n\n## [Unreleased]\n\n- Something.\n' >"$work/cl-nolinks.md"
+refuses "no address for the links" 'no REPO_URL' "$work/cl-nolinks.md" v1.0.0 2026-11-01
+expect "changelog-release: no changelog" 1 "can't read" "$release" v1.2.0 2026-11-01 "$work/nope.md"
+expect "changelog-release: a missing argument" 1 'usage' "$release"
 
 # ---- release-check.sh ----
 

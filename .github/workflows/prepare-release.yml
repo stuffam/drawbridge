@@ -1,0 +1,77 @@
+name: Prepare release
+
+# The step before a release's tag (docs/PLAN.md §11.1, docs/releasing.md). Run it from the Actions
+# tab, on main, with the version: it turns CHANGELOG.md's [Unreleased] section into that version's
+# (scripts/changelog-release.sh), puts the result on a branch, release/<version>, and says where to
+# open the pull request. Merge that pull request, then tag the commit it makes.
+#
+# It stops at a pushed branch because it can't open the pull request itself. The setting that lets
+# Actions open pull requests is off, and a pull request opened with this workflow's token wouldn't
+# start CI, whose checks main requires. Opened from the link in the run's summary, by you, it does.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version to release, with its v: v0.1.0, v0.1.1, v0.2.0-rc.1"
+        required: true
+        type: string
+      date:
+        description: "The release's date, YYYY-MM-DD. Today's, in UTC, when left empty."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-release
+  # A branch half pushed is worse than a run that waits.
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare the changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow on main: it releases what main holds, and $GITHUB_REF isn't main." >&2
+          exit 1
+      - uses: actions/checkout@v7
+      - name: Turn [Unreleased] into the release
+        env:
+          VERSION: ${{ inputs.version }}
+          DATE: ${{ inputs.date }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        # The script checks the version and the date, and refuses (changing nothing) if either is
+        # wrong, if the changelog already has the version, or if [Unreleased] has nothing under it.
+        run: sh scripts/changelog-release.sh "$VERSION" "$DATE"
+      - name: Put it on a branch
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "release/$VERSION"
+          git add CHANGELOG.md
+          git commit -q -m "Add the changelog for $VERSION" \
+            -m "Turns [Unreleased] into [$VERSION] and rebuilds the links at the foot of the file (scripts/changelog-release.sh, run from the Prepare release workflow)."
+          git diff --stat HEAD~1
+          git push origin "release/$VERSION"
+      - name: Say where to open the pull request
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          title="Add the changelog for $VERSION"
+          body="Turns [Unreleased] into [$VERSION], from the Prepare release workflow. Read the section: it becomes the release's notes. Merge it, then tag the commit it makes (docs/releasing.md, step 3)."
+          enc() { jq -rn --arg s "$1" '$s | @uri'; }
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...release/$VERSION?expand=1&title=$(enc "$title")&body=$(enc "$body")"
+          {
+            echo "### The changelog for $VERSION is on the branch release/$VERSION"
+            echo
+            echo "[Open the pull request]($url), read the section (it becomes the release's notes), and merge it."
+            echo "Then tag the commit it makes: see [docs/releasing.md](https://stuffam.github.io/drawbridge/releasing/), step 3."
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "Open the pull request: $url"

@@ -1498,14 +1498,18 @@ package does once it's installed (above).
       blocks updates and deletions, and GitHub's immutable releases) are the maintainer's, set
       once, like the Pages source.
 - **Cutting a release** is the maintainer's, by hand:
-    1. A pull request turns the `[Unreleased]` section of `CHANGELOG.md` into the version's
-       (`## [vX.Y.Z] — date`, in the form Keep a Changelog uses), puts a fresh empty `[Unreleased]`
-       above it, and updates the links at the foot of the file. The section leads with what an
-       admin must know before upgrading (a pinned test that changed on purpose, such as the config
-       fingerprint, which flags every client that was handed a config as outdated; a setting that
-       now means something else), then what changed, under Added, Changed, Fixed, and the like.
-       `scripts/release-notes.sh` takes the notes from the heading to the next `## ` heading and
-       leaves out the `---` lines and the links that close it.
+    1. A pull request turns the `[Unreleased]` section of `CHANGELOG.md` into the version's, headed
+       `## [vX.Y.Z] — date` as Keep a Changelog does, puts a fresh empty `[Unreleased]` above it, and
+       updates the links at the foot of the file. The **Prepare release** workflow
+       (`prepare-release.yml`, run by hand with the version) does it with
+       `scripts/changelog-release.sh` and pushes a branch; it can't open the pull request, because
+       the setting that lets Actions do that is off and such a pull request wouldn't start the CI
+       that `main` requires, so the run's summary links to the page that opens it. The section leads
+       with what an admin must know before upgrading (a pinned test that changed on purpose, such as
+       the config fingerprint, which flags every client that was handed a config as outdated; a
+       setting that now means something else), then what changed, under Added, Changed, Fixed, and
+       the like. `scripts/release-notes.sh` takes the notes from the heading to the next `## `
+       heading and leaves out the `---` lines and the links that close it.
     2. Run the on-hardware checklist (§12) on the reference platform for what changed since the
        last release, with the CI artifact built from the commit to be tagged.
     3. Tag that commit (`git tag -a vX.Y.Z`) and push the tag. The workflow below does the rest,
@@ -1675,9 +1679,9 @@ drawbridge/                repository root
 │   ├── adr/               architecture decision records (D1–D13)
 │   ├── MANUAL_CHECKLIST.md  what has actually run on real hardware
 │   ├── REQUIREMENTS.md    what the host and network need, and known roadblocks
-│   ├── install.md, router-setup.md, troubleshooting.md
+│   ├── install.md, releasing.md, router-setup.md, troubleshooting.md
 ├── Makefile               every build, lint, test, and package command
-└── .github/workflows/     ci.yml, docs.yml, release.yml
+└── .github/workflows/     ci.yml, docs.yml, prepare-release.yml, release.yml
 ```
 
 ---
