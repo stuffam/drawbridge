@@ -888,8 +888,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
   and `release-check.sh`, `release-notes.sh`, and `release-verify.sh` (what `release.yml` runs).
   `test/release/test.sh` and `test/install/test.sh` test them with throwaway repositories and a fake
-  release page, and install nothing. `CHANGELOG.md` has a section for each release, which is the
-  release's notes. `.github/workflows/release.yml` is the workflow.
+  release page, and install nothing. `CHANGELOG.md` is in Keep a Changelog's form, with a section
+  for each release (`## [vX.Y.Z] — date`) under `[Unreleased]`, which is the release's notes.
+  `.github/workflows/release.yml` is the workflow.
 - `test/packaging/test.sh` runs the maintainer scripts through real `dpkg`, with a fake
   `systemctl` that models what the scripts use (a unit is enabled when its link resolves, active
   by a marker, and a flag makes it fail to start), and records the calls.

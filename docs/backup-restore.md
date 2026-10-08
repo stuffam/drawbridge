@@ -160,4 +160,6 @@ upgrades. `sudo drawbridge doctor` checks the free space.
 - The web UI's certificate (above), and the log in the journal (the event log is in the backup).
 - Anything outside Drawbridge: the router's port forward, your DNS records, and AdGuard Home
   itself. Drawbridge's connection to AdGuard Home (the address, the account, and the password)
-  is in it, and the client names it added there come back with the next sync.
+  is in it, and the client names it added there come back with the next sync. The other direction
+  isn't undone: a client added after the backup was made isn't in the restored database, so
+  Drawbridge no longer knows it, and its name stays in AdGuard Home until you delete it there.
