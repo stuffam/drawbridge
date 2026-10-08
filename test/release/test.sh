@@ -51,45 +51,77 @@ got:  $3"
 
 # ---- release-notes.sh ----
 
+# Keep a Changelog's form: bracketed versions with an em dash and a date, `---` between releases,
+# and link definitions at the foot. A version without brackets or a date still works.
 cat >"$work/CHANGELOG.md" <<'EOF'
 # Changelog
 
 Preamble.
 
-## v1.2.0 - 2026-12-01
+---
 
-### Upgrading
+## [Unreleased]
 
-Keep this line.
+### Added
 
-### Changes
+- Not released yet.
+
+---
+
+## [v1.2.0] — 2026-12-01
+
+Intro line.
+
+### Notes
+
+Keep this line, and [its guide][guide].
+
+[guide]: https://example.com/guide
+
+More text after the definition.
+
+### Added
 
 - A change.
 
+
+---
 
 ## v1.1.0
 
 The middle one.
 
-## v1.0.0-rc.1 - 2026-10-01
+## [v1.0.0-rc.1] - 2026-10-01
 
 A pre-release.
 
-## v1.0.0 - 2026-10-02
+## [v1.0.0]
 
-## v0.9.0
+## [v0.9.0] — 2026-09-01
 
 Last.
+
+---
+
+[Unreleased]: https://example.com/compare/v1.2.0...main
+[v1.2.0]: https://example.com/compare/v1.1.0...v1.2.0
+[v0.9.0]: https://example.com/releases/v0.9.0
 EOF
 
-expect "notes: a dated section, subheadings kept, next section left out" 0 '^### Upgrading$' \
+expect "notes: a bracketed, dated section, subheadings kept, next section left out" 0 '^### Notes$' \
 	"$notes" v1.2.0 "$work/CHANGELOG.md"
 out=$("$notes" v1.2.0 "$work/CHANGELOG.md")
-same "notes: trimmed to the section's own text" $'### Upgrading\n\nKeep this line.\n\n### Changes\n\n- A change.' "$out"
-expect "notes: a section without a date" 0 '^The middle one\.$' "$notes" v1.1.0 "$work/CHANGELOG.md"
+same "notes: trimmed to the section's own text (no heading, no trailing ---), a mid-section link definition kept" \
+	$'Intro line.\n\n### Notes\n\nKeep this line, and [its guide][guide].\n\n[guide]: https://example.com/guide\n\nMore text after the definition.\n\n### Added\n\n- A change.' "$out"
+case $out in
+*"Not released yet"*) fail "notes: [Unreleased]'s entries leaked into v1.2.0's notes" ;;
+*) pass ;;
+esac
+expect "notes: a section without brackets or a date" 0 '^The middle one\.$' "$notes" v1.1.0 "$work/CHANGELOG.md"
 expect "notes: v1.0.0 isn't v1.0.0-rc.1's section" 1 'empty one' "$notes" v1.0.0 "$work/CHANGELOG.md"
-expect "notes: a pre-release's own section" 0 '^A pre-release\.$' "$notes" v1.0.0-rc.1 "$work/CHANGELOG.md"
-expect "notes: the last section" 0 '^Last\.$' "$notes" v0.9.0 "$work/CHANGELOG.md"
+expect "notes: a pre-release's own section, dated with a hyphen" 0 '^A pre-release\.$' "$notes" v1.0.0-rc.1 "$work/CHANGELOG.md"
+out=$("$notes" v0.9.0 "$work/CHANGELOG.md")
+same "notes: the last section, without its --- or the link definitions at the foot of the file" 'Last.' "$out"
 expect "notes: a version with no section" 1 'no section' "$notes" v3.0.0 "$work/CHANGELOG.md"
 expect "notes: no changelog" 1 "can't read" "$notes" v1.0.0 "$work/nope.md"
 expect "notes: a missing argument" 1 'usage' "$notes"
@@ -113,7 +145,7 @@ git checkout -q -b side
 git commit -q --allow-empty -m "unmerged"
 git tag v1.2.1
 git checkout -q main
-printf '\n## v5.0.0\n\nA new one.\n' >>"$repo/CHANGELOG.md"
+printf '\n## [v5.0.0] — 2026-10-07\n\nA new one.\n' >>"$repo/CHANGELOG.md"
 git commit -q -am "v5.0.0's section"
 git update-ref refs/remotes/origin/main HEAD
 git tag v5.0.0
