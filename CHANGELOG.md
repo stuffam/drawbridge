@@ -19,13 +19,18 @@ between sections, aren't part of a release's notes.
 
 ---
 
-## [v0.1.0-rc.1] — 2026-10-07
+## [v0.1.0-rc.2] — 2026-10-07
 
 The first release candidate of Drawbridge, a self-hosted web manager for a WireGuard VPN server.
 It's a pre-release: the same software as v0.1.0 unless something turns up, published first so the
 release's files, their names, and `install.sh` can be tried the way you'd use them before v0.1.0
 goes out. GitHub never calls a pre-release "latest", so `install.sh` installs this one only with
-`--version v0.1.0-rc.1`.
+`--version v0.1.0-rc.2`.
+
+It's the second candidate. `v0.1.0-rc.1` was tagged first and never published: GitHub rewrites a
+`~` in a release's file names, so the checksums that release listed matched no file. The files are
+now named for the version (`drawbridge_0.1.0-rc.2_arm64.deb`), and the package's own version is
+`0.1.0~rc.2`.
 
 ### Notes
 
@@ -84,5 +89,5 @@ goes out. GitHub never calls a pre-release "latest", so `install.sh` installs th
 
 ---
 
-[Unreleased]: https://github.com/stuffam/drawbridge/compare/v0.1.0-rc.1...main
-[v0.1.0-rc.1]: https://github.com/stuffam/drawbridge/releases/tag/v0.1.0-rc.1
+[Unreleased]: https://github.com/stuffam/drawbridge/compare/v0.1.0-rc.2...main
+[v0.1.0-rc.2]: https://github.com/stuffam/drawbridge/releases/tag/v0.1.0-rc.2

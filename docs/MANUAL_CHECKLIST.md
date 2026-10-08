@@ -1486,10 +1486,12 @@ has watched systemd.
 
 `release.yml`, `scripts/install.sh`, and their tests are built (docs/PLAN.md §11.1), and CI runs the
 scripts' tests. What only a real tag on GitHub shows can't run until one is pushed, so these are
-for the first release. It goes out as a release candidate, `v0.1.0-rc.1`, first: a draft's files
-need the maintainer's login, so `install.sh` can't try a draft, and a published release can't be
-changed. A pre-release is public and never "latest", which makes it the rehearsal. The draft's own
-files are what to install, not a build from the tree.
+for the first release. It goes out as a release candidate first: a draft's files need the
+maintainer's login, so `install.sh` can't try a draft, and a published release can't be changed. A
+pre-release is public and never "latest", which makes it the rehearsal. The draft's own files are
+what to install, not a build from the tree. The first candidate, `v0.1.0-rc.1`, was tagged on
+2026-10-07 and found that GitHub renames a `~` in a file's name (below), so it was never published
+and the candidate that's tried is `v0.1.0-rc.2`.
 
 - `[VERIFIED 2026-10-05]` A dry run (`release.yml` started by hand on a branch, or on a pull request
   that touches it) passes in Actions: the build, the check of the files, and the second build, whose
@@ -1499,23 +1501,38 @@ files are what to install, not a build from the tree.
   step "The packages are byte for byte the first build's" on its own runner, and "CI" and "Draft the
   release" were skipped, as a dry run does. That isn't a tag: the draft, the provenance, and the file
   names on GitHub are the items below.
-- `[UNVERIFIED]` Pushing the tag runs the whole workflow, `ci.yml` included, and leaves a **draft**
-  release (not published, not "latest") with seven files: both packages, their SBOMs, the web
-  app's SBOM, `install.sh`, and `SHA256SUMS`, and the notes are the changelog's section and the
-  footer.
-- `[UNVERIFIED]` GitHub kept every file's name. The workflow's last check fails when it didn't (the
-  likely cause is the `~` in a pre-release's file names, as in `drawbridge_0.1.0~rc.1_arm64.deb`,
-  which is why the release candidate is the test), and then `install.sh` and `SHA256SUMS` wouldn't
-  agree with the release.
+- `[VERIFIED 2026-10-07]` Pushing the tag runs the whole workflow, `ci.yml` included, and leaves a
+  **draft** release (not published, not "latest") with seven files: both packages, their SBOMs, the
+  web app's SBOM, `install.sh`, and `SHA256SUMS`, and the notes are the changelog's section and the
+  footer. Run 37714380387, for `v0.1.0-rc.1` (about 11 minutes): "Check the tag", all nine of CI's
+  jobs, "Build", "Build again" (the packages byte for byte the first build's, on its own runner),
+  and the provenance step succeeded, and the draft was made, marked a pre-release, with seven files,
+  and with the changelog's section and the install footer as its notes. The step after it failed
+  (the next item), so the run is red.
+- `[FAILED 2026-10-07]` GitHub kept every file's name. The workflow's last check fails when it
+  didn't, and it did, for `v0.1.0-rc.1`: GitHub rewrote the `~` in the names of the five files that
+  had one (`drawbridge_0.1.0~rc.1_arm64.deb` became `drawbridge_0.1.0.rc.1_arm64.deb`, and the same
+  for the amd64 package, both SBOMs, and the web SBOM), and left `install.sh` and `SHA256SUMS` alone,
+  so `SHA256SUMS` listed names the release didn't have. That's why the release candidate is the
+  test. `v0.1.0-rc.1` stays tagged and was never published. The fix: a release's files are named for
+  the version (`drawbridge_0.1.0-rc.2_arm64.deb`), and the package's own `Version` keeps the `~`
+  (`install.sh` reads it from the package and checks it against the name). A throwaway draft
+  release with eight such names (`-`, `_`, and `.` only) kept all eight, and was deleted right away.
+- `[UNVERIFIED]` GitHub keeps every file's name on a real tag, with the files named for the version:
+  the same check, on `v0.1.0-rc.2`.
 - `[UNVERIFIED]` `gh attestation verify drawbridge_<version>_<arch>.deb --repo stuffam/drawbridge`
   succeeds for each package, `install.sh`, and `SHA256SUMS`, and fails for a file that was changed.
+  Seen so far, without downloading a file: for `v0.1.0-rc.1`, GitHub's attestations API has a
+  statement for the digest of each package, naming all seven files, built by
+  `.github/workflows/release.yml` at `refs/tags/v0.1.0-rc.1` in this repository. The signature check
+  itself needs the files.
 - `[UNVERIFIED]` `sha256sum -c --ignore-missing SHA256SUMS` passes for the downloaded files.
 - `[UNVERIFIED]` The draft's `.deb`, downloaded with `gh release download`, installs on the reference
   platform the way docs/install.md says (`sudo apt install ./drawbridge_*.deb`), and
   `drawbridge version` reports the tag's version, and the commit.
 - `[UNVERIFIED]` The same on an amd64 host (the package has only run in CI on that architecture, never
   on a real machine).
-- `[UNVERIFIED]` With `v0.1.0-rc.1` published, `sh install.sh --version v0.1.0-rc.1`, on a host
+- `[UNVERIFIED]` With `v0.1.0-rc.2` published, `sh install.sh --version v0.1.0-rc.2`, on a host
   without Drawbridge, downloads it from GitHub, checks it, and installs it, with the setup token at
   the end. Run again, it says it's already installed. With no `--version` it says there's no
   release yet, because a pre-release is never "latest".

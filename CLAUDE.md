@@ -133,8 +133,9 @@ setups.** What exists:
   machine (they must match byte for byte), and drafts a GitHub release with build provenance and
   the notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware
   and publishes it. `scripts/install.sh` installs the latest release after checking its checksum.
-  The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job). Nothing has been released yet, and the first release goes out as v0.1.0-rc.1, then v0.1.0
-  (§11.1, docs/MANUAL_CHECKLIST.md §20).
+  The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job). Nothing has been released yet. v0.1.0-rc.1 was tagged (2026-10-07) and never published,
+  because GitHub renames a `~` in an asset's name; the first release goes out as v0.1.0-rc.2, then
+  v0.1.0 (§11.1, docs/MANUAL_CHECKLIST.md §20).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -555,6 +556,10 @@ These are the rules most likely to get silently broken.
   won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older version
   over a newer one, never lets a name from the network into a path or URL unchecked, and never
   reaches `apt-get` before the package's checksum matches; its tests break the script to prove each.
+  A release's files are named for the version (`1.0.0-rc.1`), never the package's Debian version
+  (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't have.
+  `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and checks it
+  against the downloaded package's `Version`.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -672,8 +677,11 @@ building twice with every source file's modification time changed between the bu
 - GitHub (checked against a repository with releases, and this one, with none): `/releases/latest`
   redirects to `/releases/tag/<tag>`, or to `/releases` when there's no release, and
   `/releases/download/<tag>/<file>` resolves to the file. A draft release's files need a login, so
-  `install.sh` can't be tried on one. Not checked: whether GitHub keeps a `~` in an asset's name
-  (the release job fails when it doesn't).
+  `install.sh` can't be tried on one. A `~` in an uploaded asset's name is rewritten to a `.`
+  (v0.1.0-rc.1, 2026-10-07: `drawbridge_0.1.0~rc.1_arm64.deb` became `drawbridge_0.1.0.rc.1_arm64.deb`),
+  while `-`, `_`, and `.` are kept (a throwaway draft release with eight such names kept all eight, and
+  was deleted). So a release's files are named for the version (`0.1.0-rc.2`), and the package's own
+  `Version` (`0.1.0~rc.2`) is read from the `.deb`.
 - CI's ubuntu-24.04 runner has ShellCheck 0.9.0, which is stricter than the current one in places:
   it flags `[ a ] && [ b ] || {` (SC2015), where 0.11 doesn't. Lint with both, `koalaman/shellcheck:v0.9.0`
   and `:stable`.

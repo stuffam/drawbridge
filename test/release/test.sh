@@ -337,7 +337,9 @@ unset CHANGELOG
 if ! command -v dpkg-deb >/dev/null 2>&1; then
 	echo "SKIP: release-verify.sh's cases (no dpkg-deb)"
 else
-	ver=1.0.0~rc.1
+	# A release's files are named for the version, and a package's own Version is the Debian form.
+	ver=1.0.0-rc.1
+	debver=1.0.0~rc.1
 	# A package with the given version and architecture, and the dependencies the real one has
 	# unless a case gives others (an empty one leaves the field out).
 	make_deb() {
@@ -356,7 +358,7 @@ else
 		local d=$1
 		mkdir -p "$d"
 		for arch in arm64 amd64; do
-			make_deb "$d/drawbridge_${ver}_$arch.deb" "$ver" "$arch"
+			make_deb "$d/drawbridge_${ver}_$arch.deb" "$debver" "$arch"
 			echo '{"bomFormat":"CycloneDX"}' >"$d/drawbridge_${ver}_$arch.sbom.json"
 		done
 		echo '{"bomFormat":"CycloneDX"}' >"$d/drawbridge-web_$ver.sbom.json"
@@ -374,8 +376,10 @@ else
 	}
 
 	make_release "$work/ok"
-	expect "verify: a whole release" 0 'release files OK: drawbridge 1.0.0~rc.1' "$verify" "$work/ok" "$ver"
+	expect "verify: a whole release" 0 'release files OK: drawbridge 1.0.0-rc.1' "$verify" "$work/ok" "$ver"
 	expect "verify: the wrong version" 1 "doesn't hold exactly" "$verify" "$work/ok" 1.0.0
+	# GitHub renames a ~ in a file's name to a ., so a release's files can't be named for the Debian version.
+	expect "verify: files must be named for the version, not the Debian version" 1 "doesn't hold exactly" "$verify" "$work/ok" "$debver"
 	expect "verify: a usage error" 2 'usage' "$verify"
 
 	make_release "$work/extra"
@@ -399,33 +403,38 @@ else
 	resum "$work/version"
 	expect "verify: a package of another version" 1 'has Version 1.0.0, not' "$verify" "$work/version" "$ver"
 
+	make_release "$work/dash"
+	make_deb "$work/dash/drawbridge_${ver}_amd64.deb" "$ver" amd64
+	resum "$work/dash"
+	expect "verify: a package whose Version has a - where the pre-release's ~ goes" 1 'has Version 1.0.0-rc.1, not 1.0.0~rc.1' "$verify" "$work/dash" "$ver"
+
 	make_release "$work/arch"
-	make_deb "$work/arch/drawbridge_${ver}_amd64.deb" "$ver" arm64
+	make_deb "$work/arch/drawbridge_${ver}_amd64.deb" "$debver" arm64
 	resum "$work/arch"
 	expect "verify: a package of another architecture" 1 'has Architecture arm64, not amd64' "$verify" "$work/arch" "$ver"
 
 	make_release "$work/nodep"
-	make_deb "$work/nodep/drawbridge_${ver}_amd64.deb" "$ver" amd64 "" "wireguard-tools, systemd-timesyncd | time-daemon"
+	make_deb "$work/nodep/drawbridge_${ver}_amd64.deb" "$debver" amd64 "" "wireguard-tools, systemd-timesyncd | time-daemon"
 	resum "$work/nodep"
 	expect "verify: a package that doesn't depend on nftables" 1 "doesn't depend on nftables" "$verify" "$work/nodep" "$ver"
 
 	make_release "$work/othernft"
-	make_deb "$work/othernft/drawbridge_${ver}_arm64.deb" "$ver" arm64 "libnftables1" "wireguard-tools, systemd-timesyncd | time-daemon"
+	make_deb "$work/othernft/drawbridge_${ver}_arm64.deb" "$debver" arm64 "libnftables1" "wireguard-tools, systemd-timesyncd | time-daemon"
 	resum "$work/othernft"
 	expect "verify: a package that depends on something merely like nftables" 1 "doesn't depend on nftables" "$verify" "$work/othernft" "$ver"
 
 	make_release "$work/notime"
-	make_deb "$work/notime/drawbridge_${ver}_amd64.deb" "$ver" amd64 nftables "wireguard-tools"
+	make_deb "$work/notime/drawbridge_${ver}_amd64.deb" "$debver" amd64 nftables "wireguard-tools"
 	resum "$work/notime"
 	expect "verify: a package that doesn't recommend a time daemon" 1 "doesn't recommend systemd-timesyncd" "$verify" "$work/notime" "$ver"
 
 	make_release "$work/nowg"
-	make_deb "$work/nowg/drawbridge_${ver}_amd64.deb" "$ver" amd64 nftables "systemd-timesyncd | time-daemon"
+	make_deb "$work/nowg/drawbridge_${ver}_amd64.deb" "$debver" amd64 nftables "systemd-timesyncd | time-daemon"
 	resum "$work/nowg"
 	expect "verify: a package that doesn't recommend wireguard-tools" 1 "doesn't recommend wireguard-tools" "$verify" "$work/nowg" "$ver"
 
 	make_release "$work/alsodeps"
-	make_deb "$work/alsodeps/drawbridge_${ver}_amd64.deb" "$ver" amd64 "libc6 (>= 2.31), nftables (>= 1.0), adduser" "wireguard-tools, systemd-timesyncd | time-daemon"
+	make_deb "$work/alsodeps/drawbridge_${ver}_amd64.deb" "$debver" amd64 "libc6 (>= 2.31), nftables (>= 1.0), adduser" "wireguard-tools, systemd-timesyncd | time-daemon"
 	resum "$work/alsodeps"
 	expect "verify: nftables among other dependencies, with a version" 0 'release files OK' "$verify" "$work/alsodeps" "$ver"
 

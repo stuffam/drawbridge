@@ -146,7 +146,7 @@ same way and is marked as one.
 - Add the tag to `test/integration/upgrade-from.txt`, in its own pull request, so the upgrade
   tests start from this release too.
 - After the first release candidate, try the path users take: on a host without Drawbridge,
-  `sh install.sh --version v0.1.0-rc.1`. After `v0.1.0`, the same without `--version` should
+  `sh install.sh --version v0.1.0-rc.2`. After `v0.1.0`, the same without `--version` should
   pick `v0.1.0` and not the candidate.
 - After the first release, change what still says there's no release: the install guide's "Get
   the package", and the status text in CLAUDE.md and PLAN.md.
@@ -163,7 +163,7 @@ A tag and a published release can't be changed, so a mistake is fixed by the nex
 | **Check the tag** fails after you pushed | The tag stays. Fix `main`, and release the next version (`v0.1.1`, or `rc.2`) |
 | **CI** fails on the tag | If it's a flaky job, **Re-run failed jobs** on the run, which re-runs the same commit. If it's a real failure, fix `main` and release the next version |
 | **Build again** says the packages differ | Don't publish. A change made a build depend on the time or the machine: find it (docs/PLAN.md §11.1 lists the three that did), fix it, and release the next version |
-| **Draft the release** says GitHub renamed a file | Delete the draft (a draft can be deleted), and release the next version |
+| **Draft the release** says GitHub renamed a file | Delete the draft (a draft can be deleted), and release the next version. GitHub rewrites a `~` in a file's name to a `.`, which is why a release's files are named for the version (`0.1.0-rc.2`), never the Debian version (`0.1.0~rc.2`): if the names changed in the build, that's where to look |
 | You published, and found a problem | Delete the release or mark it a pre-release, so "latest" goes back to the last good one, say why in a note, and release the next version |
 
 ## What isn't automated, and why

@@ -88,8 +88,8 @@ jobs:
       - name: Check the files against the tag's version
         env:
           # A dry run has no tag, and builds 0.0.0-dev.
-          DEB_VERSION: ${{ needs.check.outputs.deb_version || '0.0.0~dev' }}
-        run: scripts/release-verify.sh dist/release "$DEB_VERSION"
+          VERSION: ${{ needs.check.outputs.version || '0.0.0-dev' }}
+        run: scripts/release-verify.sh dist/release "$VERSION"
       - uses: actions/upload-artifact@v7
         with:
           name: release-files
@@ -126,8 +126,11 @@ jobs:
           path: first
       - name: The packages are byte for byte the first build's
         run: |
-          (cd dist && sha256sum drawbridge_*.deb | LC_ALL=C sort) >second.sums
-          (cd first && grep '\.deb$' SHA256SUMS | LC_ALL=C sort) >first.sums
+          # By checksum and architecture: the release's files are named for the version (1.0.0-rc.1),
+          # and the build's for the package's own (1.0.0~rc.1).
+          by_arch() { awk '{ n = split($2, p, "_"); print $1, p[n] }' | LC_ALL=C sort; }
+          (cd dist && sha256sum drawbridge_*.deb | by_arch) >second.sums
+          (cd first && grep '\.deb$' SHA256SUMS | by_arch) >first.sums
           echo "first build:"; cat first.sums; echo "second build:"; cat second.sums
           diff first.sums second.sums
 
@@ -145,7 +148,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ needs.check.outputs.tag }}
-      DEB_VERSION: ${{ needs.check.outputs.deb_version }}
+      VERSION: ${{ needs.check.outputs.version }}
       PRERELEASE: ${{ needs.check.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
@@ -156,7 +159,7 @@ jobs:
       - name: The files are still what the build checked
         run: |
           chmod +x dist/release/install.sh
-          scripts/release-verify.sh dist/release "$DEB_VERSION"
+          scripts/release-verify.sh dist/release "$VERSION"
       - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/release/*

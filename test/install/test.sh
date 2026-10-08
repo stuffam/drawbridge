@@ -37,6 +37,12 @@ cat >"$bin/id" <<EOF
 #!/bin/sh
 if [ "\$1" = -u ]; then echo "\$FAKE_UID"; else exec "$real_id" "\$@"; fi
 EOF
+# dpkg-deb --field FILE Version: the Version line of the fake package, which is a text file.
+cat >"$bin/dpkg-deb" <<'EOF'
+#!/bin/sh
+[ "$1" = --field ] && [ "$3" = Version ] || exit 2
+awk -F': ' '$1 == "Version" { print $2 }' "$2"
+EOF
 # What's installed now: FAKE_INSTALLED is a version, or empty for nothing.
 cat >"$bin/dpkg-query" <<'EOF'
 #!/bin/sh
@@ -92,20 +98,22 @@ cat >"$bin/sudo" <<'EOF'
 echo "sudo $*" >>"$FAKE_LOG/apt"
 exec "$@"
 EOF
-chmod +x "$bin/dpkg" "$bin/id" "$bin/dpkg-query" "$bin/curl" "$bin/apt-get" "$bin/sudo"
+chmod +x "$bin/dpkg" "$bin/dpkg-deb" "$bin/id" "$bin/dpkg-query" "$bin/curl" "$bin/apt-get" "$bin/sudo"
 
 # ---- a fake release page ----
 
-# release TAG DEB_VERSION [ARCH...]: the files of a release, and the SHA256SUMS that lists them
-# along with the files that aren't packages.
+# release TAG VERSION [ARCH...]: the files of a release, and the SHA256SUMS that lists them along
+# with the files that aren't packages. The files are named for the version (1.0.0-rc.1), and each
+# package declares the Debian form (1.0.0~rc.1), as the real ones do.
 release() {
-	local tag=$1 ver=$2 arch d
+	local tag=$1 ver=$2 arch d debver=$2
 	shift 2
+	case $ver in *-*) debver=${ver%%-*}~${ver#*-} ;; esac
 	d=$srv/$tag
 	mkdir -p "$d"
 	for arch in "${@:-arm64 amd64}"; do
 		for a in $arch; do
-			echo "package $tag $a" >"$d/drawbridge_${ver}_$a.deb"
+			printf 'package %s %s\nVersion: %s\n' "$tag" "$a" "$debver" >"$d/drawbridge_${ver}_$a.deb"
 			echo '{"bomFormat":"CycloneDX"}' >"$d/drawbridge_${ver}_$a.sbom.json"
 		done
 	done
@@ -162,7 +170,7 @@ reset() {
 	rm -f "$tty_file"
 	release v0.2.0 0.2.0
 	release v0.1.0 0.1.0
-	release v1.0.0-rc.1 '1.0.0~rc.1'
+	release v1.0.0-rc.1 1.0.0-rc.1
 	echo v0.2.0 >"$srv/latest"
 	FAKE_ARCH=arm64 FAKE_UID=0 FAKE_INSTALLED='' FAKE_APT_EXIT=0
 }
@@ -219,7 +227,7 @@ ok "-y" 'This installs Drawbridge 0.2.0' -y
 
 reset
 ok "--version names a pre-release" 'This installs Drawbridge 1.0.0~rc.1' --version v1.0.0-rc.1 --yes
-logged "pre-release: apt-get is asked for the pre-release's package" '^apt-get install -y ./drawbridge_1.0.0~rc.1_arm64.deb$'
+logged "pre-release: apt-get is asked for the pre-release's package, named for its version" '^apt-get install -y ./drawbridge_1.0.0-rc.1_arm64.deb$'
 
 reset
 ok "latest ignores the pre-release that exists" 'This installs Drawbridge 0.2.0' --yes
@@ -233,6 +241,11 @@ same "the same version: apt-get isn't called" 0 "$(apt_calls)"
 reset
 release v1.0.0 1.0.0
 FAKE_INSTALLED='1.0.0~rc.1' ok "a pre-release is upgraded to the release after it" 'upgrades it to 1.0.0' --version v1.0.0 --yes
+reset
+FAKE_INSTALLED='1.0.0~rc.1' ok "the pre-release that's installed is the same version, though its file is named 1.0.0-rc.1" 'Drawbridge 1.0.0~rc.1 is already installed' --version v1.0.0-rc.1 --yes
+same "...so apt-get isn't called" 0 "$(apt_calls)"
+reset
+FAKE_INSTALLED='1.0.0' refuses "a pre-release isn't installed over its release" 'is older' --version v1.0.0-rc.1 --yes
 
 # ---- root and sudo ----
 
@@ -300,6 +313,21 @@ reset
 echo "tampered" >>"$srv/v0.2.0/drawbridge_0.2.0_arm64.deb"
 refuses "a package that doesn't match its checksum" "doesn't match the checksum" --yes
 same "...so nothing is installed" 0 "$(apt_calls)"
+# A package whose checksum matches but which declares another version than its name says.
+resum() { (cd "$1" && for f in *; do [ "$f" = SHA256SUMS ] || echo "$f"; done | LC_ALL=C sort | xargs sha256sum >"$work/sums" && mv "$work/sums" SHA256SUMS); }
+reset
+printf 'package v0.2.0 arm64\nVersion: 9.9.9\n' >"$srv/v0.2.0/drawbridge_0.2.0_arm64.deb"
+resum "$srv/v0.2.0"
+refuses "a package that declares another version than its name" 'declares version 9.9.9, not 0.2.0' --yes
+same "...so nothing is installed" 0 "$(apt_calls)"
+reset
+printf 'package v1.0.0-rc.1 arm64\nVersion: 1.0.0-rc.1\n' >"$srv/v1.0.0-rc.1/drawbridge_1.0.0-rc.1_arm64.deb"
+resum "$srv/v1.0.0-rc.1"
+refuses "a pre-release package with a - in its Version, which would sort after its release" 'declares version 1.0.0-rc.1, not 1.0.0~rc.1' --version v1.0.0-rc.1 --yes
+reset
+printf 'package v0.2.0 arm64\n' >"$srv/v0.2.0/drawbridge_0.2.0_arm64.deb"
+resum "$srv/v0.2.0"
+refuses "a package that declares no version" 'declares version nothing, not 0.2.0' --yes
 reset
 rm "$srv/v0.2.0/SHA256SUMS"
 refuses "no SHA256SUMS" "couldn't download v0.2.0's SHA256SUMS" --yes

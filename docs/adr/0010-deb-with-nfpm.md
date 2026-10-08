@@ -25,7 +25,8 @@ changed: a bad release is fixed by the next version.
 ## Consequences
 
 - The Debian version is the bare version, so `0.0.0-dev` becomes `0.0.0~dev` and sorts before
-  `0.0.0`.
+  `0.0.0`. A release's files are named for the version (`0.0.0-dev`), not the Debian version:
+  GitHub rewrites a `~` in an asset's name, which `v0.1.0-rc.1` found (docs/PLAN.md §11.1).
 - M0 already ships a minimal package, so the hello-world build installs on a real host the same way
   releases will.
 - nfpm doesn't expand variables in `contents` paths, so `make package` stages each architecture's
