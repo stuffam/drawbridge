@@ -8,7 +8,8 @@
 # installs an older version over a newer one: the newer one's database can't be written by an
 # older Drawbridge.
 #
-# Read it before you run it. It needs curl, sha256sum, dpkg, and apt-get, and root (or sudo).
+# Read it before you run it. It needs curl, sha256sum, dpkg, dpkg-deb, and apt-get, and root (or
+# sudo).
 set -eu
 
 repo=stuffam/drawbridge
@@ -59,7 +60,7 @@ done
 # ---- is this a host Drawbridge installs on? ----
 
 [ "$(uname -s)" = Linux ] || die "Drawbridge runs on Linux, and this is $(uname -s)"
-for tool in dpkg apt-get; do
+for tool in dpkg dpkg-deb apt-get; do
 	command -v "$tool" >/dev/null 2>&1 ||
 		die "this host isn't Debian-family (there's no $tool); Drawbridge ships as a .deb"
 done
@@ -121,8 +122,13 @@ esac
 [ -n "$file" ] || die "$tag has no $arch package"
 printf '%s\n' "$file" | grep -Eq '^drawbridge_[0-9][0-9A-Za-z.+~-]*_(arm64|amd64)\.deb$' ||
 	die "$tag's SHA256SUMS lists a package with an odd name, so it isn't trusted"
+# A release's files are named for its version, 1.0.0-rc.1 (GitHub rewrites a ~ in a file's name to
+# a ., so the name can't carry the package's own Version, 1.0.0~rc.1). The package turns the first -
+# into ~, so a pre-release sorts before its release, and so does this. The package is checked
+# against it below, once its checksum has matched.
 new=${file#drawbridge_}
 new=${new%_"$arch".deb}
+case $new in *-*) new=${new%%-*}~${new#*-} ;; esac
 
 # ---- what's here now? ----
 
@@ -147,6 +153,9 @@ curl -fsSL -o "$tmp/$file" "$base/$file" || die "couldn't download $file"
 chmod 644 "$tmp/$file"
 (cd "$tmp" && awk -v f="$file" '$2 == f' SHA256SUMS | sha256sum -c - >/dev/null 2>&1) ||
 	die "$file doesn't match the checksum in $tag's SHA256SUMS, so it isn't installed"
+declared=$(dpkg-deb --field "$tmp/$file" Version 2>/dev/null) || declared=
+[ "$declared" = "$new" ] ||
+	die "$file declares version ${declared:-nothing}, not $new as its name says, so it isn't installed"
 echo "Downloaded $file, and its checksum matches."
 
 if [ -n "$have" ]; then

@@ -1518,9 +1518,10 @@ package does once it's installed (above).
        release with a client connected (the upgrade matrix's by-hand half, §12). Then publish it.
        `install.sh` can't be tried on a draft, because a draft's files need the maintainer's
        login, and a published release can't be changed. So the first release goes out as a
-       release candidate: `v0.1.0-rc.1` is a pre-release, public but never "latest", and `install.sh
-       --version v0.1.0-rc.1` takes the path users take, with a `~` in the file names (which
-       GitHub might rewrite), before `v0.1.0` is tagged.
+       release candidate: a pre-release is public but never "latest", and `install.sh --version
+       v0.1.0-rc.2` takes the path users take, before `v0.1.0` is tagged. The first candidate,
+       `v0.1.0-rc.1`, found that GitHub renames a `~` in an asset's name (below), stayed a draft, and
+       was never published; its tag stays.
     5. Add the tag to `test/integration/upgrade-from.txt`.
 - **`release.yml`** runs when a tag `v*` is pushed. A run on a pull request that touches the
   workflow, the packaging, the scripts, or the Makefile, or started by hand on any ref, is a dry
@@ -1566,6 +1567,12 @@ package does once it's installed (above).
       `https://github.com/stuffam/drawbridge/releases/latest/download/install.sh` is always the
       latest release's own copy.
     - `SHA256SUMS`, which lists every file above.
+- **What the files are named.** Every file is named for the version, `1.0.0-rc.1`, and not for the
+  package's Debian version, `1.0.0~rc.1`. GitHub rewrites a `~` in an asset's name to a `.`
+  (`drawbridge_0.1.0~rc.1_arm64.deb` became `drawbridge_0.1.0.rc.1_arm64.deb`, 2026-10-07), so
+  `SHA256SUMS` listed names the release didn't have. It keeps `-`, `_`, and `.`. The package's own
+  `Version` keeps the `~`, and `install.sh` and `release-verify.sh` turn the first `-` of the name's
+  version into one.
 - **What a checksum proves, and what provenance adds.** `sha256sum -c --ignore-missing SHA256SUMS`
   catches a damaged or truncated download. It can't show who built the file, because the file and
   its sums come from the same place. `gh attestation verify drawbridge_<version>_<arch>.deb --repo
@@ -1583,8 +1590,10 @@ package does once it's installed (above).
       its tag, which avoids the API's rate limit and parsing JSON. `--version vX.Y.Z` picks any
       release, a pre-release included.
     - Takes the package's name from `SHA256SUMS`, and only if it is a package's name (nothing from
-      the network goes into a path or a URL unchecked). It downloads the package, checks its sum
-      and stops before `dpkg` runs on a mismatch, says what it will install (and what it replaces),
+      the network goes into a path or a URL unchecked). It turns the name's version into the
+      Debian one (the first `-` becomes `~`), downloads the package, checks its sum and that the
+      package declares that version, and stops before `dpkg` runs on a mismatch, says what it
+      will install (and what it replaces),
       and asks first unless given `--yes`. It asks on the terminal, so `curl | sh` can; with none,
       it stops and says to use `--yes`.
     - Installs with `apt-get install ./file.deb`, so `apt` brings the dependencies, and leaves
@@ -1870,7 +1879,7 @@ Each milestone ends in a usable, tested state.
 | Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/two-factor.md, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Downgrades | A database from a newer Drawbridge is never changed by an older one. The daemon, which writes, refuses to start on it, says which schema it found, and exits with status 78, which `drawbridge.service` doesn't restart on. `drawbridge-tunnel.service`, which only reads, warns and brings the VPN up. A restore refuses a newer backup | The VPN matters more than the web UI, so a downgrade (or a rollback after a bad release) mustn't take it down. An older build that writes to a schema it doesn't know could damage rows the newer one relies on, so only the reader goes on. That the tunnel only reads is structural: the reconciler's state has `Settings` and `Clients` and nothing else (§11, 2026-10-04) |
-| Releases | A `vX.Y.Z` tag on `main` starts `release.yml`, which runs CI's jobs on the tag, builds both `.deb`s twice (the two builds must match byte for byte), and drafts a GitHub release with `SHA256SUMS`, SBOMs, `install.sh`, build provenance (GitHub artifact attestations), and notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware, then publishes. `install.sh` checks the checksum and never downgrades, and the by-hand download is the documented default. Tags and published files are never changed. The first release is **v0.1.0** (an ordinary release, not a pre-release), after **v0.1.0-rc.1** has tried `install.sh` and the file names on GitHub | A package can't be taken back from a host once a migration has run, because an older build won't write the newer database (Downgrades, above), so what ships has to be tried first, as the files users will get. A script piped into a shell is a convenience, not something the guide should open with. Fixing forward means no tag or file ever changes under someone who already installed it. Provenance gives a checksum something to stand on, costs one workflow step, and has no key to keep. v0.1.0 because the plan has called the web UI's release v0.1 since M3, M5's exit assumes v0.x releases, a real tag is what lets the upgrade matrix list releases instead of merges, and "latest", which `install.sh` reads, skips pre-releases (§11.1, decided 2026-10-05) |
+| Releases | A `vX.Y.Z` tag on `main` starts `release.yml`, which runs CI's jobs on the tag, builds both `.deb`s twice (the two builds must match byte for byte), and drafts a GitHub release with `SHA256SUMS`, SBOMs, `install.sh`, build provenance (GitHub artifact attestations), and notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware, then publishes. `install.sh` checks the checksum and never downgrades, and the by-hand download is the documented default. Tags and published files are never changed. The first release is **v0.1.0** (an ordinary release, not a pre-release), after a release candidate has tried `install.sh` and the file names on GitHub (**v0.1.0-rc.1** found that GitHub renames a `~` in a file's name, so **v0.1.0-rc.2** is the one tried) | A package can't be taken back from a host once a migration has run, because an older build won't write the newer database (Downgrades, above), so what ships has to be tried first, as the files users will get. A script piped into a shell is a convenience, not something the guide should open with. Fixing forward means no tag or file ever changes under someone who already installed it. Provenance gives a checksum something to stand on, costs one workflow step, and has no key to keep. v0.1.0 because the plan has called the web UI's release v0.1 since M3, M5's exit assumes v0.x releases, a real tag is what lets the upgrade matrix list releases instead of merges, and "latest", which `install.sh` reads, skips pre-releases (§11.1, decided 2026-10-05) |
 | Client private keys | Stored on the server (default) | Configs can be downloaded again at any time |
 | Flow logging | Off (default) | A DNS resolver's query log, such as AdGuard Home's, covers what each client looked up |
 | IPv6 endpoint | Supported when the router allows inbound UDP 51820 to the host's stable address | Verified on the reference platform with a real client (docs/MANUAL_CHECKLIST.md §2, 2026-09-28) |

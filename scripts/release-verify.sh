@@ -3,23 +3,29 @@
 # directory holds exactly a release's files, that SHA256SUMS covers all of them and matches, and
 # that each package is what its name says and declares what it needs. It needs dpkg-deb.
 #
-#   scripts/release-verify.sh DIR DEB_VERSION     DEB_VERSION is 0.1.0, or 1.0.0~rc.1
+#   scripts/release-verify.sh DIR VERSION     VERSION is 0.1.0, or 1.0.0-rc.1
 #
-# A release holds, for the Debian version V:
+# A release holds, for the version V:
 #
 #   drawbridge_V_arm64.deb       drawbridge_V_amd64.deb
 #   drawbridge_V_arm64.sbom.json drawbridge_V_amd64.sbom.json    the Go modules in each binary
 #   drawbridge-web_V.sbom.json                                   the web app's npm packages
 #   install.sh
 #   SHA256SUMS                   the checksum of every file above
+#
+# The files are named for V, with a - in a pre-release's. A package's own Version is the Debian
+# form, with the first - turned into ~ (1.0.0~rc.1), which a file's name can't carry: GitHub
+# rewrites a ~ in an asset's name to a ., so SHA256SUMS would list names the release doesn't have.
 set -eu
 
 [ $# -eq 2 ] || {
-	echo "usage: release-verify.sh DIR DEB_VERSION" >&2
+	echo "usage: release-verify.sh DIR VERSION" >&2
 	exit 2
 }
 dir=$1
 ver=$2
+# The package's Version: nfpm turns the first - into ~, so a pre-release sorts before its release.
+case $ver in *-*) debver=${ver%%-*}~${ver#*-} ;; *) debver=$ver ;; esac
 command -v dpkg-deb >/dev/null 2>&1 || {
 	echo "release-verify.sh: dpkg-deb is required" >&2
 	exit 2
@@ -61,8 +67,8 @@ others=$(printf '%s\n' "$want" | grep -vx SHA256SUMS)
 for arch in arm64 amd64; do
 	deb=$dir/drawbridge_${ver}_${arch}.deb
 	[ "$(dpkg-deb --field "$deb" Package)" = drawbridge ] || problem "$deb isn't the drawbridge package"
-	[ "$(dpkg-deb --field "$deb" Version)" = "$ver" ] ||
-		problem "$deb has Version $(dpkg-deb --field "$deb" Version), not $ver"
+	[ "$(dpkg-deb --field "$deb" Version)" = "$debver" ] ||
+		problem "$deb has Version $(dpkg-deb --field "$deb" Version), not $debver"
 	[ "$(dpkg-deb --field "$deb" Architecture)" = "$arch" ] ||
 		problem "$deb has Architecture $(dpkg-deb --field "$deb" Architecture), not $arch"
 	# What the package needs on the host (docs/PLAN.md §11): nft applies its firewall, and a time

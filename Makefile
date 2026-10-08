@@ -112,25 +112,30 @@ package: $(BIN)/nfpm ## Build binaries and .deb packages from the already-embedd
 
 # What a release holds (docs/PLAN.md §11.1), in dist/release/: both packages, an SBOM for each
 # package's binary (its Go modules) and one for the web app (its npm packages), install.sh, and
-# SHA256SUMS for all of them.
+# SHA256SUMS for all of them. Every file is named for the version, 1.0.0-rc.1, and not the Debian
+# version in a package's own Version field, 1.0.0~rc.1: GitHub rewrites a ~ in a file's name to a .,
+# which made SHA256SUMS list names the release didn't have (v0.1.0-rc.1).
 RELEASE := dist/release
 
 .PHONY: sbom
 sbom: deb $(BIN)/cyclonedx-gomod $(WEB_DEPS) ## Write an SBOM for each package's binary and one for the web app, beside the packages in dist/.
 	@for arch in $(ARCHES); do \
 		$(BIN)/cyclonedx-gomod bin -json -noserial -notimestamp -version v$(VERSION) \
-			-output dist/drawbridge_$(DEB_VERSION)_$$arch.sbom.json dist/linux-$$arch/drawbridge || exit 1; \
+			-output dist/drawbridge_$(VERSION)_$$arch.sbom.json dist/linux-$$arch/drawbridge || exit 1; \
 	done
-	cd web && $(NPM) sbom --sbom-format cyclonedx > ../dist/drawbridge-web_$(DEB_VERSION).sbom.json
+	cd web && $(NPM) sbom --sbom-format cyclonedx > ../dist/drawbridge-web_$(VERSION).sbom.json
 
 .PHONY: release-files
 release-files: sbom ## Gather what a release holds into dist/release/, with its SHA256SUMS, and check it.
 	rm -rf $(RELEASE)
 	mkdir -p $(RELEASE)
-	cp dist/drawbridge_$(DEB_VERSION)_*.deb dist/drawbridge*_$(DEB_VERSION)*.sbom.json scripts/install.sh $(RELEASE)/
+	for arch in $(ARCHES); do \
+		cp dist/drawbridge_$(DEB_VERSION)_$$arch.deb $(RELEASE)/drawbridge_$(VERSION)_$$arch.deb || exit 1; \
+	done
+	cp dist/drawbridge*_$(VERSION)*.sbom.json scripts/install.sh $(RELEASE)/
 	cd $(RELEASE) && for f in *; do echo "$$f"; done | LC_ALL=C sort | xargs sha256sum > ../SHA256SUMS.tmp
 	mv dist/SHA256SUMS.tmp $(RELEASE)/SHA256SUMS
-	scripts/release-verify.sh $(RELEASE) $(DEB_VERSION)
+	scripts/release-verify.sh $(RELEASE) $(VERSION)
 
 # Known vulnerabilities in the Go code and what it imports (docs/PLAN.md §10), from the Go vulnerability
 # database, so it needs the network. It reports only what the code can reach, and fails on that.
