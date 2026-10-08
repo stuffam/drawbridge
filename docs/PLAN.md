@@ -291,7 +291,7 @@ automatically.
 | `/usr/bin/drawbridge` | root 0755 | Single binary with the SPA embedded |
 | `/etc/drawbridge/drawbridge.toml` | root:drawbridge 0640 | Bootstrap config: listen addresses, allowed admin source ranges, TLS paths, log level, DB path |
 | `/etc/drawbridge/secret.key` | root:drawbridge 0640 | 32-byte key for encrypting private keys at rest |
-| `/var/lib/drawbridge/drawbridge.db` | drawbridge 0600 | SQLite DB (WAL) |
+| `/var/lib/drawbridge/drawbridge.db` | drawbridge 0600 | SQLite DB (WAL). `store.Open` makes it and its `-wal` and `-shm` files 0600 whatever the umask, and tightens a wider one |
 | `/var/lib/drawbridge/nftables.conf` | drawbridge 0600 | Last rendered ruleset, kept for inspection |
 | `/var/lib/drawbridge/tls/` | drawbridge 0700 | Self-signed or uploaded or ACME certificates |
 | `/var/lib/drawbridge/backups/` | drawbridge 0700 | Nightly rotating DB snapshots |

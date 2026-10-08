@@ -70,3 +70,23 @@ test('Export CSV saves every event the filters match', async ({ page }) => {
 	for (const line of lines.slice(1)) expect(line).toMatch(/^\d{4}-\d\d-\d\dT[\d:]+Z,auth\.login,/);
 	expect(problems).toEqual([]);
 });
+
+test('the log fits a phone: nothing scrolls sideways at 360 px, and no filter is wider than the screen', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	await login(page);
+	await page.goto('/logs');
+	await expect(page.locator('tbody tr').first()).toBeVisible();
+
+	// The Event filter is as wide as its longest choice, which is wider than a phone. The
+	// table has its own scroll box; the page itself must not move.
+	const sideways = await page.evaluate(
+		() => document.documentElement.scrollWidth - window.innerWidth
+	);
+	expect(sideways).toBeLessThanOrEqual(0);
+	for (const label of ['Show', 'Event', 'Client', 'When']) {
+		const box = await page.getByLabel(label, { exact: true }).boundingBox();
+		expect(box!.x + box!.width, label).toBeLessThanOrEqual(360);
+	}
+});

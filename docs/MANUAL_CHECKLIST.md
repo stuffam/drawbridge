@@ -53,6 +53,11 @@ package only exists when every CI job passed, including the kernel tests.
 - `[UNVERIFIED]` The page loads through an SSH tunnel from a laptop:
   `ssh -L 51821:127.0.0.1:51821 <user>@<host>`, then open `https://localhost:51821` and accept the
   certificate. It shows "Server v… (commit …) is running."
+- `[UNVERIFIED]` The database keeps its mode whatever starts the daemon: `sudo -u drawbridge chmod 644
+  /var/lib/drawbridge/drawbridge.db`, then `sudo systemctl restart drawbridge`, and `sudo ls -l
+  /var/lib/drawbridge` shows `drawbridge.db` as `-rw-------` again. (The tests do it with a umask of 0
+  and a file made 0666; `store.Open` tightens it. Under the units' `UMask=0077` it was already 0600
+  on the reference platform, and in a Debian 13 container with real systemd on 2026-10-07.)
 - `[VERIFIED 2026-09-26]` `systemd-analyze security drawbridge drawbridge-tunnel` rates both units
   about 1.8 ("OK"), matching the offline scores from 2026-09-26. Both scored 1.8.
 - `[VERIFIED 2026-09-26]` `journalctl -u drawbridge -u drawbridge-tunnel` shows "tunnel up" and

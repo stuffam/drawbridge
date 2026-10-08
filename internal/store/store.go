@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -111,8 +112,13 @@ func (s *Store) Migration() *Migration { return s.migration }
 // reads, so it carries on.
 func (s *Store) NewerSchema() int { return s.newer }
 
-// Open opens (creating if needed) the database at path and brings its schema up to date.
+// Open opens (creating if needed) the database at path and brings its schema up to date. The
+// file is private to its owner (mode 0600), whatever the process's umask: it holds the admin's
+// password hash, the sealed keys, and the event log.
 func Open(ctx context.Context, path string, sealer *keys.Sealer, opts ...Option) (*Store, error) {
+	if err := makePrivate(path); err != nil {
+		return nil, fmt.Errorf("securing %s: %w", path, err)
+	}
 	q := url.Values{}
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "journal_mode(WAL)")
@@ -136,6 +142,40 @@ func Open(ctx context.Context, path string, sealer *keys.Sealer, opts ...Option)
 		return nil, fmt.Errorf("opening %s: %w", path, err)
 	}
 	return s, nil
+}
+
+// makePrivate makes the database, and the -wal and -shm files SQLite keeps beside it, readable
+// by their owner alone (docs/PLAN.md §4.4). The packaged units get that from UMask=0077, but a
+// daemon started by hand under another umask would leave the file 0644, so it's the store's job.
+// A database that doesn't exist yet is created empty, which SQLite takes for a new one, and it
+// gives -wal and -shm the main file's mode. A file that's wider is tightened. One that another
+// user owns can't be, and that isn't an error here: only its owner can write to it anyway.
+func makePrivate(path string) error {
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		info, err := os.Stat(p)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			if p != path {
+				continue
+			}
+			// The tunnel unit and the daemon can both get here first on a new host.
+			f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // G304: the database's own path.
+			if err == nil {
+				err = f.Close()
+			}
+			if err != nil && !errors.Is(err, fs.ErrExist) {
+				return err
+			}
+		case err != nil:
+			return err
+		case info.Mode().Perm()&0o077 != 0:
+			err := os.Chmod(p, info.Mode().Perm()&^0o077)
+			if err != nil && !errors.Is(err, fs.ErrPermission) && !errors.Is(err, syscall.EROFS) {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Close closes the database.
