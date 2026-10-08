@@ -3,10 +3,10 @@
 # this build with the tunnel up; CI does the same. The test reads which schema the host is at, so
 # the comment is only for people.
 #
-# Nothing has been released yet, so these are merges on main, one for each schema version there
-# has been. Add a release's tag here when it's made. A build that nobody can still have installed
-# can be dropped, but keep at least the newest one: with no migration between it and this build,
-# it still checks that swapping the binary leaves the tunnel alone.
+# Before the first release these were merges on main, one for each schema version there had been.
+# Add a release's tag here when it's made (docs/releasing.md, step 7). A build that nobody can still
+# have installed can be dropped, but keep at least the newest one: with no migration between it and
+# this build, it still checks that swapping the binary leaves the tunnel alone.
 #
 # Refs have to be reachable in a full clone. CI fetches the whole history for this.
 72174d0  # schema 5: the first commit, the oldest build there is
@@ -16,3 +16,4 @@ b15de78  # schema 8: read-only API tokens (PR 26)
 1fc3cfc  # schema 9: outdated-config tracking (PR 34)
 3f0314d  # schema 10: safe apply (PR 35)
 963bda9  # schema 11: TOTP two-factor authentication (PR 39)
+v0.1.0-rc.2  # schema 11: the first release, a candidate for v0.1.0 (published 2026-10-08)
