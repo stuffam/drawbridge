@@ -23,7 +23,7 @@ You do these once.
 | --- | --- | --- |
 | A tag ruleset on `v*` blocks updates, deletions, and non-fast-forward pushes, with no bypass actors | **Settings → Rules → Rulesets** | A tag can never move under someone who installed from it. It also means **a tag you push by mistake stays**: step 3 shows how to check first. |
 | Immutable releases are on | **Settings → General → Releases** | A published release's files can't be replaced. |
-| `gh`, the GitHub command line, is installed and logged in | `gh auth status` | A draft's files need your login, and it's the easiest way to publish. |
+| `gh`, the GitHub command line, is installed and logged in, at version 2.49 or later | `gh --version`, `gh auth status` | A draft's files need your login, and it's the easiest way to publish. `gh attestation` (step 5) arrived in 2.49, and a `gh` from a distribution's packages is often older. If the Pi's is, install GitHub's own, or do that one check on a machine with a current `gh`. |
 | A host to try the files on | the reference platform (a Raspberry Pi 5 on Debian 13) | Step 5. The checklist in [MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) says what to look at. |
 
 ## Step 1: choose the version
@@ -124,6 +124,11 @@ gh release download v0.1.0 --repo stuffam/drawbridge
 sha256sum -c --ignore-missing SHA256SUMS
 gh attestation verify drawbridge_*_arm64.deb --repo stuffam/drawbridge
 ```
+
+`gh attestation verify` needs `gh` 2.49 or later. If the machine that downloads the files has an
+older one (it answers `unknown command "attestation"`), run that one line on a machine with a
+current `gh`, for the `.deb` and for `SHA256SUMS`. The Pi's `sha256sum -c` then shows that its copy
+is the file whose provenance you checked.
 
 Then, on the Pi, install the `.deb` the way [the install guide](install.md) says: fresh, and as an
 upgrade over the previous release with a client connected. `drawbridge version` should say the

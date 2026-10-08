@@ -133,9 +133,10 @@ setups.** What exists:
   machine (they must match byte for byte), and drafts a GitHub release with build provenance and
   the notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware
   and publishes it. `scripts/install.sh` installs the latest release after checking its checksum.
-  The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job). Nothing has been released yet. v0.1.0-rc.1 was tagged (2026-10-07) and never published,
-  because GitHub renames a `~` in an asset's name; the first release goes out as v0.1.0-rc.2, then
-  v0.1.0 (§11.1, docs/MANUAL_CHECKLIST.md §20).
+  The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job).
+  v0.1.0-rc.1 was tagged (2026-10-07) and never published, because GitHub renames a `~` in an
+  asset's name. v0.1.0-rc.2 is the first release, a pre-release published 2026-10-08 after its
+  files were tried on two Raspberry Pis; v0.1.0 is next (§11.1, docs/MANUAL_CHECKLIST.md §20).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
