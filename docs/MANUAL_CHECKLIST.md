@@ -1518,20 +1518,35 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   the version (`drawbridge_0.1.0-rc.2_arm64.deb`), and the package's own `Version` keeps the `~`
   (`install.sh` reads it from the package and checks it against the name). A throwaway draft
   release with eight such names (`-`, `_`, and `.` only) kept all eight, and was deleted right away.
-- `[UNVERIFIED]` GitHub keeps every file's name on a real tag, with the files named for the version:
-  the same check, on `v0.1.0-rc.2`.
-- `[UNVERIFIED]` `gh attestation verify drawbridge_<version>_<arch>.deb --repo stuffam/drawbridge`
-  succeeds for each package, `install.sh`, and `SHA256SUMS`, and fails for a file that was changed.
-  Seen so far, without downloading a file: for `v0.1.0-rc.1`, GitHub's attestations API has a
-  statement for the digest of each package, naming all seven files, built by
-  `.github/workflows/release.yml` at `refs/tags/v0.1.0-rc.1` in this repository. The signature check
-  itself needs the files.
-- `[UNVERIFIED]` `sha256sum -c --ignore-missing SHA256SUMS` passes for the downloaded files.
+- `[VERIFIED 2026-10-07]` GitHub keeps every file's name on a real tag, with the files named for the
+  version: the same check, on `v0.1.0-rc.2`. Run 37717349067 (about 10 minutes) succeeded, "Draft
+  the release" included, and the draft has seven files, named `drawbridge_0.1.0-rc.2_arm64.deb` and
+  so on, with the `-` kept.
+- `[VERIFIED 2026-10-07]` `gh attestation verify drawbridge_<version>_<arch>.deb --repo
+  stuffam/drawbridge` succeeds for each package, `install.sh`, `SHA256SUMS`, and the three SBOMs of
+  `v0.1.0-rc.2` (gh 2.102.0, on a Mac, with the draft's files from `gh release download`), and fails
+  (exit 1, no attestation for the digest) for a copy of the arm64 package with one byte added. The
+  certificate names `.github/workflows/release.yml@refs/tags/v0.1.0-rc.2` at commit `4e52c6d`. The
+  command needs gh 2.49 or later: the Raspberry Pi's gh is older and says `unknown command
+  "attestation"`, so run it where gh is current (see docs/releasing.md).
+- `[VERIFIED 2026-10-07]` The sums in `SHA256SUMS` match the downloaded files of `v0.1.0-rc.2`, all
+  six of them (`shasum -a 256 -c SHA256SUMS` on a Mac; the same check with `sha256sum -c
+  --ignore-missing` on the Pi is the next item's first step).
 - `[UNVERIFIED]` The draft's `.deb`, downloaded with `gh release download`, installs on the reference
   platform the way docs/install.md says (`sudo apt install ./drawbridge_*.deb`), and
-  `drawbridge version` reports the tag's version, and the commit.
+  `drawbridge version` reports the tag's version, and the commit. Seen so far, not on the Pi: the
+  draft's own arm64 package (2026-10-07, in a Debian 13 container with real systemd, on a Mac) has
+  `Version: 0.1.0~rc.2`; installs with `apt-get install ./drawbridge_0.1.0-rc.2_arm64.deb` and
+  starts both units; `drawbridge version` says `v0.1.0-rc.2 (commit 4e52c6d)`; first-run setup
+  works with the token the install printed; a client connects and pings the server over IPv4 and
+  IPv6 and reaches the web UI through the tunnel; the database and its `-wal` and `-shm` files are
+  mode 0600. `backup create`, `apt-get purge` (state, `wg0`, and the table gone), a reinstall, and
+  `backup restore` bring back byte-identical client rows and the same secret key and server key,
+  and the client handshakes again after the units restart.
 - `[UNVERIFIED]` The same on an amd64 host (the package has only run in CI on that architecture, never
-  on a real machine).
+  on a real machine). Checked without running it: the draft's amd64 package has an x86-64 binary,
+  the same file list as the arm64 one, and byte-identical shared files. Docker Desktop on a Mac
+  here has no emulation to run it.
 - `[UNVERIFIED]` With `v0.1.0-rc.2` published, `sh install.sh --version v0.1.0-rc.2`, on a host
   without Drawbridge, downloads it from GitHub, checks it, and installs it, with the setup token at
   the end. Run again, it says it's already installed. With no `--version` it says there's no
@@ -1545,7 +1560,14 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   terminal (it can't read standard input for it), and picks v0.1.0 and not the release candidate.
 - `[UNVERIFIED]` The package's upgrade over the previous release keeps the tunnel up and the data
   (§2 and §18 do it for builds from the tree; this is the same with the released file). The first
-  release has nothing before it, so this waits for the second.
+  release has nothing before it, so this waits for the second. Seen so far, with the draft's own
+  file over a build from the tree instead (2026-10-07, the same container host): `v0.0.0-aold`
+  (`3f0314d`, schema 10) with a client connected, then `apt-get install` of the `v0.1.0-rc.2`
+  package. The tunnel unit and `wg0` were not restarted (same invocation and interface index), the
+  server's key, the nftables revision, the client rows, the settings, the secret key, and the
+  certificate were identical afterward, the daemon restarted and migrated 10 to 11 with a
+  `pre-migration-v10` snapshot, the client stayed connected (74 of 74 pings answered, 50 of 50 web
+  UI fetches 200, no `client.disconnected` event), and a session cookie from before still worked.
 - `[VERIFIED 2026-10-07]` The repository's settings are in place: a tag ruleset on `v*` that blocks
   updates and deletions, and immutable releases, so a published release's files can't be changed.
   Read back through the API (`gh api repos/stuffam/drawbridge/rulesets/<id>` and
