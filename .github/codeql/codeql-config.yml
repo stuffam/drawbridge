@@ -1,0 +1,7 @@
+name: Drawbridge CodeQL configuration
+
+paths-ignore:
+  # The end-to-end tests run against a throwaway daemon on 127.0.0.1 and never ship in the
+  # package. They connect to its self-signed certificate without verifying it, on purpose, to
+  # read which certificate it presents (web/e2e/system.spec.ts).
+  - web/e2e
