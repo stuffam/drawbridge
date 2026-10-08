@@ -177,7 +177,7 @@ jobs:
           `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
           EOF
           } >"$notes"
-          args=(--draft --verify-tag --title "Drawbridge $TAG" --notes-file "$notes")
+          args=(--draft --verify-tag --title "$TAG" --notes-file "$notes")
           if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
           gh release create "$TAG" "${args[@]}" dist/release/*
       - name: GitHub kept every file's name
