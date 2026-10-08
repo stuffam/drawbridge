@@ -115,11 +115,13 @@
 	</button>
 </div>
 
+<!-- A select is as wide as its longest choice, and the Event filter's are wider than a phone, so each
+     filter may shrink to the row. -->
 <div class="flex flex-wrap items-end gap-3">
-	<div>
+	<div class="max-w-full">
 		<label class="label" for="category">Show</label>
 		<select
-			class="input w-auto"
+			class="input w-auto max-w-full"
 			id="category"
 			value={category}
 			onchange={(e) => pickCategory(e.currentTarget.value)}
@@ -130,27 +132,27 @@
 			<option value="system">Drawbridge itself</option>
 		</select>
 	</div>
-	<div>
+	<div class="max-w-full">
 		<label class="label" for="kind">Event</label>
-		<select class="input w-auto" id="kind" bind:value={kind}>
+		<select class="input w-auto max-w-full" id="kind" bind:value={kind}>
 			<option value="">Any</option>
 			{#each kinds as k (k.kind)}
 				<option value={k.kind}>{k.label}</option>
 			{/each}
 		</select>
 	</div>
-	<div>
+	<div class="max-w-full">
 		<label class="label" for="client">Client</label>
-		<select class="input w-auto" id="client" bind:value={clientID}>
+		<select class="input w-auto max-w-full" id="client" bind:value={clientID}>
 			<option value="">Any</option>
 			{#each clients as c (c.id)}
 				<option value={c.id}>{c.name}</option>
 			{/each}
 		</select>
 	</div>
-	<div>
+	<div class="max-w-full">
 		<label class="label" for="when">When</label>
-		<select class="input w-auto" id="when" bind:value={when}>
+		<select class="input w-auto max-w-full" id="when" bind:value={when}>
 			{#each windows as w (w.value)}
 				<option value={w.value}>{w.label}</option>
 			{/each}

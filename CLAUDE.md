@@ -560,6 +560,11 @@ These are the rules most likely to get silently broken.
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
   and an API token is shown once, when it's made. Views never carry keys, and a 500 response
   never carries the internal error; the journal does (§7, §10).
+- **The database is private to its owner whatever the umask.** It holds the admin's password hash,
+  the sealed keys, and the event log. `store.Open` (`makePrivate`) creates it 0600 and tightens a
+  wider file, with its `-wal` and `-shm` files, before SQLite opens it, so a daemon started by hand
+  under umask 022 doesn't leave it 0644. The units' `UMask=0077` and `StateDirectoryMode=0700` are
+  a second layer, not the only one. A file another user owns can't be tightened, and isn't an error.
 
 ## Verified facts, worth not re-deriving
 

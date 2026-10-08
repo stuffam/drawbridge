@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io/fs"
 	"net/netip"
+	"os"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"testing"
 	"time"
 
@@ -619,5 +621,96 @@ func TestRotateClientKeysNeedsThePrivateKey(t *testing.T) {
 	}
 	if got, _ := s.Client(ctx, ByID(c.ID)); got.PublicKey != c.PublicKey {
 		t.Fatal("a refused rotation changed the public key")
+	}
+}
+
+// withUmask runs the rest of a test under a umask that doesn't hide anything, which is what a
+// daemon started by hand might have, and puts the old one back after.
+func withUmask(t *testing.T, mask int) {
+	t.Helper()
+	old := syscall.Umask(mask)
+	t.Cleanup(func() { syscall.Umask(old) })
+}
+
+func mode(t *testing.T, path string) os.FileMode {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.Mode().Perm()
+}
+
+func TestOpenMakesAPrivateDatabase(t *testing.T) {
+	// The units' UMask=0077 isn't what keeps the file private: under a umask of 0 it still is.
+	withUmask(t, 0)
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "db")
+	s, err := Open(ctx, path, testSealer(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err := s.Initialize(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.AddClient(ctx, "phone"); err != nil {
+		t.Fatal(err)
+	}
+	// While the store is open SQLite keeps -wal and -shm beside the file; they take its mode.
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if got := mode(t, p); got != 0o600 {
+			t.Errorf("%s is %v, want -rw-------", filepath.Base(p), got)
+		}
+	}
+}
+
+func TestOpenTightensAWiderDatabase(t *testing.T) {
+	ctx := context.Background()
+	s, path := openTest(t)
+	if _, err := s.Initialize(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// A database an earlier build made under another umask: the file and its WAL files are open.
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if err := os.Chmod(p, 0o666); err != nil {
+			t.Fatal(err)
+		}
+	}
+	again, err := Open(ctx, path, testSealer(t, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	_ = s.Close()
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if _, err := os.Stat(p); err != nil {
+			continue // SQLite removes them when the last connection closes.
+		}
+		if got := mode(t, p); got != 0o600 {
+			t.Errorf("%s is %v after Open, want -rw-------", filepath.Base(p), got)
+		}
+	}
+	if got := mode(t, path); got != 0o600 {
+		t.Errorf("the database is %v after Open, want -rw-------", got)
+	}
+}
+
+func TestOpenKeepsAnOwnerOnlyModeAndFailsOnAMissingDirectory(t *testing.T) {
+	ctx := context.Background()
+	s, path := openTest(t)
+	_ = s.Close()
+	if err := os.Chmod(path, 0o400); err != nil {
+		t.Fatal(err)
+	}
+	if err := makePrivate(path); err != nil {
+		t.Fatal(err)
+	}
+	if got := mode(t, path); got != 0o400 {
+		t.Errorf("a file with no group or other bits was changed to %v", got)
+	}
+	_, err := Open(ctx, filepath.Join(t.TempDir(), "no", "such", "dir", "db"), testSealer(t, 1))
+	if err == nil {
+		t.Fatal("opened a database in a directory that doesn't exist")
 	}
 }
