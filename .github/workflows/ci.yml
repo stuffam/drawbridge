@@ -27,7 +27,7 @@ env:
 jobs:
   go:
     name: Go
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -42,7 +42,7 @@ jobs:
 
   web:
     name: Web app
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
@@ -76,7 +76,7 @@ jobs:
     needs: [web]
     # The real web app, embedded in the real binary, driven in Chromium against
     # `drawbridge serve --backend fake` (docs/PLAN.md §12).
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -172,7 +172,7 @@ jobs:
     # Known vulnerabilities that the Go code can reach (docs/PLAN.md §10). It goes by a database
     # that changes, so a new finding can fail a change that didn't cause it: the fix is the
     # dependency (or the Go version) it names.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -195,7 +195,7 @@ jobs:
 
   spelling:
     name: Spelling (U.S. English)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -206,7 +206,7 @@ jobs:
   packages:
     name: Packages
     needs: [go, web, e2e, spelling, integration, package-scripts, release-scripts, vulncheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:

@@ -171,12 +171,15 @@ The cloud container was checked on 2026-09-26 (see "Verified facts"):
 - It has root, network namespaces, nftables, and TUN devices.
 - It has **no kernel WireGuard**, and its CPU is x86_64.
 
-CI runs on GitHub-hosted `ubuntu-latest` (x86_64) and cross-compiles for arm64. The kernel
-WireGuard integration tests (`test/integration`, the "Integration" job) run on a GitHub-hosted
-`ubuntu-24.04` VM, which has root through sudo and Ubuntu's kernel. The job loads the kernel
-modules first, and the tests pass there (first on 2026-09-26). The tests work only inside
-network namespaces they create. `test/integration/preflight.sh` checks every requirement at once
-before the tests run.
+CI runs on GitHub-hosted `ubuntu-24.04` (x86_64), named in every workflow, and cross-compiles for
+arm64. Never use `ubuntu-latest`: GitHub moves it to Ubuntu 26.04 over several weeks from
+2026-10-19, so for a while one workflow can land on either image, and a failure can't be told
+from a bug. Moving up is a deliberate change that tries every job on the new image and updates
+the runner facts below (kernel, systemd, ShellCheck, Playwright's system libraries). The kernel
+WireGuard integration tests (`test/integration`, the "Integration" job) run on that VM, which has
+root through sudo and Ubuntu's kernel. The job loads the kernel modules first, and the tests pass
+there (first on 2026-09-26). The tests work only inside network namespaces they create.
+`test/integration/preflight.sh` checks every requirement at once before the tests run.
 
 Keep the Integration job on GitHub-hosted runners. A self-hosted runner (docs/MANUAL_CHECKLIST.md
 §4 lists what one needs) must never be attached to this repo while it's public: it would run code

@@ -43,7 +43,7 @@ env:
 jobs:
   check:
     name: Check the tag
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.info.outputs.tag }}
       version: ${{ steps.info.outputs.version }}
@@ -69,7 +69,7 @@ jobs:
   build:
     name: Build
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -138,7 +138,7 @@ jobs:
     name: Draft the release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [check, ci, build, rebuild]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       # The draft, and the build provenance (a signed statement, from GitHub, that these files
       # were built by this workflow from this tag).
@@ -177,7 +177,7 @@ jobs:
           `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
           EOF
           } >"$notes"
-          args=(--draft --verify-tag --title "Drawbridge $TAG" --notes-file "$notes")
+          args=(--draft --verify-tag --title "$TAG" --notes-file "$notes")
           if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
           gh release create "$TAG" "${args[@]}" dist/release/*
       - name: GitHub kept every file's name
