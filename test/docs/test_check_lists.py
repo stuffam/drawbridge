@@ -71,7 +71,7 @@ class Pages(unittest.TestCase):
 
     def check(self, source, built):
         with tempfile.TemporaryDirectory() as tmp:
-            docs, site = Path(tmp, "docs"), Path(tmp, "site")
+            docs, site = Path(tmp, "docs/user_docs"), Path(tmp, "site")
             (site / "page").mkdir(parents=True)
             docs.mkdir()
             (docs / "page.md").write_text(source)
