@@ -216,7 +216,7 @@ lint-go: $(BIN)/golangci-lint ## Lint and format-check the Go code.
 
 # The release scripts and their tests. CI has shellcheck; a machine without it skips this and says so.
 SHELL_FILES := scripts/install.sh scripts/changelog-release.sh scripts/release-notes.sh scripts/release-check.sh \
-	scripts/release-verify.sh \
+	scripts/release-verify.sh scripts/docs-version.sh \
 	test/install/test.sh test/release/test.sh
 
 .PHONY: lint-shell

@@ -1,9 +1,22 @@
 name: Docs
 
-# The documentation site (zensical.toml): built strictly on every pull request that touches it, so a
-# broken link or a list that the site shows differently from GitHub fails there, and published to
-# https://stuffam.github.io/drawbridge/ when the change reaches main. The repository's Pages source
-# has to be "GitHub Actions" (Settings, Pages, Build and deployment).
+# The documentation site (zensical.toml), versioned with mike (docs/adr/0013-docs-site-zensical.md).
+#
+# Every pull request that touches it is built strictly, so a broken link or a list that the site
+# shows differently from GitHub fails there. Nothing is published from a pull request, and the
+# build job below is the gate for everything that is: publishing only follows a build that passed.
+#
+# Publishing commits a version's built site to the gh-pages branch, and GitHub serves that branch at
+# https://stuffam.github.io/drawbridge/ with a version selector:
+#
+#   - A push to main, or a manual run on main, publishes `dev`.
+#   - A published release publishes its minor (v0.1 for v0.1.0 and v0.1.1 alike) and moves `latest`
+#     to it when it is the newest release; scripts/docs-version.sh decides both. The site's root
+#     goes to `latest`, or to `dev` until the first release. A pre-release publishes nothing.
+#
+# The repository's Pages source has to be "Deploy from a branch", gh-pages, / (root) (Settings,
+# Pages, Build and deployment), set once by the maintainer after the first publish has made the
+# branch. Run by hand on main, this publishes `dev` again without a change to the docs.
 
 on:
   push:
@@ -21,8 +34,8 @@ on:
       - requirements-docs.txt
       - test/docs/**
       - .github/workflows/docs.yml
-  # To publish again without a change to the docs, such as the first time after the Pages source
-  # was switched.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +44,8 @@ permissions:
 jobs:
   build:
     name: Build
+    # A published pre-release has no docs of its own.
+    if: github.event_name != 'release' || !github.event.release.prerelease
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -42,26 +57,64 @@ jobs:
           cache-dependency-path: requirements-docs.txt
       - name: Test the list check, build the site strictly, and check its lists
         run: make docs
-      - uses: actions/upload-pages-artifact@v5
-        if: github.event_name != 'pull_request'
-        with:
-          path: site
 
-  deploy:
+  publish:
     name: Publish
     needs: build
-    if: github.event_name != 'pull_request'
+    # Never a pull request, and a manual run only on main, so a branch can't replace `dev`.
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'release' || !github.event.release.prerelease) &&
+      (github.event_name == 'release' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
+    # The only job that can push, and only to gh-pages (mike never touches another branch).
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    # One publish at a time, and none canceled halfway.
+      contents: write
+    # One publish at a time, and none canceled halfway: each one builds on the branch the last left.
     concurrency:
-      group: pages
+      group: docs-publish
       cancel-in-progress: false
     steps:
-      - uses: actions/deploy-pages@v5
-        id: deployment
+      - uses: actions/checkout@v7
+        with:
+          # mike reads the gh-pages branch, and docs-version.sh compares the release tags.
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - name: Install the docs tools
+        run: python -m pip install -r requirements-docs.txt
+      - name: Commit as the Actions bot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      # An alias is a small redirect page rather than a symlink, which a static host may not serve.
+      # The root goes to `dev` only while there is no release: once `latest` exists, a push to main
+      # must never take the root back.
+      - name: Publish dev
+        if: github.event_name != 'release'
+        run: |
+          mike deploy --push --alias-type redirect dev
+          if ! mike list latest >/dev/null 2>&1; then
+            mike set-default --push dev
+          fi
+      # The tag is a name from the network: the script checks it before anything else uses it, and
+      # it reaches the shell only as an environment variable.
+      - name: Publish the release's version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(sh scripts/docs-version.sh "$TAG")
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/tags/$TAG^{commit}")" ]; then
+            echo "The checkout isn't the commit of $TAG, so its docs wouldn't be the release's" >&2
+            exit 1
+          fi
+          if sh scripts/docs-version.sh --latest "$TAG"; then
+            mike deploy --push --update-aliases --alias-type redirect "$version" latest
+            mike set-default --push latest
+          else
+            mike deploy --push --alias-type redirect "$version"
+          fi
