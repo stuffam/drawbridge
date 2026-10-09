@@ -88,6 +88,8 @@ toggle.name = "Switch to system preference"
 
 [project.extra.version]
 provider = "mike"
+# Show an alias beside its version in the selector, so a reader can see which one is "latest".
+alias = true
 
 # The docs are written as GitHub-flavored Markdown, so this is a short list. Zensical's starter
 # list also turns on arithmatex (`$...$` becomes math, and shell commands have dollar signs),
