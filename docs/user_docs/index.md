@@ -32,7 +32,7 @@ running if the UI stops or is upgraded.
 
 ## Before You Install
 
-Read [Requirements and known roadblocks](REQUIREMENTS.md). It lists what Drawbridge needs from
+Read [Requirements and known roadblocks]. It lists what Drawbridge needs from
 the host and your network, and the setups where it needs a workaround, for example a host that
 configures IPv6 with ifupdown, or a router that won't forward UDP 51820. After you install, run
 `sudo drawbridge doctor` to check for most of them.

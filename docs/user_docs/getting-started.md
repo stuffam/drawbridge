@@ -15,7 +15,7 @@ This takes you from a bare Debian-family host to a phone connected to your VPN. 
 
 ## Before you start
 
-[Requirements and known roadblocks](REQUIREMENTS.md) has the full list, and the setups that need a
+[Requirements and known roadblocks] has the full list, and the setups that need a
 workaround. The short version:
 
 - **A host that runs Debian or something built on it** (Debian, Raspberry Pi OS, Ubuntu Server),
@@ -148,9 +148,10 @@ continue. You can [serve your own certificate](guides/tls-certificate.md) later 
 
 The web UI answers only your home network and the VPN. A device on another subnet gets no answer,
 and so does the internet. To allow another subnet, see
-[the admin UI's home network](REQUIREMENTS.md#the-admin-uis-home-network-is-detected-not-configured).
+[the admin UI's home network].
+
 Don't put a reverse proxy in front of the UI
-([why](REQUIREMENTS.md#dont-put-the-admin-ui-behind-a-reverse-proxy-on-the-same-host)).
+([why]).
 
 Setup has three steps:
 
@@ -165,7 +166,7 @@ Setup has three steps:
    resolver such as AdGuard Home, Pi-hole, or Unbound that listens on the VPN's addresses, setup
    offers it as **This server**. Either way, you can change it later in Settings. If you want your
    own resolver and it isn't found, see
-   [DNS for VPN clients](REQUIREMENTS.md#dns-for-vpn-clients-public-resolvers-unless-the-host-answers).
+   [DNS for VPN clients].
 
 Then turn on [two-factor authentication](guides/two-factor.md) if you want a second factor at login.
 
@@ -222,15 +223,10 @@ If it doesn't connect:
 - **No handshake:** the port forward (UDP 51820 to the host) or the endpoint isn't right yet, or
   the connection has no inbound IPv4 (CGNAT). Run `sudo drawbridge doctor`.
 - **A handshake, but nothing loads:** another firewall on the host is dropping forwarded traffic
-  ([host firewalls and Docker](REQUIREMENTS.md#host-firewalls-and-docker-can-block-vpn-traffic)),
+  ([host firewalls and Docker]),
   and `doctor` names the command that fixes it.
 - **Pages load, but names don't resolve:** the DNS the VPN hands out isn't answering
-  ([DNS for VPN clients](REQUIREMENTS.md#dns-for-vpn-clients-public-resolvers-unless-the-host-answers)).
+  ([DNS for VPN clients]).
 - The services' own logs: `journalctl -u drawbridge -u drawbridge-tunnel`.
 
-Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only way back
-if the host's SD card or disk fails.
-
-## What's next
-
-- [Guides](guides/) for other settings and setups.
+Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only way back if the host's disk fails.
