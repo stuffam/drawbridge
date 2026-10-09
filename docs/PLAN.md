@@ -62,7 +62,7 @@ setups that need them.
 | Userland packages | `nftables` (a dependency) and `wireguard-tools` (recommended, for debugging with `wg show`). |
 | Network | A public IPv4 address with UDP 51820 forwarded to the host, or an IPv6 endpoint the router lets through; a DNS name that stays current (a dynamic DNS client if the public IPv4 address changes, since Drawbridge doesn't update DNS); for IPv6, a **stable** host address (not a temporary/privacy one). |
 | Network stack | NetworkManager, systemd-networkd, or ifupdown. On ifupdown hosts the installer sets `accept_ra=2` on the uplink (§5.5). |
-| Other services | Drawbridge uses only UDP 51820 and TCP 51821, so it coexists with a DNS resolver (port 53), web servers and reverse proxies (80, 443), and admin UIs like AdGuard Home's (3000). Using the host's own resolver as the clients' DNS needs it listening on the VPN addresses; setup checks (§6.3). |
+| Other services | Drawbridge listens only on UDP 51820 and TCP 51821, so it coexists with a DNS resolver (port 53), web servers and reverse proxies (80, 443), and admin UIs like AdGuard Home's (3000). Using the host's own resolver as the clients' DNS needs it listening on the VPN addresses; setup checks (§6.3). |
 | Uplink name | Not hard-coded (`eth0`, `end0`, `wlan0`, …). It's detected from the default routes. |
 | Storage | microSD or SSD. Write volume is kept low by default to limit SD card wear, and configurable for SSDs (§6.4). |
 

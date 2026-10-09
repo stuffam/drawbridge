@@ -24,7 +24,7 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature
-requests; `/triage` reads this flag.)_
+requests; the triage skill reads this flag where it's installed.)_
 
 When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr`
 equivalents:
@@ -54,7 +54,8 @@ Run `gh issue view <number> --comments`.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by the wayfinder skill where it's installed. The **map** is a single issue with **child**
+issues as tickets.
 
 - **Map**: a single issue labeled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body.
   `gh issue create --label wayfinder:map`.

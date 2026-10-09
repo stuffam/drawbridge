@@ -1,6 +1,6 @@
 # ADR 0012: A resolver on the host, such as AdGuard Home, as the clients' DNS
 
-- **Status:** Accepted (2026-09-26); amended 2026-09-28 and 2026-09-29
+- **Status:** Accepted (2026-09-26); amended 2026-09-28, 2026-09-29, and 2026-10-09
 - **Plan reference:** docs/PLAN.md §3, D12
 
 ## Context
@@ -40,3 +40,6 @@ configurable) that syncs each client as a named persistent client and shows per-
   The CLI's `server set --dns` keyword for the server's addresses is now `server` (it was
   `default`), and it runs the same check: it saves only the addresses that answer, and refuses
   when none does unless `--force` is given.
+- **Amended 2026-10-09: listening, not connecting.** "Take" above means listen on. Drawbridge
+  connects to AdGuard Home's API at port 3000 by default, and that address is a setting
+  (`adguard.base_url`).

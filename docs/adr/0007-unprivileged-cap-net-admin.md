@@ -1,6 +1,6 @@
 # ADR 0007: Run unprivileged, with only CAP_NET_ADMIN
 
-- **Status:** Accepted (2026-09-26)
+- **Status:** Accepted (2026-09-26); amended 2026-10-09
 - **Plan reference:** docs/PLAN.md §3, D7
 
 ## Context
@@ -26,3 +26,6 @@ with an argument list.
   diagnostics.
 - `PrivateUsers=` stays off, because a user namespace would make `CAP_NET_ADMIN` useless on the
   host's network.
+- **Amended 2026-10-09: nft's other arguments.** The only external program is `nft`, but not only
+  with `-f`: the drift check reads the table with `nft -j list table`, and the doctor reads the
+  ruleset with `nft -j list ruleset`. Every call uses an argument list, and none uses a shell.
