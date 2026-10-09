@@ -24,7 +24,7 @@ async function turnOn(page: Page) {
 	const codes = await recovery.getByRole('listitem').allInnerTexts();
 	expect(codes).toHaveLength(10);
 	for (const c of codes) expect(c).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/);
-	await recovery.getByRole('button', { name: "I've saved them" }).click();
+	await recovery.getByRole('button', { name: "I've Saved Them" }).click();
 	await expect(recovery).toHaveCount(0);
 	return { secret, codes };
 }
@@ -71,7 +71,7 @@ test('turn on 2FA, log in with a code, make new recovery codes, and turn it off'
 	await expect(recovery).toContainText("They won't be shown again");
 	const codes = await recovery.getByRole('listitem').allInnerTexts();
 	expect(codes).toHaveLength(10);
-	await recovery.getByRole('button', { name: "I've saved them" }).click();
+	await recovery.getByRole('button', { name: "I've Saved Them" }).click();
 	await expect(box).toContainText('On.');
 	await expect(box.getByTestId('recovery-left')).toContainText('10 recovery codes left');
 
@@ -98,7 +98,7 @@ test('turn on 2FA, log in with a code, make new recovery codes, and turn it off'
 	const fresh = await renewed.getByRole('listitem').allInnerTexts();
 	expect(fresh).toHaveLength(10);
 	expect(fresh).not.toContain(codes[1]);
-	await box.getByRole('button', { name: "I've saved them" }).click();
+	await box.getByRole('button', { name: "I've Saved Them" }).click();
 	await expect(box.getByTestId('recovery-left')).toContainText('10 recovery codes left');
 
 	await logOut(page);

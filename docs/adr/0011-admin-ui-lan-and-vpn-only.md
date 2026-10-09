@@ -1,6 +1,6 @@
 # ADR 0011: Admin UI on the home network and VPN only
 
-- **Status:** Accepted (2026-09-26)
+- **Status:** Accepted (2026-09-26); amended 2026-09-26
 - **Plan reference:** docs/PLAN.md §3, D11
 
 ## Context

@@ -17,7 +17,7 @@ function listenPort(): number {
 async function savePort(page: Page, port: number) {
 	await page.goto('/settings');
 	await page.getByLabel('Listen port (UDP)').fill(String(port));
-	await page.getByRole('button', { name: 'Save settings' }).click();
+	await page.getByRole('button', { name: 'Save Settings' }).click();
 }
 
 const bar = (page: Page) => page.getByTestId('pending-change');
@@ -46,10 +46,10 @@ test('a change that could lock the admin out waits to be kept, on every page, un
 	await expect(bar(page)).toBeVisible();
 	await navigate(page, 'Server Settings');
 	await page.getByLabel('MTU').fill('1400');
-	await page.getByRole('button', { name: 'Save settings' }).click();
+	await page.getByRole('button', { name: 'Save Settings' }).click();
 	await expect(page.getByText(/keep it or undo it first/)).toBeVisible();
 
-	await bar(page).getByRole('button', { name: 'Keep changes' }).click();
+	await bar(page).getByRole('button', { name: 'Keep Changes' }).click();
 	await expect(bar(page)).toBeHidden();
 	expect(listenPort()).toBe(next);
 	// Free to change again.
@@ -57,7 +57,7 @@ test('a change that could lock the admin out waits to be kept, on every page, un
 	expect(problems).toEqual([]);
 });
 
-test('Undo now puts the old settings back at once', async ({ page }) => {
+test('Undo Now puts the old settings back at once', async ({ page }) => {
 	const problems = watchConsole(page);
 	await login(page);
 	const before = listenPort();
@@ -65,7 +65,7 @@ test('Undo now puts the old settings back at once', async ({ page }) => {
 
 	await savePort(page, next);
 	await expect(bar(page)).toBeVisible();
-	await bar(page).getByRole('button', { name: 'Undo now' }).click();
+	await bar(page).getByRole('button', { name: 'Undo Now' }).click();
 	await expect(bar(page)).toBeHidden();
 	expect(listenPort()).toBe(before);
 	// The form shows the settings that are back.
@@ -101,7 +101,7 @@ test('a change made with the CLI waits for the web UI too', async ({ page }) => 
 	await expect(bar(page)).toBeVisible({ timeout: 10_000 });
 	// Whoever runs the tests is the CLI's account: root in a container, another user on CI.
 	await expect(bar(page)).toContainText(/Made by \S+ \(cli\)/);
-	await bar(page).getByRole('button', { name: 'Keep changes' }).click();
+	await bar(page).getByRole('button', { name: 'Keep Changes' }).click();
 	await expect(bar(page)).toBeHidden();
 	expect(listenPort()).toBe(next);
 
@@ -118,7 +118,7 @@ function serverKey(): string {
 	return m[1];
 }
 
-test("rotating the server's key asks first, waits to be kept, and Undo now brings the old key back", async ({
+test("rotating the server's key asks first, waits to be kept, and Undo Now brings the old key back", async ({
 	page
 }) => {
 	const problems = watchConsole(page);
@@ -129,15 +129,15 @@ test("rotating the server's key asks first, waits to be kept, and Undo now bring
 	await expect(shown).toHaveText(before);
 
 	// Cancel changes nothing.
-	await page.getByRole('button', { name: 'Rotate the key…' }).click();
+	await page.getByRole('button', { name: 'Rotate the Key…' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Rotate the Server Key' });
 	await expect(dialog).toContainText('Every client stops working');
 	await dialog.getByRole('button', { name: 'Cancel' }).click();
 	await expect(dialog).toBeHidden();
 	expect(serverKey()).toBe(before);
 
-	await page.getByRole('button', { name: 'Rotate the key…' }).click();
-	await dialog.getByRole('button', { name: 'Rotate the key' }).click();
+	await page.getByRole('button', { name: 'Rotate the Key…' }).click();
+	await dialog.getByRole('button', { name: 'Rotate the Key' }).click();
 	await expect(dialog).toBeHidden();
 	const after = serverKey();
 	expect(after).not.toBe(before);
@@ -146,7 +146,7 @@ test("rotating the server's key asks first, waits to be kept, and Undo now bring
 	// The bar shows both keys, so the admin can tell what is waiting.
 	await expect(bar(page)).toContainText(`Server public key: ${before} → ${after}`);
 
-	await bar(page).getByRole('button', { name: 'Undo now' }).click();
+	await bar(page).getByRole('button', { name: 'Undo Now' }).click();
 	await expect(bar(page)).toBeHidden();
 	expect(serverKey()).toBe(before);
 	await expect(shown).toHaveText(before);
@@ -168,13 +168,13 @@ test("a kept rotation of the server's key flags the clients that were handed a c
 
 	const before = serverKey();
 	await page.goto('/settings');
-	await page.getByRole('button', { name: 'Rotate the key…' }).click();
+	await page.getByRole('button', { name: 'Rotate the Key…' }).click();
 	await page
 		.getByRole('dialog', { name: 'Rotate the Server Key' })
-		.getByRole('button', { name: 'Rotate the key' })
+		.getByRole('button', { name: 'Rotate the Key' })
 		.click();
 	await expect(bar(page)).toBeVisible();
-	await bar(page).getByRole('button', { name: 'Keep changes' }).click();
+	await bar(page).getByRole('button', { name: 'Keep Changes' }).click();
 	await expect(bar(page)).toBeHidden();
 	const after = serverKey();
 	expect(after).not.toBe(before);

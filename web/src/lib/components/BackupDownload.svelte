@@ -136,7 +136,7 @@
 				: ''}
 		/>
 		<button class="btn btn-primary self-start" type="submit" disabled={busy}>
-			{busy ? 'Making the backup…' : 'Download Backup'}
+			{busy ? 'Making the Backup…' : 'Download Backup'}
 		</button>
 	</form>
 </section>

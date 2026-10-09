@@ -36,7 +36,7 @@ test('a config goes out of date when the server changes, and handing it out agai
 	await expect(page.getByText('No record')).toBeVisible();
 	await expect(page.getByText('Config outdated')).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'Show QR code' }).click();
+	await page.getByRole('button', { name: 'Show QR Code' }).click();
 	await expect(page.getByRole('img', { name: /QR code/ })).toBeVisible();
 	await expect(page.getByText('No record')).toHaveCount(0);
 	await expect(page.getByText('Config outdated')).toHaveCount(0);
@@ -60,14 +60,14 @@ test('a config goes out of date when the server changes, and handing it out agai
 	// Showing the QR code again hands out the current config, and the flag goes.
 	await page.getByRole('link', { name: 'Stale Probe' }).click();
 	await expect(page.getByTestId('config-outdated')).toBeVisible();
-	await page.getByRole('button', { name: 'Show QR code' }).click();
+	await page.getByRole('button', { name: 'Show QR Code' }).click();
 	await expect(page.getByTestId('config-outdated')).toHaveCount(0, { timeout: 10_000 });
 	await expect(page.getByText('Config outdated')).toHaveCount(0);
 
 	// Put the server back as it was, and the list has nothing outdated to show.
 	cli('server', 'set', '--mtu', mtu.now);
 	await expect(page.getByTestId('config-outdated')).toBeVisible({ timeout: 10_000 });
-	await page.getByRole('button', { name: 'Show QR code' }).click();
+	await page.getByRole('button', { name: 'Show QR Code' }).click();
 	await expect(page.getByTestId('config-outdated')).toHaveCount(0, { timeout: 10_000 });
 	await page.goto('/clients?state=outdated');
 	await expect(page.getByText("No client's config is outdated.")).toBeVisible();
@@ -88,15 +88,15 @@ test("rotating a client's keys asks first, cuts the old keys off, and shows the 
 	await expect(page.getByRole('heading', { name: 'Rotate Probe' })).toBeVisible();
 
 	// Cancel changes nothing.
-	await page.getByRole('button', { name: 'Rotate keys' }).click();
+	await page.getByRole('button', { name: 'Rotate Keys' }).click();
 	const dialog = page.getByRole('dialog', { name: 'Rotate Keys' });
 	await expect(dialog).toContainText('stops working at once');
 	await dialog.getByRole('button', { name: 'Cancel' }).click();
 	await expect(dialog).toBeHidden();
 	expect(publicKey('Rotate Probe')).toBe(before);
 
-	await page.getByRole('button', { name: 'Rotate keys' }).click();
-	await dialog.getByRole('button', { name: 'Rotate keys' }).click();
+	await page.getByRole('button', { name: 'Rotate Keys' }).click();
+	await dialog.getByRole('button', { name: 'Rotate Keys' }).click();
 	await expect(dialog).toBeHidden();
 	await expect(page.getByText('New keys are in place.')).toBeVisible();
 	// The new config's QR code is on screen, for the device that has to import it.

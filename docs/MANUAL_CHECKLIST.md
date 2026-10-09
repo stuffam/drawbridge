@@ -433,7 +433,7 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   the endpoint's A and AAAA records, `systemd-timesyncd` synchronized, free disk space, and the
   admin's own certificate.
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
-  same order, with the same results as `sudo drawbridge doctor`, and **Run again** gives a fresh
+  same order, with the same results as `sudo drawbridge doctor`, and **Run Again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
   Forwarding sysctls as Failed, with the command that turns it back on; running that command
   clears it on the run after. (The command-line half was run on 2026-10-05; see the next item.)
@@ -545,10 +545,10 @@ nothing here is `[VERIFIED]` yet.
     AdGuard Home blocks an address for 15 minutes after five.
 
 - `[UNVERIFIED]` Settings has an AdGuard Home section. With the usual address
-  (`http://127.0.0.1:3000/control`) and the account, Test connection says "Connected to AdGuard
+  (`http://127.0.0.1:3000/control`) and the account, Test Connection says "Connected to AdGuard
   Home" with its version, and the daemon, in `drawbridge.service`'s sandbox, reached it (the
   unit allows `AF_INET` and `AF_INET6` and filters no addresses). The VPN addresses list says
-  which of them answer DNS, matching the *Check this server* button above it.
+  which of them answer DNS, matching the *Check This Server* button above it.
 - `[UNVERIFIED]` A wrong password gives "refused the account", and clicking Test again right away
   says it won't ask again for 30 seconds. AdGuard Home's own log shows one refused login, not
   two.
@@ -577,10 +577,10 @@ nothing here is `[VERIFIED]` yet.
   AdGuard Home itself showed, and whether tags and upstreams survived the rename, wasn't looked at.
 - `[UNVERIFIED]` With a client of the admin's named like a Drawbridge client, Settings and the
   dashboard say one client couldn't be named, and nothing in AdGuard Home changes. Deleting the
-  admin's client there, then *Sync now*, names the Drawbridge client.
+  admin's client there, then *Sync Now*, names the Drawbridge client.
 - `[UNVERIFIED]` With AdGuard Home stopped (`sudo systemctl stop AdGuardHome`), the dashboard says
   Drawbridge can't sync, the journal has one `integration adguard sync failed` warning, and starting
-  it again clears both within about 5 minutes (or at once with *Sync now*).
+  it again clears both within about 5 minutes (or at once with *Sync Now*).
 - `[UNVERIFIED]` A client's page has a "Recent DNS Queries" section. With *Use AdGuard Home* on,
   it lists what that client looked up (from a phone on the VPN, visit a few sites), newest first,
   with a blocked domain marked "Blocked" and the filter rule. Nothing from another client appears,
@@ -821,7 +821,7 @@ was viewed.
   "current, last handed out 0s ago" right after `client config NAME` and, on another new client,
   right after `client qr NAME`. `client list` shows `current` in its CONFIG column.
 - `[VERIFIED 2026-10-06]` **The same from the web UI:** after "Download .conf", and after "Show QR
-  code". The maintainer tried both in the browser and reported that each worked as expected (the
+  Code". The maintainer tried both in the browser and reported that each worked as expected (the
   browser side is theirs; it wasn't watched here). The server's log has three `client.config_viewed`
   events from their web session, 17 s apart in all, on two real clients, and the one that had never
   been handed a config reads `current` in `client list` since (it read `-` before). They then
@@ -844,7 +844,7 @@ was viewed.
   change like these (§15).
 - `[UNVERIFIED]` **With a real phone:** import a config in the WireGuard app, change the MTU, and
   the badge appears; scan the new QR code, the badge goes, and the app shows the new MTU.
-- `[UNVERIFIED]` **Rotating keys:** on a connected phone, "Rotate keys" on its page (the popup asks
+- `[UNVERIFIED]` **Rotating keys:** on a connected phone, "Rotate Keys" on its page (the popup asks
   first; Cancel changes nothing) cuts it off within a handshake interval, shows the new QR code at
   once, and the old config never connects again. Scanning the new code reconnects it. The event
   log has `Rotated a client's keys` from the admin and the new public key, and no secret. The
@@ -885,7 +885,7 @@ steps pass in network namespaces on a 7.0 aarch64 kernel (Docker Desktop's VM). 
 WireGuard, a `server set --port 51999 --safe` cut the client off (its fetches through the tunnel
 failed), the daemon put the port back when the window (4 seconds there) ran out, and the client was
 back without being touched. `apply --dry-run` listed a drifted MTU and left it alone, and `apply`
-fixed it. And the browser tests drive the Keep, Undo now, and not-kept paths against the daemon with
+fixed it. And the browser tests drive the Keep, Undo Now, and not-kept paths against the daemon with
 the fake backend and a 10-second window.
 
 - `[UNVERIFIED]` **From a phone on the VPN, the case it is for:** connect the phone to the VPN,
@@ -927,13 +927,13 @@ the fake backend and a 10-second window.
   This run had no router or NAT. Through a NAT, a packet from a new port may not reach a phone, so
   the phone item above stays `[UNVERIFIED]`.
 - `[VERIFIED 2026-10-05]` **From the LAN:** the same change shows a bar on every page with a
-  countdown. **Keep changes** leaves the new port in place past the minute (check `sudo wg show`),
-  and the log has `Kept a settings change` from the admin. **Undo now** puts the old port back at
+  countdown. **Keep Changes** leaves the new port in place past the minute (check `sudo wg show`),
+  and the log has `Kept a settings change` from the admin. **Undo Now** puts the old port back at
   once. Run with a harmless change in place of the port, which would have cut real clients off: an
   extra admin source (`100.64.10.0/24`) added, then removed with `server set --admin-allow none
-  --safe`. The bar showed on every page the maintainer visited, with a countdown. **Keep changes**
+  --safe`. The bar showed on every page the maintainer visited, with a countdown. **Keep Changes**
   (pressed 26 s into one window and 8 s into another) kept the change, and the log has
-  `server.settings_kept` from the maintainer's web account. **Undo now** (20 s into a third) put the
+  `server.settings_kept` from the maintainer's web account. **Undo Now** (20 s into a third) put the
   extra source back at once, in the setting and in the firewall's `admin_allowed4` set, and the log
   has `server.settings_undone` from the web account. A window nobody touched was undone by the
   daemon at 61 s (`server.settings_expired`). The port itself wasn't changed in that run; it was on
@@ -983,7 +983,7 @@ the fake backend and a 10-second window.
   the same window. (`client delete` asks `[y/N]`, and with no terminal it needs `--yes`.)
 - `[UNVERIFIED]` The same refusal from the web UI's Settings. (Tried once on 2026-10-05, during a
   window, and the message wasn't noticed. A save's result shows in a box directly above the **Save
-  settings** button at the bottom of the form, not at the top of the page.)
+  Settings** button at the bottom of the form, not at the top of the page.)
 - `[VERIFIED 2026-10-05]` `sudo drawbridge server show` lists a waiting change, with who made it and
   the seconds left; `sudo drawbridge server confirm` and `revert` work from a terminal. The change
   was a harmless one: adding `--admin-allow 100.64.10.0/24` (applied at once), then removing it
@@ -998,7 +998,7 @@ the fake backend and a 10-second window.
   `waiting_to_be_kept: 1m0s`. Afterward `server show`, the nft table, and the peers were the same
   as before the test.
 - `[VERIFIED 2026-10-05]` The web UI's bar does the same for a change made with `--safe` on the
-  command line: **Keep changes** and **Undo now** from a browser (the run is described under
+  command line: **Keep Changes** and **Undo Now** from a browser (the run is described under
   "From the LAN" below).
 - `[VERIFIED 2026-10-05]` `sudo drawbridge apply --dry-run` after `sudo ip link set wg0 mtu 1500`
   (and before the daemon's 30-second check notices) lists the MTU and changes nothing; `sudo
@@ -1024,7 +1024,7 @@ the fake backend and a 10-second window.
 
 ## 15. Rotating the server's key (the fifth M5 slice)
 
-`drawbridge server rotate-key`, the **Rotate the key…** button in Settings, and
+`drawbridge server rotate-key`, the **Rotate the Key…** button in Settings, and
 `POST /api/server/rotate-key` give the server a new key pair (docs/PLAN.md §6.2). Every client's
 config holds the old public key, so every client stops until it imports its new config. The web UI
 always puts the rotation on safe apply (§14 above). The hardware pass of 2026-10-05 and
@@ -1035,15 +1035,15 @@ kernel had the new private key and the same peer, a connected client's fetches t
 failed at once (WireGuard drops the current sessions when the interface's key changes), and the
 new config connected over IPv4 and IPv6. After `rotate-key --safe` with nothing kept, the daemon
 put the old key back when the window (4 seconds there) ran out, and the client reconnected with
-the config it already had. And the browser tests drive the dialog, Undo now, and Keep against the
+the config it already had. And the browser tests drive the dialog, Undo Now, and Keep against the
 daemon with the fake backend.
 
-- `[VERIFIED 2026-10-06]` **From the LAN, the web dialog:** in Settings, **Rotate the key…** asks
-  first (Cancel changes nothing), and **Rotate the key** shows the bar with both public keys. Run
+- `[VERIFIED 2026-10-06]` **From the LAN, the web dialog:** in Settings, **Rotate the Key…** asks
+  first (Cancel changes nothing), and **Rotate the Key** shows the bar with both public keys. Run
   by the maintainer in their browser, through their reverse proxy, with a throwaway client in a
   network namespace standing in for the phone. The dialog warned that every client stops working
   at once, and **Cancel** changed nothing (their report; the server's key was the same afterward,
-  nothing was logged, and nothing waited). **Rotate the key** changed the kernel's public key and
+  nothing was logged, and nothing waited). **Rotate the Key** changed the kernel's public key and
   logged `server.key_rotated` from their web account, with `waiting_to_be_kept: 1m0s` and the old
   and the new public key. `server show` listed "Waiting to be kept (made by <the account> via web):
   server public key: <old> → <new>. It is undone in 59 s unless you keep it." They reported that
@@ -1072,7 +1072,7 @@ daemon with the fake backend.
   outdated**, and its QR code is the new one). Seen so far, with the throwaway and no phone: from
   the command line (`server confirm`), the new key was in the kernel past the minute, the
   throwaway's old config stayed off, and its new config connected (the items below). From the bar,
-  on 2026-10-06 the maintainer pressed **Keep changes** 30 s after a rotation (the log has
+  on 2026-10-06 the maintainer pressed **Keep Changes** 30 s after a rotation (the log has
   `server.settings_kept` from their web session): the new key was in the kernel past the minute and
   stayed until the original was restored 3 min 52 s after the rotation, and the maintainer saw the
   page of the real client that had been handed a config say **Config outdated**. Not seen: a phone,

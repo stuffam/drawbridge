@@ -156,7 +156,7 @@ Setup has three steps:
 2. **Where clients connect.** Enter the endpoint, the name or public IP address your clients
    connect to (for example `vpn.example.com`). You can leave it empty and set it later in
    Settings, but a client can't be given a config until it's set.
-3. **DNS for clients.** A new server hands out Cloudflare's public resolvers (`1.1.1.1` and
+3. **DNS for Clients.** A new server hands out Cloudflare's public resolvers (`1.1.1.1` and
    `1.0.0.1`, and the IPv6 pair when the VPN has IPv6), which work anywhere. If the host runs a
    resolver such as AdGuard Home, Pi-hole, or Unbound that listens on the VPN's addresses, setup
    offers it as **This server**. Either way, you can change it later in Settings. If you want your
@@ -180,7 +180,7 @@ warns or fails.
 Two results are normal until your network is ready:
 
 - **Endpoint** fails until the endpoint is set and its name resolves from the host. Make the DNS
-  record, then press **Run again** on the System page or run `doctor` again.
+  record, then press **Run Again** on the System page or run `doctor` again.
 - **Clock** warns on a host that keeps time with chrony or ntpd, because the check recognizes only
   `systemd-timesyncd`.
 

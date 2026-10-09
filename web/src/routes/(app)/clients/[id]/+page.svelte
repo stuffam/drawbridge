@@ -246,7 +246,7 @@
 				>
 			{/if}
 			<button type="button" class="btn" onclick={() => (showRename = true)}>Rename</button>
-			<button type="button" class="btn" onclick={() => (showRotate = true)}>Rotate keys</button>
+			<button type="button" class="btn" onclick={() => (showRotate = true)}>Rotate Keys</button>
 			<button
 				type="button"
 				class="btn text-red-700 dark:text-red-400"
@@ -272,7 +272,7 @@
 				</p>
 			{/if}
 			<div class="flex flex-wrap gap-2">
-				<button type="button" class="btn btn-primary" onclick={showQR}>Show QR code</button>
+				<button type="button" class="btn btn-primary" onclick={showQR}>Show QR Code</button>
 				<button type="button" class="btn" onclick={download}>Download .conf</button>
 			</div>
 			{#if configError}
@@ -307,9 +307,9 @@
 				<dt class="text-neutral-500 dark:text-neutral-400">Traffic</dt>
 				<dd>
 					{#if client.peer}
-						↓ {formatBytes(client.peer.receive_bytes)} received · ↑ {formatBytes(
-							client.peer.send_bytes
-						)} sent
+						<span class="whitespace-nowrap">↓ {formatBytes(client.peer.receive_bytes)}</span>
+						received ·
+						<span class="whitespace-nowrap">↑ {formatBytes(client.peer.send_bytes)}</span> sent
 					{:else}
 						—
 					{/if}
@@ -381,7 +381,8 @@
 						<span>
 							{s.endpoint || 'Unknown endpoint'}
 							<span class="text-neutral-500 dark:text-neutral-400">
-								· ↓ {formatBytes(s.receive_bytes)} · ↑ {formatBytes(s.send_bytes)}
+								· <span class="whitespace-nowrap">↓ {formatBytes(s.receive_bytes)}</span> ·
+								<span class="whitespace-nowrap">↑ {formatBytes(s.send_bytes)}</span>
 							</span>
 						</span>
 						<span class="text-neutral-500 dark:text-neutral-400">

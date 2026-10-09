@@ -76,13 +76,13 @@ setups.** What exists:
 - Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
   cut the admin off (the listen port, removing an admin-UI source, rotating the server's key) is
   applied at once from the web UI and undone after 60 s unless it's kept, by a bar on every page
-  (**Keep changes** / **Undo now**). The held change is in the database (`pending_apply`), so a
+  (**Keep Changes** / **Undo Now**). The held change is in the database (`pending_apply`), so a
   restart or a reboot undoes it too. `drawbridge server set --safe`, `server confirm`, and
   `server revert` do the same from the CLI, which otherwise applies at once; `drawbridge apply
   [--dry-run]` reconciles once and lists what changed (or would).
 - Rotating the server's key (2026-10-04), the fifth slice of M5 (docs/PLAN.md §6.2).
   `drawbridge server rotate-key [--safe] [--yes]`, `POST /api/server/rotate-key`, and a **Rotate
-  the key…** button in Settings give the server a new key pair. Every client's config holds the
+  the Key…** button in Settings give the server a new key pair. Every client's config holds the
   old public key, so every client stops until it has its new config (the ones that were handed a
   config show as outdated). The web UI always puts it on safe apply, because the admin on the VPN
   is cut off by it.
@@ -135,8 +135,9 @@ setups.** What exists:
   and publishes it. `scripts/install.sh` installs the latest release after checking its checksum.
   The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job).
   v0.1.0-rc.1 was tagged (2026-10-07) and never published, because GitHub renames a `~` in an
-  asset's name. v0.1.0-rc.2 is the first release, a pre-release published 2026-10-08 after its
-  files were tried on two Raspberry Pis; v0.1.0 is next (§11.1, docs/MANUAL_CHECKLIST.md §20).
+  asset's name. v0.1.0-rc.2 is the first release candidate, a pre-release published 2026-10-08
+  after its files were tried on two Raspberry Pis. "The first release" means v0.1.0, which is next
+  (§11.1, docs/MANUAL_CHECKLIST.md §20).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
@@ -157,8 +158,10 @@ setups.** What exists:
 Read it before writing code here. It describes the target, not what exists. Don't assume
 something is built because the plan describes it.
 
-When a decision changes, update `docs/PLAN.md` (§3 and §16) in the same PR. When a command,
-convention, or invariant changes, update this file too.
+When a decision changes, update `docs/PLAN.md` (§3 and §16) in the same PR: a reversal gets a new
+ADR that supersedes the old one, and a refinement gets a dated "Amended" note in the ADR it
+refines (`docs/adr/README.md`). When a command, convention, or invariant changes, update this file
+too.
 
 ## Usually no real host here
 
@@ -201,20 +204,26 @@ a step describes.
   with `-locale US`) enforces it on every tracked file, and CI runs it, so don't quote a British
   spelling even as an example. "WireGuard," "AdGuard Home," and "Raspberry Pi" are product
   names and are correct as-is.
-- **The repo is public, so nothing in it is personal.** Write for anyone running Drawbridge:
-  "the admin" (whoever runs it), "the maintainer" (project decisions), "the host" (the machine
-  it runs on). No home-lab specifics: no router models, hostnames, FQDNs, real LAN subnets,
-  Tailscale or public addresses, or personal names in fixtures. Use documentation ranges
+- **The repo is public, so nothing in it is personal.** Write for anyone running Drawbridge. The
+  spec, the ADRs, and this file call them "the admin" (whoever runs it), "the maintainer"
+  (project decisions), and "the host" (the machine it runs on). The web UI and the guides speak to
+  the reader as "you". No home-lab specifics: no router models, hostnames, FQDNs, real LAN
+  subnets, Tailscale or public addresses, or personal names in fixtures. Use documentation ranges
   (`192.0.2.0/24` and friends, `2001:db8::/32`), generic private ones (`192.168.4.0/22`,
   `100.64.10.0/24`), and `example.com`. "Raspberry Pi 5" and "Debian 13" appear only as the
   tested reference platform. When a feature assumes something about the host or network, say so
   in docs/REQUIREMENTS.md.
+- **A secret in an example is its real prefix followed by an ellipsis** (`dbt_…`, as in
+  docs/api-tokens.md), so a reader can recognize the real one and a copied example can't work.
 - **Version numbers are prefixed with a lowercase `v`** in prose, git tags, release names, and
-  `CHANGELOG.md` headings: `v1.0.0`, never `1.0.0`. Three places use a bare string because their
-  own rules require it:
+  `CHANGELOG.md` headings: `v1.0.0`, never `1.0.0`. This is about Drawbridge's own versions; other
+  software's follow its own project's convention ("Go 1.26", "govulncheck v1.8.0"). Four places
+  use a bare string because their own rules require it:
   - The Debian package version, which must start with a digit (`drawbridge_1.0.0_arm64.deb`).
   - The version constant set at build time.
   - The OpenAPI spec's `info.version`.
+  - A release's file names (`drawbridge_1.0.0-rc.1_arm64.deb`), which are named for the version
+    and not the Debian version, because GitHub renames a `~` (see the release invariant below).
 - **Licensed under Apache-2.0** (`LICENSE`, also shipped as `/usr/share/doc/drawbridge/copyright`
   in the `.deb`). No copyright or license headers in individual files.
 - **Names:** the product is "Drawbridge" in prose. Everything else uses `drawbridge`:
@@ -248,6 +257,22 @@ a step describes.
 - **Times in the web UI are on a 24-hour clock, and dates are `9 Sep`.** Use `formatClock`,
   `formatDay`, `formatTime`, and `formatChartTime` in `web/src/lib/format.ts`, never
   `toLocaleString` or its relatives, which follow the browser's locale (am and pm, month first).
+- **Web UI copy and behavior.**
+  - Headings and buttons are in Title Case ("Add Client", "Change Password"). The docs site is in
+    sentence case.
+  - A number and its unit stay together through `white-space: nowrap` on the element that shows
+    them, not a non-breaking space in the string (`formatBytes` returns a plain space).
+  - A change waits for the server: show a pending state and update when it confirms, because the
+    status stream then shows the real state. Optimistic updates are for UI-only state: a filter, a
+    sort order, a collapsed panel.
+  - A list that can pass about 50 rows pages or has a "Load Older" button, as the Logs page does.
+    Don't add a virtualization library.
+  - Contrast is held to WCAG 2 AA (the e2e test requires a ratio over 4.5). APCA is a second
+    opinion when choosing colors and never decides pass or fail.
+  - For a UI review, run the `web-design-guidelines` skill. This file wins where they differ, and
+    these of its rules don't apply here: locale-aware dates and numbers (the 24-hour clock
+    above), `&` for "and", non-breaking spaces in strings, APCA as the gate, optimistic updates,
+    virtualization, and its React-only rules.
 - **Formatting:** `gofmt` and `goimports` for Go, and Prettier for the web app. Markdown wraps at
   100 columns.
 - **Docs are GitHub-flavored Markdown that the site must show the same way.** Zensical's parser,
@@ -352,22 +377,27 @@ These are the rules most likely to get silently broken.
 
 - **The database is the source of truth, and the kernel state is derived from it.**
   - Every change goes: validate → DB transaction → reconcile → event (§4.3).
-  - Nothing outside the reconciler touches kernel state (`wgctrl`, netlink, `nft`).
+  - Nothing outside the reconciler changes kernel state (`wgctrl`, netlink, `nft`). The doctor and
+    the drift check only read it.
   - Only `drawbridge tunnel up` creates the interface. The daemon's reconcile (`Sync`) leaves
     a missing interface alone, so it never restarts a tunnel the admin stopped (ADR 0008).
-  - The CLI changes state only through the daemon's control socket. It never opens the
+  - The management CLI changes state only through the daemon's control socket. It never opens the
     live database, which belongs to the `drawbridge` user. The one exception is
     `backup restore`, which runs as root with the daemon stopped, opens only a temporary copy
-    of the restored database, and then replaces the live one.
+    of the restored database, and then replaces the live one. `tunnel up|down` and `serve` are
+    the units' own entry points: they run as the `drawbridge` user and open the database
+    themselves (see the migration rules below).
   - The reconciler is idempotent and serialized by a lock. It also runs every 30 s to correct
     drift.
 - **Live changes never disrupt other clients.** Peers are diffed and updated in place
-  (`ReplaceAllowedIPs`). The interface is never recreated to apply a change.
+  (`ReplaceAllowedIPs`). The interface is never recreated to apply a change. Rotating the
+  server's key is the one deliberate exception: every client stops until it has its new config.
 - **No root at runtime.** Both units run as the `drawbridge` user with only `CAP_NET_ADMIN`
   (§4.2).
   - Anything that needs root (sysctls, the NetworkManager drop-in, the system user) belongs in
     the package's `postinst`, not in the daemon.
-  - The only external command is `nft -f`, called with an argv list. Never use a shell.
+  - The only external program is `nft`, called with an argv list: `-f` to apply the ruleset and
+    `-j list` to read it. Never use a shell.
 - **No arbitrary command hooks** (`PostUp`/`PostDown` or anything like them). Anything a hook
   would do is a typed, validated setting instead (§10).
 - **A client's "config outdated" flag is computed, not stored, and holds no secret.** The
@@ -452,16 +482,18 @@ These are the rules most likely to get silently broken.
 - **Don't default to common ports.** Drawbridge uses only UDP 51820 (WireGuard) and TCP 51821
   (admin UI), because hosts often run other services on the usual ones: a DNS resolver on 53,
   web servers and reverse proxies on 80 and 443, and admin UIs like AdGuard Home's on 3000.
-  Never default anything to one of those. That includes dev servers and test fixtures that
-  might run on a real host. The planned AdGuard Home integration (M4) reaches its API at
-  `http://127.0.0.1:3000/control` by default; that address is a setting (`adguard.base_url`,
-  §7), not hard-coded.
+  Never default a port that Drawbridge or its tooling listens on to one of those. That includes
+  dev servers and test fixtures that might run on a real host. An address Drawbridge connects to
+  may default to the other service's own port: the AdGuard Home integration reaches its API at
+  `http://127.0.0.1:3000/control` by default, and that address is a setting (`adguard.base_url`,
+  §7), not hard-coded. `make docs-serve` is the one tooling exception: it listens on loopback
+  only, on Zensical's default, 8000.
 - **The HTTP server has no write timeout**, because one would cut the event stream (ADR 0009). A
   handler that stays open sets a deadline on each write (`http.ResponseController`) and ends when
   `Options.Shutdown` closes, or the daemon's graceful shutdown would wait on it. A connection that
-  has sent no request is closed at shutdown too (`freshConns`, `cmd/drawbridge/serve.go`): net/http's
-  `Shutdown` counts it as busy for its first five seconds, and a browser's spare connection would
-  make `systemctl stop` take that long.
+  has sent no request is closed at shutdown too (`freshConns`, `cmd/drawbridge/serve.go`):
+  net/http's `Shutdown` counts it as busy for its first five seconds, and a browser's spare
+  connection would make `systemctl stop` take that long.
 - **Protect the SD card.** Monitoring samples, and the bytes of open sessions, are buffered in
   memory and flushed once per raw interval (a minute by default) in one transaction. Nothing
   writes to the DB on every poll (§6.4). `TestWriteBudget` simulates a day against a real
@@ -502,7 +534,7 @@ These are the rules most likely to get silently broken.
 - **Never retry an AdGuard Home 401 on a timer.** Five refusals block the daemon's address for
   15 minutes, and then the right password is refused too ("Verified facts"). A test remembers
   a refused account for 30 seconds, and the sync stops on a 401 until the connection changes, or
-  a test or Sync now shows the account works (`refusedLogin`). Anything new that calls AdGuard
+  a test or Sync Now shows the account works (`refusedLogin`). Anything new that calls AdGuard
   Home on its own must honor `refusedLogin.has` first.
 - **Name sync touches only what Drawbridge made.** An AdGuard Home client it has no record of is
   never edited or deleted, unless its name and addresses are exactly a client's (adopted without
@@ -538,9 +570,10 @@ These are the rules most likely to get silently broken.
 - **A database from a newer build is read, never written.** `store.Open` leaves one alone and
   `Store.NewerSchema` says so. `serve` (`openService`) refuses it, exits 78 (`exitDatabaseNewer`),
   and `drawbridge.service` has `RestartPreventExitStatus=78`, so a downgrade doesn't make the daemon
-  flap. `tunnel up` and `tunnel down` warn and go on, because they only read: keep it so (the
-  reconciler's `State` interface is `Settings` and `Clients`, and a write there would be a decision
-  to make out loud). Anything new that opens the database and writes must check `NewerSchema` first.
+  flap. `tunnel up` and `tunnel down` warn and go on, because on a newer database they only read
+  (on an older one `store.Open` migrates it, after its snapshot): keep it so (the reconciler's
+  `State` interface is `Settings` and `Clients`, and a write there would be a decision to make out
+  loud). Anything new that opens the database and writes must check `NewerSchema` first.
   `TestServeRefusesADatabaseFromANewerBuild` and `TestANewerDatabaseStopsTheDaemonNotTheTunnel`
   check both halves.
 - **A migration needs its snapshot first.** `store.Open` with `WithMigrationSnapshots` (both
@@ -554,16 +587,16 @@ These are the rules most likely to get silently broken.
   time or the machine into a build. Three things did, and each is fixed where it came from: nfpm
   puts every file's modification time in the package (the Makefile exports `SOURCE_DATE_EPOCH`, the
   commit's time), SvelteKit names each build for the time it was made (`web/vite.config.ts` names it
-  for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are made
-  with `-noserial -notimestamp`; the SBOMs aren't compared). A tag is never moved and a published
-  release's files are never replaced: a mistake is fixed by the next version, because an older build
-  won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older version
-  over a newer one, never lets a name from the network into a path or URL unchecked, and never
-  reaches `apt-get` before the package's checksum matches; its tests break the script to prove each.
-  A release's files are named for the version (`1.0.0-rc.1`), never the package's Debian version
-  (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't have.
-  `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and checks it
-  against the downloaded package's `Version`.
+  for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are
+  made with `-noserial -notimestamp`; the SBOMs aren't compared). A tag is never moved and a
+  published release's files are never replaced: a mistake is fixed by the next version, because an
+  older build won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an
+  older version over a newer one, never lets a name from the network into a path or URL unchecked,
+  and never reaches `apt-get` before the package's checksum matches; its tests break the script to
+  prove each. A release's files are named for the version (`1.0.0-rc.1`), never the package's Debian
+  version (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't
+  have. `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and checks
+  it against the downloaded package's `Version`.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -656,9 +689,10 @@ vulnerability database as of 2026-10-01):
 
 - The Go packages have no vulnerability they can reach, and `govulncheck` exits 0. It reports one
   more in a module the code requires and doesn't call (GO-2026-5932, x/crypto's unmaintained
-  `openpgp` package, with no fix). A reachable finding makes it exit non-zero (3, by its documentation; not
-  observed here), and CI's "Vulnerabilities (Go)" job fails on it, so a vulnerability newly disclosed in a dependency can fail a change that
-  didn't cause it: update what the finding names.
+  `openpgp` package, with no fix). A reachable finding makes it exit non-zero (3, by its
+  documentation; not observed here), and CI's "Vulnerabilities (Go)" job fails on it, so a
+  vulnerability newly disclosed in a dependency can fail a change that didn't cause it: update what
+  the finding names.
 - nfpm writes an alternative through to the control file: `recommends: systemd-timesyncd |
   time-daemon` gives `Recommends: wireguard-tools, systemd-timesyncd | time-daemon`. The package's
   fields are `Depends: nftables` and those recommendations, and `scripts/release-verify.sh` checks
@@ -668,8 +702,8 @@ vulnerability database as of 2026-10-01):
 building twice with every source file's modification time changed between the builds):
 
 - Without `SOURCE_DATE_EPOCH` the two `.deb` files differed and the Go binaries inside them
-  didn't. With it, both packages and both binaries were identical. The web build differed in dozens of
-  files until its version name stopped being the build's time (`_app/version.json` held a
+  didn't. With it, both packages and both binaries were identical. The web build differed in dozens
+  of files until its version name stopped being the build's time (`_app/version.json` held a
   `Date.now()`); named for the commit, 43 files were identical across builds.
 - nfpm v2.47.0 turns the versions `0.1.0`, `1.0.0-rc.1`, and `0.0.0-dev` into the Debian versions
   `0.1.0`, `1.0.0~rc.1`, and `0.0.0~dev`.
@@ -682,13 +716,13 @@ building twice with every source file's modification time changed between the bu
   redirects to `/releases/tag/<tag>`, or to `/releases` when there's no release, and
   `/releases/download/<tag>/<file>` resolves to the file. A draft release's files need a login, so
   `install.sh` can't be tried on one. A `~` in an uploaded asset's name is rewritten to a `.`
-  (v0.1.0-rc.1, 2026-10-07: `drawbridge_0.1.0~rc.1_arm64.deb` became `drawbridge_0.1.0.rc.1_arm64.deb`),
-  while `-`, `_`, and `.` are kept (a throwaway draft release with eight such names kept all eight, and
-  was deleted). So a release's files are named for the version (`0.1.0-rc.2`), and the package's own
-  `Version` (`0.1.0~rc.2`) is read from the `.deb`.
+  (v0.1.0-rc.1, 2026-10-07: `drawbridge_0.1.0~rc.1_arm64.deb` became
+  `drawbridge_0.1.0.rc.1_arm64.deb`), while `-`, `_`, and `.` are kept (a throwaway draft release
+  with eight such names kept all eight, and was deleted). So a release's files are named for the
+  version (`0.1.0-rc.2`), and the package's own `Version` (`0.1.0~rc.2`) is read from the `.deb`.
 - CI's ubuntu-24.04 runner has ShellCheck 0.9.0, which is stricter than the current one in places:
-  it flags `[ a ] && [ b ] || {` (SC2015), where 0.11 doesn't. Lint with both, `koalaman/shellcheck:v0.9.0`
-  and `:stable`.
+  it flags `[ a ] && [ b ] || {` (SC2015), where 0.11 doesn't. Lint with both,
+  `koalaman/shellcheck:v0.9.0` and `:stable`.
 - actionlint (rhysd/actionlint 1.7.12) checks `release.yml` and `ci.yml` and runs shellcheck over
   their `run:` blocks. Run it in Docker: `docker run --rm -v "$PWD":/repo -w /repo
   rhysd/actionlint:latest`.
@@ -837,7 +871,7 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 ## Where things live
 
 - `docs/PLAN.md` is the specification. Read it first. §13 has the planned repository layout.
-- `docs/adr/` holds one decision record per decision in the plan's §3 (D1–D12).
+- `docs/adr/` holds one decision record per decision in the plan's §3 (D1–D13).
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/install.md` is the admin's install guide, from getting the package to a first client. Its
   "Get the package" section describes how to get a `.deb` before there's a release; change it
@@ -940,4 +974,5 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `docs/adr/` at the repo root, and a `CONTEXT.md` glossary once terms get resolved
+(none exists yet; the `domain-modeling` skill creates it). See `docs/agents/domain.md`.

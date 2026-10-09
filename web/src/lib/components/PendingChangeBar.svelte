@@ -76,13 +76,13 @@
 					type="button"
 					class="btn btn-primary"
 					disabled={busy || left === 0}
-					onclick={() => resolve(() => api.confirmChange())}>Keep changes</button
+					onclick={() => resolve(() => api.confirmChange())}>Keep Changes</button
 				>
 				<button
 					type="button"
 					class="btn"
 					disabled={busy || left === 0}
-					onclick={() => resolve(() => api.revertChange())}>Undo now</button
+					onclick={() => resolve(() => api.revertChange())}>Undo Now</button
 				>
 			</div>
 		</div>

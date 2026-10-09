@@ -75,7 +75,7 @@
 		<div class="flex justify-end gap-2">
 			<button type="button" class="btn" onclick={() => dialog?.close()}>Cancel</button>
 			<button type="button" class="btn btn-danger" disabled={rotating} onclick={rotate}>
-				{rotating ? 'Rotating…' : 'Rotate keys'}
+				{rotating ? 'Rotating…' : 'Rotate Keys'}
 			</button>
 		</div>
 	</div>

@@ -123,7 +123,7 @@
 <TwoFactor username={data.me.user.username} />
 
 <section class="card flex flex-col gap-3" aria-labelledby="sessions-heading">
-	<h2 id="sessions-heading" class="font-semibold">Logged-in browsers</h2>
+	<h2 id="sessions-heading" class="font-semibold">Logged-In Browsers</h2>
 	<Result error={sessionsError} />
 	<ul class="flex flex-col divide-y divide-neutral-100 text-sm dark:divide-neutral-800">
 		{#each sessions as s (s.id)}
@@ -141,7 +141,7 @@
 					</p>
 				</div>
 				<button type="button" class="btn px-2.5 py-1" onclick={() => revoke(s)}>
-					{s.current ? 'Log out' : 'Log out this browser'}
+					{s.current ? 'Log Out' : 'Log Out This Browser'}
 				</button>
 			</li>
 		{/each}

@@ -22,7 +22,7 @@
 
 <section class="card flex flex-col gap-4" aria-labelledby="snapshots-heading">
 	<div>
-		<h2 id="snapshots-heading" class="font-semibold">Snapshots on this host</h2>
+		<h2 id="snapshots-heading" class="font-semibold">Snapshots on This Host</h2>
 		<p class="hint">
 			Copies of the database that the host keeps in its own storage: one a night, and one before an
 			upgrade changes the database. They guard against a bad change or a bad upgrade. They don't
@@ -62,7 +62,8 @@
 								<p class="mono text-xs text-neutral-500 dark:text-neutral-400">{s.name}</p>
 							</div>
 							<p class="text-xs text-neutral-500 dark:text-neutral-400">
-								{formatTime(s.made_at)} · {formatBytes(s.size)}
+								{formatTime(s.made_at)} ·
+								<span class="whitespace-nowrap">{formatBytes(s.size)}</span>
 							</p>
 						</li>
 					{/each}

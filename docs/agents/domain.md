@@ -12,8 +12,8 @@ codebase.
   also check `src/<context>/docs/adr/` for context-scoped decisions.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest
-creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and
-`/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+creating them upfront. The `domain-modeling` skill creates them lazily when terms or decisions
+actually get resolved. This repo has no `CONTEXT.md` yet.
 
 ## File structure
 
@@ -44,8 +44,9 @@ Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
 ```
 
 This repo is single-context. Each record in `docs/adr/` explains one decision from `docs/PLAN.md`
-§3. To change a decision, add a new record that supersedes the old one and update the old one's
-status, then update `docs/PLAN.md` §3 and §16 in the same PR (see `docs/adr/README.md`).
+§3. To reverse a decision, add a new record that supersedes the old one and update the old one's
+status. To refine one, add a dated **Amended** note to its record. Either way, update
+`docs/PLAN.md` §3 and §16 in the same PR (see `docs/adr/README.md`).
 
 ## Use the glossary's vocabulary
 

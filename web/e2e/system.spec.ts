@@ -41,11 +41,11 @@ test('the System page runs the host checks, and runs them again on request', asy
 		else await expect(row).not.toContainText('Fix:');
 	}
 
-	// Run again asks the daemon again.
+	// Run Again asks the daemon again.
 	const again = page.waitForResponse((r) => r.url().endsWith('/api/system/health'));
-	await section.getByRole('button', { name: 'Run again' }).click();
+	await section.getByRole('button', { name: 'Run Again' }).click();
 	expect((await again).status()).toBe(200);
-	await expect(section.getByRole('button', { name: 'Run again' })).toBeEnabled();
+	await expect(section.getByRole('button', { name: 'Run Again' })).toBeEnabled();
 
 	expect(problems).toEqual([]);
 });
@@ -475,7 +475,7 @@ test('the System page lists the snapshots the host keeps, and says what they are
 	);
 	await login(page);
 	await page.goto('/system');
-	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	const section = page.getByRole('region', { name: 'Snapshots on This Host' });
 	const rows = section.getByRole('listitem');
 	await expect(rows).toHaveCount(2);
 	await expect(rows.first()).toContainText('Nightly');
@@ -498,7 +498,7 @@ test('the System page says so when the nightly snapshot is off, or none are kept
 		route.fulfill({ json: { dir: '/var/lib/drawbridge/backups', nightly: false, snapshots: [] } })
 	);
 	await page.goto('/system');
-	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	const section = page.getByRole('region', { name: 'Snapshots on This Host' });
 	await expect(section).toContainText('The nightly snapshot is off');
 	await expect(section).toContainText('None yet');
 
@@ -515,7 +515,7 @@ test('the System page shows the snapshots of the real daemon', async ({ page }) 
 	const problems = watchConsole(page);
 	await login(page);
 	await page.goto('/system');
-	const section = page.getByRole('region', { name: 'Snapshots on this host' });
+	const section = page.getByRole('region', { name: 'Snapshots on This Host' });
 	await expect(section).toContainText(/drawbridge-e2e\/backups|None yet|nightly-\d{8}-\d{6}\.db/);
 	await expect(section.getByRole('alert')).toHaveCount(0);
 	expect(problems).toEqual([]);

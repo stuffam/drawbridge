@@ -210,7 +210,7 @@
 
 		<section class="card flex flex-col gap-4" aria-labelledby="dns-heading">
 			<div>
-				<h2 id="dns-heading" class="font-semibold">DNS for clients</h2>
+				<h2 id="dns-heading" class="font-semibold">DNS for Clients</h2>
 				<p class="hint">Clients get it in their config, so they need it again after a change.</p>
 			</div>
 			<DNSFields
@@ -224,7 +224,7 @@
 		<div class="flex flex-col gap-3">
 			<Result {error} {warning} {success} />
 			<button class="btn btn-primary self-start" type="submit" disabled={busy}>
-				{busy ? 'Saving…' : 'Save settings'}
+				{busy ? 'Saving…' : 'Save Settings'}
 			</button>
 		</div>
 	</form>
@@ -248,7 +248,7 @@
 
 	<section class="card flex flex-col gap-3" aria-labelledby="server-key-heading">
 		<div>
-			<h2 id="server-key-heading" class="font-semibold">Server key</h2>
+			<h2 id="server-key-heading" class="font-semibold">Server Key</h2>
 			<p class="hint">
 				Every client's config holds the server's public key. Rotating the key cuts every client off
 				until it imports its new config, so do it only if the key may have leaked.
@@ -263,7 +263,7 @@
 		</dl>
 		<Result warning={keyWarning} success={keyNote} />
 		<button type="button" class="btn btn-danger self-start" onclick={() => (showRotate = true)}>
-			Rotate the key…
+			Rotate the Key…
 		</button>
 	</section>
 
