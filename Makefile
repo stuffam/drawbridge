@@ -200,7 +200,7 @@ $(DOCS_VENV)/bin/zensical: requirements-docs.txt
 docs: $(DOCS_VENV)/bin/zensical ## Build the docs site into site/ (strictly), and check its lists against GitHub's.
 	$(DOCS_VENV)/bin/python -m unittest discover -s test/docs
 	$(DOCS_VENV)/bin/zensical build --clean --strict
-	$(DOCS_VENV)/bin/python test/docs/check_lists.py docs site
+	$(DOCS_VENV)/bin/python test/docs/check_lists.py docs/user_docs site
 
 .PHONY: docs-serve
 docs-serve: $(DOCS_VENV)/bin/zensical ## Preview the docs site at http://localhost:8000, rebuilt as docs/ changes.
