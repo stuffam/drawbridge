@@ -136,7 +136,7 @@
 				</button>
 			</div>
 			<button class="btn self-start" type="button" onclick={() => (codes = [])}>
-				I've saved them
+				I've Saved Them
 			</button>
 		</div>
 	{/if}
@@ -269,7 +269,7 @@
 							class="mono rounded bg-neutral-100 px-2 py-1 break-words dark:bg-neutral-800"
 							data-testid="totp-secret">{groupSecret(enrollment.secret)}</code
 						>
-						<div><CopyButton text={enrollment.secret} label="Copy key" /></div>
+						<div><CopyButton text={enrollment.secret} label="Copy Key" /></div>
 					</div>
 				</div>
 				<div>

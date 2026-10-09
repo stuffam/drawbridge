@@ -76,13 +76,13 @@ setups.** What exists:
 - Safe apply (2026-10-04), the fourth slice of M5 (docs/PLAN.md §4.3). A settings change that could
   cut the admin off (the listen port, removing an admin-UI source, rotating the server's key) is
   applied at once from the web UI and undone after 60 s unless it's kept, by a bar on every page
-  (**Keep changes** / **Undo now**). The held change is in the database (`pending_apply`), so a
+  (**Keep Changes** / **Undo Now**). The held change is in the database (`pending_apply`), so a
   restart or a reboot undoes it too. `drawbridge server set --safe`, `server confirm`, and
   `server revert` do the same from the CLI, which otherwise applies at once; `drawbridge apply
   [--dry-run]` reconciles once and lists what changed (or would).
 - Rotating the server's key (2026-10-04), the fifth slice of M5 (docs/PLAN.md §6.2).
   `drawbridge server rotate-key [--safe] [--yes]`, `POST /api/server/rotate-key`, and a **Rotate
-  the key…** button in Settings give the server a new key pair. Every client's config holds the
+  the Key…** button in Settings give the server a new key pair. Every client's config holds the
   old public key, so every client stops until it has its new config (the ones that were handed a
   config show as outdated). The web UI always puts it on safe apply, because the admin on the VPN
   is cut off by it.
@@ -534,7 +534,7 @@ These are the rules most likely to get silently broken.
 - **Never retry an AdGuard Home 401 on a timer.** Five refusals block the daemon's address for
   15 minutes, and then the right password is refused too ("Verified facts"). A test remembers
   a refused account for 30 seconds, and the sync stops on a 401 until the connection changes, or
-  a test or Sync now shows the account works (`refusedLogin`). Anything new that calls AdGuard
+  a test or Sync Now shows the account works (`refusedLogin`). Anything new that calls AdGuard
   Home on its own must honor `refusedLogin.has` first.
 - **Name sync touches only what Drawbridge made.** An AdGuard Home client it has no record of is
   never edited or deleted, unless its name and addresses are exactly a client's (adopted without

@@ -45,7 +45,7 @@
 			</p>
 		</div>
 		<button class="btn" type="button" onclick={run} disabled={running}>
-			{running ? 'Checking…' : 'Run again'}
+			{running ? 'Checking…' : 'Run Again'}
 		</button>
 	</div>
 

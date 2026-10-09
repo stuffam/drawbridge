@@ -242,7 +242,7 @@ startup, after every change, every 30 s to detect drift, and from `drawbridge tu
 
 **Safe apply (commit-confirm; built 2026-10-04).** Some changes can cut off an admin who is
 connected through the VPN: listen port, subnets, the server's key, and firewall or NAT changes. The
-UI warns first. After it applies the change, the admin has 60 s to click "Keep changes". If they
+UI warns first. After it applies the change, the admin has 60 s to click "Keep Changes". If they
 don't (for example, because the change disconnected them), the previous settings are restored
 automatically.
 
@@ -274,8 +274,8 @@ automatically.
 - **Events:** `server.settings_changed` (with `waiting_to_be_kept` and the window),
   `server.settings_kept` and `server.settings_undone` (the admin's), and `server.settings_expired`
   (a system event: the daemon undid it because nobody kept it, with the reason).
-- **The web UI** shows the change on every page in a bar with a countdown, **Keep changes**, and
-  **Undo now**. It gets the change from the live feed (`pending_change` in the stream's status, and
+- **The web UI** shows the change on every page in a bar with a countdown, **Keep Changes**, and
+  **Undo Now**. It gets the change from the live feed (`pending_change` in the stream's status, and
   not in `ServerStatus`, which a read-only token can read), or by asking `GET /api/server/apply`
   every few seconds when the feed can't be had. The countdown starts from `expires_in`, the seconds
   left when the server sent it, so a browser whose clock is wrong still counts correctly.
@@ -555,7 +555,7 @@ safe apply (§4.3).
 key, so a new key pair cuts every client off until it imports the new config. It's the answer to
 a server key that may have leaked, and it's never worth doing for tidiness.
 
-- **How.** `POST /api/server/rotate-key`, the **Rotate the key…** button in Settings (which asks
+- **How.** `POST /api/server/rotate-key`, the **Rotate the Key…** button in Settings (which asks
   first), and `drawbridge server rotate-key [--safe] [--yes]`. The new private key is generated
   and saved by the same transaction path as any settings change (`Service.RotateServerKey`), then
   the reconciler sets it on the live interface. The peers aren't touched. The event is
@@ -660,7 +660,7 @@ AdGuard Home in particular gets an optional integration (below).
       Home's persistent clients, compares them with Drawbridge's, and makes up the difference
       (`internal/service/adguardsync.go`). It runs at startup, a second after a client is added,
       renamed, or deleted or the connection changes, and every five minutes, so an AdGuard Home that
-      was down, or a name the admin deleted there, catches up. *Sync now* runs a pass at once.
+      was down, or a name the admin deleted there, catches up. *Sync Now* runs a pass at once.
         - **Drawbridge changes only the clients it made**, which are the ones it has a record of
           (§7), and a client whose name and addresses are exactly a Drawbridge client's, which it
           adopts without a write (a restored database, say). It never edits or deletes any other
@@ -679,13 +679,13 @@ AdGuard Home in particular gets an optional integration (below).
           stays.
         - Paused clients are synced too, because they keep their addresses.
         - **A refused account (401) stops the sync**, and nothing is asked until the connection
-          changes, or Test connection or Sync now shows the account works (at most one try in 30
+          changes, or Test Connection or Sync Now shows the account works (at most one try in 30
           seconds), because five refusals block the daemon for 15 minutes. Any other failure retries
           after 30 seconds, doubling to 5 minutes. A first failure is one event
           (`integration.adguard_sync_failed`, a warning in the journal), and so is the recovery.
         - What it does to AdGuard Home is events: `integration.adguard_name_added`, `…_renamed`, and
           `…_removed`, and `…_name_failed` for a conflict. They're system events, attributed to the
-          admin when *Sync now* started the pass.
+          admin when *Sync Now* started the pass.
         - Its status (the last sync, the error, the conflicts) is kept in memory, and a sync that
           changes nothing writes nothing, because of the SD card (§6.4). The dashboard shows a
           warning from it (`adguard_warning` in `GET /api/server/status` and the stream) while it

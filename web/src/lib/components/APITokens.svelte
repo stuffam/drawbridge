@@ -96,7 +96,7 @@
 							made.secret
 						)}</pre>
 					<div>
-						<CopyButton text={homepageWidget(location.origin, made.secret)} label="Copy this" />
+						<CopyButton text={homepageWidget(location.origin, made.secret)} label="Copy This" />
 					</div>
 					<p class="text-xs">
 						Homepage has to trust this server's certificate and be allowed in:
@@ -110,7 +110,7 @@
 				</div>
 			</details>
 			<button class="btn self-start" type="button" onclick={() => (made = undefined)}>
-				I've copied it
+				I've Copied It
 			</button>
 		</div>
 	{/if}

@@ -482,13 +482,13 @@ test('settings change the server, and the logs show it', async ({ page }) => {
 	await page.getByLabel('MTU').fill('1380');
 	await page.getByLabel('Other servers').check();
 	await page.getByLabel('Addresses', { exact: true }).fill('1.1.1.1, 2606:4700:4700::1111');
-	await page.getByRole('button', { name: 'Save settings' }).click();
+	await page.getByRole('button', { name: 'Save Settings' }).click();
 	await expect(page.getByText(/Saved and applied/)).toBeVisible();
 	expect(cli('server', 'show')).toMatch(/MTU:\s+1380/);
 
 	// The form refuses an out-of-range MTU before it reaches the server (which checks too).
 	await page.getByLabel('MTU').fill('900');
-	await page.getByRole('button', { name: 'Save settings' }).click();
+	await page.getByRole('button', { name: 'Save Settings' }).click();
 	expect(await page.getByLabel('MTU').evaluate((el: HTMLInputElement) => el.validity.valid)).toBe(
 		false
 	);

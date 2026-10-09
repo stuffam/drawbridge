@@ -30,16 +30,16 @@ test('connect to AdGuard Home: test it, save it, change it, and remove it', asyn
 		await address.fill(adguard.url);
 		await username.fill('drawbridge');
 		await pass.fill('not the password');
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(result).toContainText('refused the account');
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(result).toContainText('a moment ago');
 		expect(adguard.refused()).toBe(1);
 
 		// The right one: what AdGuard Home said, its warnings, and what the VPN addresses answer.
 		await pass.fill(password);
 		await expect(result).toHaveCount(0); // a result goes when the values it ran on change
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(result).toContainText('Connected to AdGuard Home v0.107.79');
 		await expect(result).toContainText('DNS server running');
 		await expect(result).toContainText('Protection on');
@@ -51,7 +51,7 @@ test('connect to AdGuard Home: test it, save it, change it, and remove it', asyn
 		await expect(result.getByRole('listitem').last()).toContainText('no answer.');
 
 		// Save it. The password goes to the server and never comes back, to the page or the API.
-		await form.getByRole('button', { name: 'Save connection' }).click();
+		await form.getByRole('button', { name: 'Save Connection' }).click();
 		await expect(form.getByText('Saved.', { exact: true })).toBeVisible();
 		await page.reload();
 		await expect(address).toHaveValue(`${adguard.url}/control`);
@@ -71,7 +71,7 @@ test('connect to AdGuard Home: test it, save it, change it, and remove it', asyn
 		expect(JSON.stringify(saved)).not.toContain(password);
 
 		// The saved password is used to test the saved connection, with nothing retyped.
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(result).toContainText('Connected to AdGuard Home v0.107.79');
 		expect(adguard.accepted.at(-1)).toBe('GET /control/querylog/config');
 
@@ -80,14 +80,14 @@ test('connect to AdGuard Home: test it, save it, change it, and remove it', asyn
 		await expect(
 			form.getByText('Enter it again to use another address or username.')
 		).toBeVisible();
-		await form.getByRole('button', { name: 'Save connection' }).click();
+		await form.getByRole('button', { name: 'Save Connection' }).click();
 		await expect(form.getByRole('alert')).toContainText('enter the password again');
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(form.getByRole('alert')).toContainText('enter the password again');
 
 		// An address that can't be reached is a result of the test.
 		await pass.fill(password);
-		await form.getByRole('button', { name: 'Test connection' }).click();
+		await form.getByRole('button', { name: 'Test Connection' }).click();
 		await expect(result).toContainText("can't reach AdGuard Home");
 		await page.reload();
 
@@ -145,7 +145,7 @@ test('turning AdGuard Home on names the clients, and the names follow the client
 		expect(adguard.clients()).toEqual([expect.objectContaining({ name: 'Taken' })]);
 
 		// Saving turns it on and names the client. The other is the admin's, and is left alone.
-		await form.getByRole('button', { name: 'Save connection' }).click();
+		await form.getByRole('button', { name: 'Save Connection' }).click();
 		await expect(sync).toContainText(/\d+\s+clients?\s+(has|have)\s+their name in AdGuard Home/);
 		await expect(sync).toContainText("One client couldn't be named");
 		await expect(sync.getByRole('listitem')).toContainText('Taken');
@@ -155,9 +155,9 @@ test('turning AdGuard Home on names the clients, and the names follow the client
 		expect(probe?.use_global_settings).toBe(true); // or AdGuard Home wouldn't block ads for it
 		expect(adguard.clients().find((c) => c.name === 'Taken')?.ids).toEqual(['192.0.2.77']);
 
-		// The admin settles it in AdGuard Home, and Sync now names the client.
+		// The admin settles it in AdGuard Home, and Sync Now names the client.
 		adguard.removeClient('Taken');
-		await form.getByRole('button', { name: 'Sync now' }).click();
+		await form.getByRole('button', { name: 'Sync Now' }).click();
 		await expect(sync).not.toContainText("couldn't be named");
 		await expect(sync.getByRole('listitem')).toHaveCount(0);
 		expect(adguard.clients().map((c) => c.name)).toContain('Taken');
@@ -187,7 +187,7 @@ test('turning AdGuard Home on names the clients, and the names follow the client
 		// When the sync can't reach AdGuard Home, Settings says so, and so does the dashboard,
 		// which the admin looks at more often. It goes when AdGuard Home is back.
 		adguard.setDown(true);
-		await form.getByRole('button', { name: 'Sync now' }).click();
+		await form.getByRole('button', { name: 'Sync Now' }).click();
 		await expect(sync).toContainText("Couldn't sync: can't reach AdGuard Home");
 		await page.getByRole('link', { name: 'Drawbridge' }).click();
 		const warning = page.getByTestId('adguard-warning');
@@ -195,7 +195,7 @@ test('turning AdGuard Home on names the clients, and the names follow the client
 		await warning.getByRole('link', { name: 'See Settings' }).click();
 		await expect(page).toHaveURL(/\/settings$/);
 		adguard.setDown(false);
-		await form.getByRole('button', { name: 'Sync now' }).click();
+		await form.getByRole('button', { name: 'Sync Now' }).click();
 		await expect(sync).not.toContainText("Couldn't sync");
 		await page.getByRole('link', { name: 'Drawbridge' }).click();
 		await expect(warning).toHaveCount(0);

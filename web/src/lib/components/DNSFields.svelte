@@ -74,7 +74,7 @@
 		<div class="ml-6 flex flex-col gap-2" data-testid="dns-check">
 			<div class="flex items-center gap-2">
 				<button class="btn" type="button" onclick={runCheck} disabled={checking}>
-					{checking ? 'Checking…' : 'Check this server'}
+					{checking ? 'Checking…' : 'Check This Server'}
 				</button>
 			</div>
 			{#if checkError}

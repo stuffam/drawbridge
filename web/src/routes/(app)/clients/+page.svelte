@@ -151,7 +151,8 @@
 				</div>
 				<div class="w-36 text-xs text-neutral-600 dark:text-neutral-400">
 					{#if c.peer}
-						↓ {formatBytes(c.peer.receive_bytes)} · ↑ {formatBytes(c.peer.send_bytes)}
+						<span class="whitespace-nowrap">↓ {formatBytes(c.peer.receive_bytes)}</span> ·
+						<span class="whitespace-nowrap">↑ {formatBytes(c.peer.send_bytes)}</span>
 					{/if}
 				</div>
 				<button

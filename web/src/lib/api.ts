@@ -207,7 +207,7 @@ export interface AdGuardConnection {
  * How the name sync is doing. `off`: not turned on. `pending`: no pass has finished yet. `ok`: the
  * last pass finished, and may have conflicts. `error`: it failed, and another is coming. `stopped`:
  * AdGuard Home refused the account, so nothing is asked until the connection changes or a test
- * or Sync now shows it works.
+ * or Sync Now shows it works.
  */
 export interface AdGuardSync {
 	state: 'off' | 'pending' | 'ok' | 'error' | 'stopped';

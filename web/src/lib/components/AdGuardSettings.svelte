@@ -175,7 +175,7 @@
 				<span>
 					<span class="font-medium">Use AdGuard Home</span>
 					<span class="hint block">
-						Turn it on once Test connection works. The features that need AdGuard Home use this
+						Turn it on once Test Connection works. The features that need AdGuard Home use this
 						connection.
 					</span>
 				</span>
@@ -195,14 +195,14 @@
 
 		<div class="flex flex-wrap items-center gap-2">
 			<button class="btn btn-primary" type="submit" disabled={busy !== ''}>
-				{busy === 'save' ? 'Saving…' : 'Save connection'}
+				{busy === 'save' ? 'Saving…' : 'Save Connection'}
 			</button>
 			<button class="btn" type="button" onclick={runTest} disabled={busy !== ''}>
-				{busy === 'test' ? 'Testing…' : 'Test connection'}
+				{busy === 'test' ? 'Testing…' : 'Test Connection'}
 			</button>
 			{#if saved.enabled && saved.sync_names}
 				<button class="btn" type="button" onclick={syncNow} disabled={busy !== ''}>
-					{busy === 'sync' ? 'Syncing…' : 'Sync now'}
+					{busy === 'sync' ? 'Syncing…' : 'Sync Now'}
 				</button>
 			{/if}
 			{#if saved.configured}
@@ -237,7 +237,7 @@
 				{:else if sync.state === 'stopped'}
 					<p class="alert-error" role="alert">
 						{sync.error}. Drawbridge isn't asking again until the connection changes, or Test
-						connection or Sync now shows it works.
+						connection or Sync Now shows it works.
 					</p>
 				{/if}
 				{#if sync.conflicts.length > 0}
@@ -251,7 +251,7 @@
 								<li><span class="font-medium">{c.client}</span>: {c.reason}</li>
 							{/each}
 						</ul>
-						<p>Settle them in AdGuard Home, then press Sync now.</p>
+						<p>Settle them in AdGuard Home, then press Sync Now.</p>
 					</div>
 				{/if}
 			</div>

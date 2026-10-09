@@ -310,7 +310,8 @@
 		</div>
 		{#if clients.length > 0}
 			<p class="text-xs text-neutral-500 dark:text-neutral-400">
-				All Clients: ↓ {formatBytes(totalReceived)} · ↑ {formatBytes(totalSent)}
+				All Clients: <span class="whitespace-nowrap">↓ {formatBytes(totalReceived)}</span> ·
+				<span class="whitespace-nowrap">↑ {formatBytes(totalSent)}</span>
 			</p>
 		{/if}
 		{#if clients.length === 0}
@@ -341,9 +342,13 @@
 							class="col-span-full text-xs text-neutral-600 @min-[26rem]:col-3 @min-[26rem]:row-1 @min-[26rem]:text-right dark:text-neutral-400"
 						>
 							{#if c.peer?.session_started_at}
-								This session: ↓ {formatBytes(c.peer.session_receive_bytes ?? 0)} · ↑ {formatBytes(
-									c.peer.session_send_bytes ?? 0
-								)}
+								This session: <span class="whitespace-nowrap"
+									>↓ {formatBytes(c.peer.session_receive_bytes ?? 0)}</span
+								>
+								·
+								<span class="whitespace-nowrap"
+									>↑ {formatBytes(c.peer.session_send_bytes ?? 0)}</span
+								>
 							{:else}
 								Not connected
 							{/if}
@@ -352,7 +357,8 @@
 							<div
 								class="col-span-full text-xs text-neutral-500 @min-[26rem]:col-3 @min-[26rem]:row-2 @min-[26rem]:text-right"
 							>
-								Total: ↓ {formatBytes(c.peer.receive_bytes)} · ↑ {formatBytes(c.peer.send_bytes)}
+								Total: <span class="whitespace-nowrap">↓ {formatBytes(c.peer.receive_bytes)}</span>
+								· <span class="whitespace-nowrap">↑ {formatBytes(c.peer.send_bytes)}</span>
 							</div>
 						{/if}
 					</li>

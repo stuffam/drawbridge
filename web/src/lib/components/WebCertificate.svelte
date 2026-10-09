@@ -123,7 +123,7 @@
 		{#if cert.source === 'uploaded'}
 			<div>
 				<button class="btn" type="button" onclick={reset} disabled={resetting}>
-					{resetting ? 'Going back…' : 'Use the Self-Signed Certificate'}
+					{resetting ? 'Going Back…' : 'Use the Self-Signed Certificate'}
 				</button>
 				<p class="hint">Forgets the installed certificate and its key.</p>
 			</div>
@@ -136,7 +136,7 @@
 		class="flex max-w-xl flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800"
 		onsubmit={install}
 	>
-		<h3 class="text-sm font-semibold">Install your own</h3>
+		<h3 class="text-sm font-semibold">Install Your Own</h3>
 		<input type="hidden" autocomplete="username" value={username} />
 		<div>
 			<label class="label" for="cert-pem">Certificate</label>
