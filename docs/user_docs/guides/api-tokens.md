@@ -1,4 +1,6 @@
-# Read-only API tokens
+---
+title: API Tokens
+---
 
 A dashboard such as [Homepage](https://gethomepage.dev) can't log in to Drawbridge: it can send a
 header, but it can't fill in a form, keep a cookie, or send the `X-Drawbridge` header. An API

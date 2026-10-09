@@ -9,14 +9,14 @@ on:
   push:
     branches: [main]
     paths:
-      - docs/**
+      - docs/user_docs/**
       - zensical.toml
       - requirements-docs.txt
       - test/docs/**
       - .github/workflows/docs.yml
   pull_request:
     paths:
-      - docs/**
+      - docs/user_docs/**
       - zensical.toml
       - requirements-docs.txt
       - test/docs/**

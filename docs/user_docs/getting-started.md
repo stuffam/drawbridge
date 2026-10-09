@@ -1,4 +1,8 @@
-# Install Drawbridge
+---
+title: Getting Started
+hide:
+    - navigation
+---
 
 This takes you from a bare Debian-family host to a phone connected to your VPN. The steps:
 
@@ -140,7 +144,7 @@ instead.
 
 Your browser will warn about the certificate, because Drawbridge made it itself. Open the
 certificate's details, check that its SHA-256 fingerprint matches the one the install printed, and
-continue. You can [serve your own certificate](tls-certificate.md) later to get rid of the warning.
+continue. You can [serve your own certificate](guides/tls-certificate.md) later to get rid of the warning.
 
 The web UI answers only your home network and the VPN. A device on another subnet gets no answer,
 and so does the internet. To allow another subnet, see
@@ -163,7 +167,7 @@ Setup has three steps:
    own resolver and it isn't found, see
    [DNS for VPN clients](REQUIREMENTS.md#dns-for-vpn-clients-public-resolvers-unless-the-host-answers).
 
-Then turn on [two-factor authentication](two-factor.md) if you want a second factor at login.
+Then turn on [two-factor authentication](guides/two-factor.md) if you want a second factor at login.
 
 ## Check the host
 
@@ -224,50 +228,9 @@ If it doesn't connect:
   ([DNS for VPN clients](REQUIREMENTS.md#dns-for-vpn-clients-public-resolvers-unless-the-host-answers)).
 - The services' own logs: `journalctl -u drawbridge -u drawbridge-tunnel`.
 
-Make a [backup](backup-restore.md) once you've added the clients you want. It's the only way back
+Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only way back
 if the host's SD card or disk fails.
-
-## Upgrade
-
-Install the newer package the same way:
-
-```bash
-sudo apt install ./drawbridge_<new-version>_<arch>.deb
-```
-
-The web UI restarts, and the VPN stays up: the tunnel service isn't restarted, and a client that's
-connected stays connected. When the new version changes the database's layout, it saves a snapshot
-beside the database first. A service you turned off with `systemctl disable` stays off.
-
-Make a [backup](backup-restore.md) first if you want a copy that's safe off the host.
-
-**Downgrading isn't supported.** An older Drawbridge reads a database that a newer one has changed
-and never writes it, so if you install an older package anyway, the web UI won't start (the
-journal says why) and the VPN keeps running. Install the newer version again, or
-[restore a backup](backup-restore.md) made by the older one.
-
-## Remove
-
-```bash
-sudo apt remove drawbridge
-```
-
-stops both services, and deletes the `wg0` interface and the `inet drawbridge` firewall table. It
-keeps your data, so installing the package again brings back the same clients, settings, and
-certificate.
-
-```bash
-sudo apt purge drawbridge
-```
-
-also deletes `/var/lib/drawbridge` and `/etc/drawbridge`, the database, the certificate, and the
-key included. **This can't be undone,** and a backup is the only way back, so make one first. The
-`drawbridge` user stays, as Debian packages leave their users, so a later install owns its files
-the same way.
 
 ## What's next
 
-- [Requirements and known roadblocks](REQUIREMENTS.md) for the setups that need a workaround.
-- [Backup and restore](backup-restore.md), because the host's disk will fail eventually.
-- [Two-factor authentication](two-factor.md) and [your own TLS certificate](tls-certificate.md).
-- [Read-only API tokens](api-tokens.md), to put the status on a dashboard such as Homepage.
+- [Guides](guides/) for other settings and setups.

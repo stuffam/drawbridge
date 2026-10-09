@@ -1,4 +1,6 @@
-# Backup and restore
+---
+title: Backup & Restore
+---
 
 A backup is one file that brings your Drawbridge back on a host that has nothing: the
 clients (with their keys, so their configs keep working), the settings, the admin account, and
