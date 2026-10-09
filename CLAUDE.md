@@ -925,3 +925,19 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   - The maintainer scripts and `nfpm.yaml`.
 - `.github/workflows/ci.yml` is CI. Its golangci-lint version must match the Makefile's.
 - `README.md` is the short project description.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `stuffam/drawbridge`, through the `gh` CLI. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and
+`wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

@@ -414,6 +414,10 @@ test("the dashboard shows a connected client's endpoint under its name", async (
 	// The page takes its clients from the live feed when it has one. This test is about how a row
 	// looks, so the feed is refused and the page asks for them, which the line above answers.
 	await page.route('**/api/stream', (route) => route.abort());
+	// The dashboard's banner of checks that need attention arrives when its own request answers,
+	// which can be between two of the measurements below, and it pushes the row down. This host
+	// has nothing to report, so there is no banner to arrive.
+	await page.route('**/api/system/health', (route) => route.fulfill({ json: { checks: [] } }));
 	await login(page);
 
 	// The endpoint's address (without the port) is under the name, and the total is on that
