@@ -285,9 +285,11 @@ a step describes.
   list, and before an item that follows a paragraph or a fence of the item above. A page that
   breaks one still builds, with its bullets flattened or folded into a paragraph, so `make docs`
   compares every list with GitHub's reading (`test/docs/check_lists.py`) and CI fails on a
-  difference. Don't turn on a Markdown extension in `zensical.toml` before checking that no page
-  changes: several in Zensical's starter list reinterpret `$`, `~`, `^`, and `1/2`. New pages go in
-  the `nav` there.
+  difference. This is about syntax, not about how a page looks on GitHub: the pages in
+  `docs/user_docs/` start with front matter instead of a `# Title`, so GitHub shows them as a table
+  with no heading (ADR 0013, amended 2026-10-09). Don't turn on a Markdown extension in
+  `zensical.toml` before checking that no page changes: several in Zensical's starter list
+  reinterpret `$`, `~`, `^`, and `1/2`. New pages go in the `nav` there.
 
 ## Commands
 

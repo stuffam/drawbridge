@@ -72,3 +72,14 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   (v0.1.0, v0.2.0, a v0.1.1 patch, a push to `main` after a release, a pre-release, and a hostile
   tag) with the results as intended. Not yet observed: GitHub Pages serving the branch, and the
   first run of the workflow itself.
+- **Amended 2026-10-09: the user docs are written for the site.** The guides moved to
+  `docs/user_docs/`, and most pages there start with front matter (`title:`, and `hide:` on the
+  home and getting-started pages) instead of a `# Title`. The site shows the title, because the
+  theme adds one to a page that has none, but GitHub shows such a file as a table of those fields
+  with no heading, so the claim above that a page reads the same on GitHub and on the site no
+  longer holds for these pages. The maintainer accepted that, because the site is where they are
+  read. What stays is the rule about syntax: the Markdown is still GitHub-flavored, the extension
+  list in `zensical.toml` is still the short one that doesn't reinterpret it, and
+  `test/docs/check_lists.py` still compares every list with GitHub's reading, allowing for the
+  front matter and for the title the theme adds. Documents outside `docs/user_docs/`, such as
+  PLAN.md and the ADRs, are read on GitHub and keep their `# Title`.
