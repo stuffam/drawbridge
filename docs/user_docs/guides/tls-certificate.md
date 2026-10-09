@@ -1,4 +1,6 @@
-# The web UI's TLS certificate
+---
+title: TLS Certificate
+---
 
 The web UI is served over HTTPS. On first start the daemon makes a **self-signed** certificate
 for the host's names and addresses, so the connection is encrypted from the start, but a browser

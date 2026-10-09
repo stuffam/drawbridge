@@ -45,6 +45,8 @@ updates:
   # The docs site's build tools, pinned in requirements-docs.txt (ADR 0013).
   # Zensical is alpha, so a release can break a page: the Docs workflow builds the site strictly on
   # the pull request, and that is the check.
+  # The last line there, mike, is a git dependency pinned to a tag, which Dependabot may not propose
+  # a new tag for: update it by hand, and run `make docs`.
   - package-ecosystem: pip
     directory: /
     schedule:

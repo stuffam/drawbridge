@@ -3,45 +3,51 @@
 
 [project]
 site_name = "Drawbridge"
-site_description = "A self-hosted web manager for a WireGuard VPN server."
 site_url = "https://stuffam.github.io/drawbridge/"
-repo_url = "https://github.com/stuffam/drawbridge"
+site_description = "A self-hosted web manager for a WireGuard VPN server."
+
 repo_name = "stuffam/drawbridge"
-edit_uri = "edit/main/docs/"
-docs_dir = "docs"
-site_dir = "site"
+repo_url = "https://github.com/stuffam/drawbridge"
+edit_uri = "edit/main/docs/user_docs/"
+docs_dir = "docs/user_docs/"
+
+copyright = """
+<p>
+&copy 2026 stuffam<br/>
+<span>This project is licensed under Apache License 2.0.</span><br/>
+<span>"WireGuard" and the "WireGuard" logo are registered trademarks of Jason A. Donenfeld. Drawbridge isn't affiliated with or endorsed by the WireGuard project.</span>
+</p>
+"""
 
 nav = [
-  { "Home" = "index.md" },
+  "index.md",
+  "getting-started.md",
   { "Guides" = [
-    "install.md",
-    "REQUIREMENTS.md",
-    "backup-restore.md",
-    "two-factor.md",
-    "tls-certificate.md",
-    "api-tokens.md",
-  ] },
-  { "Project" = [
-    "PLAN.md",
-    "releasing.md",
-    { "Decisions" = [
-      "adr/README.md",
-      "adr/0001-go-backend.md",
-      "adr/0002-svelte-web-ui.md",
-      "adr/0003-sqlite-datastore.md",
-      "adr/0004-database-source-of-truth.md",
-      "adr/0005-netlink-not-wg-quick.md",
-      "adr/0006-nftables-own-table.md",
-      "adr/0007-unprivileged-cap-net-admin.md",
-      "adr/0008-separate-tunnel-and-ui-units.md",
-      "adr/0009-server-sent-events.md",
-      "adr/0010-deb-with-nfpm.md",
-      "adr/0011-admin-ui-lan-and-vpn-only.md",
-      "adr/0012-adguard-home-client-dns.md",
-      "adr/0013-docs-site-zensical.md",
+    { "Client" = [
+      "guides/client-configuration.md",
+      "guides/client-rotate-key.md",
     ] },
-    "MANUAL_CHECKLIST.md",
-  ] },
+    { "Server" = [
+      "guides/server-configuration.md",
+      "guides/addressing.md",
+      "guides/server-rotate-key.md",
+      "guides/dns-settings.md",
+      "guides/adguard-home.md",
+      "guides/pi-hole.md",
+    ] },
+    { "System" = [
+      "guides/diagnostics.md",
+      "guides/backup-restore.md",
+      "guides/tls-certificate.md",
+      "guides/upgrade.md",
+      "guides/remove.md"
+    ] },
+    { "Other Settings & Tools" = [
+      "guides/api-tokens.md",
+      "guides/two-factor.md",
+      "guides/cli-tools.md",
+    ] },
+  ] }
 ]
 
 [project.theme]
@@ -79,6 +85,11 @@ media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
+
+[project.extra.version]
+provider = "mike"
+# Show an alias beside its version in the selector, so a reader can see which one is "latest".
+alias = true
 
 # The docs are written as GitHub-flavored Markdown, so this is a short list. Zensical's starter
 # list also turns on arithmatex (`$...$` becomes math, and shell commands have dollar signs),

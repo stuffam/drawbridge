@@ -25,6 +25,7 @@ You do these once.
 | Immutable releases are on | **Settings → General → Releases** | A published release's files can't be replaced. |
 | `gh`, the GitHub command line, is installed and logged in, at version 2.49 or later | `gh --version`, `gh auth status` | A draft's files need your login, and it's the easiest way to publish. `gh attestation` (step 5) arrived in 2.49, and a `gh` from a distribution's packages is often older. If the Pi's is, install GitHub's own, or do that one check on a machine with a current `gh`. |
 | A host to try the files on | the reference platform (a Raspberry Pi 5 on Debian 13) | Step 5. The checklist in [MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) says what to look at. |
+| GitHub Pages serves the `gh-pages` branch | **Settings → Pages → Build and deployment**: source **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`. Then **Settings → Environments → github-pages → Deployment branches and tags**: allow `gh-pages` | The docs site is versioned with mike, which commits each version to that branch ([Docs versions](#docs-versions)). The branch doesn't exist until the **Docs** workflow first publishes `dev`, from a push to `main` that touches the docs or a manual run on `main`, so switch the source after that. The environment is the second step because the "GitHub Actions" source left it allowing only `main`, and GitHub's own deployment of a branch goes through that environment: with `gh-pages` not allowed, the deployment is refused and the site doesn't change. Not yet observed here. |
 
 ## Step 1: choose the version
 
@@ -155,6 +156,42 @@ same way and is marked as one.
   pick `v0.1.0` and not the candidate.
 - After the first release, change what still says there's no release: the install guide's "Get
   the package", and the status text in CLAUDE.md and PLAN.md.
+- After a final release, open https://stuffam.github.io/drawbridge/ and its version selector. The
+  selector should list the release's minor, and when this is the newest release, mark it `latest`
+  and send the root to it. If it doesn't, see [Docs versions](#docs-versions).
+
+## Docs versions
+
+The docs site keeps a version for each released minor, and `dev`. It needs nothing from you and
+nothing from the changelog:
+
+- **Publishing a final release** (step 6) starts the **Docs** workflow on the tag. It builds the
+  docs and publishes them as the release's minor, `v0.1` for `v0.1.0` and `v0.1.1` alike, and moves
+  `latest` to it when it's the newest release. The site's root goes to `latest`.
+- **Publishing a pre-release** publishes nothing.
+- **A push to `main` that touches the docs** publishes `dev`, and so does running the workflow by
+  hand on `main`. The root goes to `dev` only until the first release.
+- A patch for an older minor (`v0.1.5` after `v0.2.0`) refreshes `v0.1` and leaves `latest` on
+  `v0.2`.
+- It starts only when the release is published with your own login, the `gh` command or the button
+  in step 6. GitHub doesn't start a workflow for an event that a workflow's own token caused, and
+  nothing here publishes a release that way.
+
+`scripts/docs-version.sh` decides the version and whether `latest` moves, and ADR 0013 has the
+reasons.
+
+Deleting a release, or marking it a pre-release, doesn't take its docs down. To fix a mistake, work
+from a clone with the docs tools installed (`pip install -r requirements-docs.txt`, which needs
+Python 3.10 or later) and a login that can push to the repository, and use mike. Each command takes
+`--push` to publish. An alias is a redirect page here, so `mike alias` needs `--alias-type
+redirect`, or it makes a symlink.
+
+| What happened | Command |
+| --- | --- |
+| `latest` is on the wrong version | `mike alias --update-aliases --alias-type redirect --push v0.2 latest` |
+| The site's root goes somewhere else | `mike set-default --push latest` |
+| A version shouldn't be there | `mike delete --push v0.1` (move `latest` off it first, or the root has nowhere to go) |
+| You want to see what's published | `mike list` |
 
 ## If something goes wrong
 
@@ -169,7 +206,9 @@ A tag and a published release can't be changed, so a mistake is fixed by the nex
 | **CI** fails on the tag | If it's a flaky job, **Re-run failed jobs** on the run, which re-runs the same commit. If it's a real failure, fix `main` and release the next version |
 | **Build again** says the packages differ | Don't publish. A change made a build depend on the time or the machine: find it (docs/PLAN.md §11.1 lists the three that did), fix it, and release the next version |
 | **Draft the release** says GitHub renamed a file | Delete the draft (a draft can be deleted), and release the next version. GitHub rewrites a `~` in a file's name to a `.`, which is why a release's files are named for the version (`0.1.0-rc.2`), never the Debian version (`0.1.0~rc.2`): if the names changed in the build, that's where to look |
-| You published, and found a problem | Delete the release or mark it a pre-release, so "latest" goes back to the last good one, say why in a note, and release the next version |
+| You published, and found a problem | Delete the release or mark it a pre-release, so "latest" goes back to the last good one, say why in a note, and release the next version. Its docs stay up until you `mike delete` them ([Docs versions](#docs-versions)) |
+| The **Docs** workflow's **Publish** job failed | Read its log. A build or a push that failed leaves the `gh-pages` branch as it was. Use **Re-run failed jobs**: both of a release's steps are safe to repeat, so a failure between them (the version published, the root not moved) is mended by the re-run |
+| A release you published isn't on the docs site | Open **Actions → Docs** and look for a run for the release. There's none if the release was published by a workflow's token, or was a pre-release. A manual run publishes only `dev`, so for a release, check out its tag and run the commands of the **Publish the release's version** step in `.github/workflows/docs.yml` by hand, with `$TAG` and `$version` filled in |
 
 ## What isn't automated, and why
 

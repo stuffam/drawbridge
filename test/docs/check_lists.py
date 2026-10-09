@@ -9,10 +9,20 @@ folded into the paragraph above, so `zensical build --strict` can't see it.
 This reads each page's source the way GitHub (CommonMark) does, notes the depth of every list
 item, and compares that with the depth of every <li> in the built page. Standard library only.
 
+Two things in a page's source aren't what the site shows, and the check allows for both:
+
+- A leading YAML block (the front matter: `title:`, `hide:` and so on) is read by Zensical and not
+  shown, so a list in it (`hide:` then `- navigation`) isn't a list on the site.
+- The theme puts the page's title in an <h1> at the top of the article unless the page has an <h1>
+  of its own. A page that has no `# Heading` therefore has one more heading on the site than in its
+  source, and every section number after it is one higher.
+
     check_lists.py [--source-only] DOCS_DIR [SITE_DIR]
 
-Exit status 1 when any page differs (and 2 on a bad call). With --source-only, prints each page's
-depths (one number per item) and doesn't need a built site; that is how to see what a change did.
+DOCS_DIR is the directory Zensical builds (`docs_dir` in zensical.toml, docs/user_docs), not all of
+docs/, which also holds the specification and other files that are never built into the site. Exit
+status 1 when any page differs (and 2 on a bad call). With --source-only, prints each page's depths
+(one number per item) and doesn't need a built site; that is how to see what a change did.
 """
 
 import re
@@ -25,6 +35,33 @@ FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 
 
 HEADING = re.compile(r"^ {0,3}#{1,6}( |$)")
+TITLE = re.compile(r"^ {0,3}#( |$)")
+
+
+def strip_front_matter(text):
+    """The page's Markdown without its front matter: a `---` on the first line, up to the next
+    `---` (or `...`) line."""
+    lines = text.split("\n")
+    if lines[0].rstrip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].rstrip() in ("---", "..."):
+                return "\n".join(lines[i + 1 :])
+    return text
+
+
+def headings(text):
+    """The heading lines of some Markdown, in order, leaving out the ones in fenced code."""
+    fence = False
+    for line in text.split("\n"):
+        if FENCE.match(line):
+            fence = not fence
+        elif not fence and HEADING.match(line):
+            yield line
+
+
+def adds_title(text):
+    """Whether the theme puts the page's title above it: it does when the page has no <h1>."""
+    return not any(TITLE.match(line) for line in headings(text))
 
 
 def source_depths(text):
@@ -71,6 +108,16 @@ def source_depths(text):
             while stack and indent < stack[-1]:
                 stack.pop()
         blank_before = False
+    return depths
+
+
+def expected_depths(text):
+    """(section, depth) of each list item the site should show for a page's source, numbering
+    sections the way the built page does: its title heading, if the theme adds one, is the first."""
+    body = strip_front_matter(text)
+    depths = source_depths(body)
+    if adds_title(body):
+        depths = [(section + 1, depth) for section, depth in depths]
     return depths
 
 
@@ -121,16 +168,12 @@ def first_difference(want, got):
 
 
 def heading_text(text, section):
-    """The text of the section-th heading, for the message."""
-    n = 0
-    fence = False
-    for line in text.split("\n"):
-        if FENCE.match(line):
-            fence = not fence
-        elif not fence and HEADING.match(line):
-            n += 1
-            if n == section:
-                return line.lstrip("# ").strip()
+    """The text of the section-th heading of the built page, for the message."""
+    body = strip_front_matter(text)
+    names = ["(the page title)"] if adds_title(body) else []
+    names += [line.lstrip("# ").strip() for line in headings(body)]
+    if 1 <= section <= len(names):
+        return names[section - 1]
     return "(before the first heading)"
 
 
@@ -144,7 +187,7 @@ def main(argv):
     failed = 0
     for page in sorted(docs.rglob("*.md")):
         source = page.read_text(encoding="utf-8")
-        want = source_depths(source)
+        want = expected_depths(source)
         if source_only:
             print(page.relative_to(docs), "".join(f"{s}:{d} " for s, d in want))
             continue

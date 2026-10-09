@@ -1,4 +1,6 @@
-# Two-factor authentication
+---
+title: Two-Factor Authentication
+---
 
 With two-factor authentication on, logging in to the web UI takes the password and a six-digit code
 from an authenticator app on your phone. A password that leaks, or that someone watches you type,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests the scripts that decide and check a release (docs/PLAN.md §11.1): changelog-release.sh,
-# release-notes.sh, release-check.sh, and release-verify.sh. Each runs against a throwaway git repository and
+# release-notes.sh, release-check.sh, docs-version.sh, and release-verify.sh. Each runs against a throwaway git repository and
 # directory, so nothing here touches the checkout or the host. release-verify.sh needs dpkg-deb
 # (Debian and Ubuntu have it; a laptop usually doesn't), and its cases are skipped without it.
 # `make test-release` runs this.
@@ -10,6 +10,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 notes=$root/scripts/release-notes.sh
 release=$root/scripts/changelog-release.sh
 check=$root/scripts/release-check.sh
+docsver=$root/scripts/docs-version.sh
 verify=$root/scripts/release-verify.sh
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -331,6 +332,45 @@ git update-ref -d refs/remotes/origin/main
 expect "check: no origin/main in the clone" 1 "can't find origin/main" in_repo "$check" v1.2.0
 expect "check: MAIN_REF names another ref" 0 '^tag=v1.2.0$' env MAIN_REF=main bash -c "cd '$repo' && '$check' v1.2.0"
 unset CHANGELOG
+
+# ---- docs-version.sh ----
+
+drepo=$work/docs-repo
+mkdir "$drepo"
+dgit() { command git -C "$drepo" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
+dgit init -q -b main
+dgit commit -q --allow-empty -m "start"
+for t in v0.9.0 v1.2.0 v1.10.0 v1.0.0-rc.1 v2.0.0-rc.1; do dgit tag "$t"; done
+in_docs_repo() { (cd "$drepo" && "$@"); }
+
+# The docs version of a release is its minor, and plain mode never reads git.
+same "docs-version: v1.2.0 is v1.2" "v1.2" "$(env GIT_DIR=/nonexistent "$docsver" v1.2.0)"
+same "docs-version: v0.9.0 is v0.9" "v0.9" "$(env GIT_DIR=/nonexistent "$docsver" v0.9.0)"
+same "docs-version: v1.10.0 is v1.10" "v1.10" "$(env GIT_DIR=/nonexistent "$docsver" v1.10.0)"
+
+# Only a final vMAJOR.MINOR.PATCH publishes: a pre-release, a build suffix, a path, shell syntax, and
+# a newline never reach mike.
+for bad in v1.0.0-rc.1 v1.2.0-rc.1 1.2.0 v1.2 v1 v01.2.0 v1.2.0+build v1.2.0- vv1.2.0 v1.2.0/../x \
+	'v1.2.0;id' 'v1.2.0 ' '' $'v1.2.0\nx'; do
+	expect "docs-version: '$bad' isn't a release version" 1 "isn't a release version" "$docsver" "$bad"
+done
+expect "docs-version: no arguments" 1 "usage" "$docsver"
+expect "docs-version: three arguments" 1 "usage" "$docsver" --latest v1.2.0 extra
+"$docsver" >/dev/null 2>&1
+same "docs-version: no arguments exits 2" 2 "$?"
+"$docsver" --latest v1.2.0 extra >/dev/null 2>&1
+same "docs-version: three arguments exit 2" 2 "$?"
+
+# --latest: the highest final tag wins, by version and not by text, and a pre-release doesn't count.
+expect "docs-version: --latest v1.10.0 beats v1.2.0" 0 '^$' in_docs_repo "$docsver" --latest v1.10.0
+expect "docs-version: --latest v1.2.0 loses to v1.10.0" 1 '^$' in_docs_repo "$docsver" --latest v1.2.0
+expect "docs-version: --latest v0.9.0 loses" 1 '^$' in_docs_repo "$docsver" --latest v0.9.0
+expect "docs-version: --latest of a pre-release" 1 "isn't a release version" in_docs_repo "$docsver" --latest v2.0.0-rc.1
+expect "docs-version: --latest of shell syntax" 1 "isn't a release version" in_docs_repo "$docsver" --latest 'v1.2.0;id'
+expect "docs-version: --latest of a tag that isn't there" 1 "no tag v3.0.0" in_docs_repo "$docsver" --latest v3.0.0
+dgit tag v2.0.0
+expect "docs-version: --latest v2.0.0 once it exists" 0 '^$' in_docs_repo "$docsver" --latest v2.0.0
+expect "docs-version: --latest v1.10.0 loses to v2.0.0" 1 '^$' in_docs_repo "$docsver" --latest v1.10.0
 
 # ---- release-verify.sh ----
 
