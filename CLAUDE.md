@@ -122,6 +122,10 @@ setups.** What exists:
   `.github/workflows/docs.yml`, with a landing page (`docs/index.md`) and a nav of guides and
   project docs. `make docs` builds it strictly and checks that every list on every page has the
   depth GitHub gives it (`test/docs/check_lists.py`).
+  It is versioned with mike (2026-10-09, the amendment to that ADR). `docs.yml`'s `publish` job
+  commits to the `gh-pages` branch, which is the Pages source: `dev` when `main` changes, and a
+  version for each released minor, with `latest` on the newest, when a release is published.
+  `scripts/docs-version.sh` decides a release's version and whether `latest` moves.
   The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
   from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
   upgrading, and removing. Left in M5: router setup and troubleshooting, and cutting the first
@@ -827,8 +831,24 @@ empty `$2`. A script can't tell the first three apart by its arguments.
   `[project.markdown_extensions]`); `mkdocs.yml` also works but isn't used. The theme's `variant`
   is `modern` by default, and `classic` keeps Material's look. Zensical writes a `.cache/`
   directory that ignores itself.
-- Actions that publish it, at their current majors: `actions/configure-pages@v6`,
-  `actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`, and `actions/setup-python@v7`.
+- What publishes it: mike, Zensical's fork of it, run by `docs.yml`'s `publish` job, with
+  `actions/setup-python@v7` at its current major. The Pages artifact actions (`configure-pages`,
+  `upload-pages-artifact`, `deploy-pages`) aren't used any more: the Pages source is the `gh-pages`
+  branch.
+- **mike** (2026-10-09, run against a local bare remote with Zensical 0.0.67 and the fork's
+  `2.2.0+zensical-0.1.0`; GitHub Pages serving the branch hasn't been observed):
+    - It isn't on PyPI: `requirements-docs.txt` pins `git+https://github.com/squidfunk/mike.git`
+      to that tag, and both pip and uv accept the `+` in it.
+    - It reads `zensical.toml` before `mkdocs.yml`, so no `mkdocs.yml` is needed, and builds with
+      `zensical build --clean`, which isn't strict: `make docs` runs first in the workflow.
+    - Aliases are symlinks unless `--alias-type redirect`, which is what the workflow and the
+      release guide use, because whether Pages serves a symlink wasn't observed.
+    - `mike list ALIAS` exits 1 when the alias doesn't exist (the workflow's test for "no release
+      yet"). Publishing identical docs again warns "nothing changed in commit" and exits 0, so
+      `--allow-empty` isn't needed.
+    - The version selector shows an alias (`v0.1 latest`) only with `alias = true` under
+      `[project.extra.version]`, which `zensical.toml` sets. It reads `versions.json`, which lists
+      versions newest first.
 
 **The plan's example ruleset** (§5.3) passes `nft -c` and loads in a network namespace with
 nftables 1.0.9.

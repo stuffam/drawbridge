@@ -1,6 +1,6 @@
 # ADR 0013: A documentation site built with Zensical, on GitHub Pages
 
-- **Status:** Accepted (2026-10-04)
+- **Status:** Accepted (2026-10-04); amended 2026-10-09
 - **Plan reference:** docs/PLAN.md §3, D13
 
 ## Context
@@ -44,3 +44,31 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   URL, and the README, `CLAUDE.md`, and the code refer to the files by name.
 - The navigation is a list in `zensical.toml`. A page that isn't listed is built but not linked.
 - A change to `docs/` is published when it reaches `main`.
+- **Amended 2026-10-09: versioned docs.** A reader who installed v0.1 shouldn't be reading what
+  `main` says about a feature v0.1 doesn't have, so the site now keeps several versions, each in a
+  directory of its own, managed by mike (Zensical's fork, `2.2.0+zensical-0.1.0`). The decision
+  stands (Zensical, built from the repository, published to GitHub Pages by a workflow), but three
+  things above no longer hold:
+    - **The Pages source is the `gh-pages` branch, not "GitHub Actions".** mike keeps each
+      version's built site in that branch, so the workflow commits there and Pages serves it. The
+      objection above, that a branch source can't build anything, doesn't apply: nothing is built
+      by Pages. The strict build and the list check still run first and gate every publish
+      (`docs.yml`'s `build` job), and only its `publish` job can push, to that branch.
+    - **A change that reaches `main` is published as `dev`, not as the site.** Each final release
+      publishes its minor, `v0.1` for v0.1.0 and v0.1.1 alike, when the release is published (not
+      when its tag is pushed, which comes first, before its files are tried on hardware), and
+      moves the `latest` alias to it when it is the newest release. The site's root goes to
+      `latest`, or to `dev` until the first release. A pre-release publishes nothing, and a patch
+      for an older minor leaves `latest` where it is. `scripts/docs-version.sh` decides a
+      release's version and whether `latest` moves, and has tests; the workflow decides the rest.
+    - **A page's URL has a version in front of it** (`/latest/getting-started/`). A link to an old
+      address without one, such as `/getting-started/`, no longer lands anywhere; only the root
+      redirects.
+
+  The fork is transitional, kept by Zensical's authors until Zensical has versioning of its own, so
+  it is pinned to a tag in `requirements-docs.txt` and updated by hand. An alias is a small
+  redirect page, not a symlink, because whether GitHub Pages serves a symlink wasn't observed. The
+  publish commands were run against a local remote on 2026-10-09, through a release history
+  (v0.1.0, v0.2.0, a v0.1.1 patch, a push to `main` after a release, a pre-release, and a hostile
+  tag) with the results as intended. Not yet observed: GitHub Pages serving the branch, and the
+  first run of the workflow itself.
