@@ -140,11 +140,11 @@ older one (it answers `unknown command "attestation"`), run that one line on a m
 current `gh`, for the `.deb` and for `SHA256SUMS`. The Pi's `sha256sum -c` then shows that its copy
 is the file whose provenance you checked.
 
-Then, on the Pi, install the `.deb` the way [the install guide](install.md) says: fresh, and as an
-upgrade over the previous release with a client connected. `drawbridge version` should say the
-tag's version. The release's own check list is [MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) (§20 for
-what only a real tag shows, and the sections for whatever changed since the last release); record
-what you saw there.
+Then, on the Pi, install the `.deb` the way [the install guide](user_docs/getting-started.md) says:
+fresh, and as an upgrade over the previous release with a client connected. `drawbridge version`
+should say the tag's version. The release's own check list is
+[MANUAL_CHECKLIST.md](MANUAL_CHECKLIST.md) (§20 for what only a real tag shows, and the sections for
+whatever changed since the last release); record what you saw there.
 
 ## Step 6: publish
 
@@ -163,8 +163,10 @@ same way and is marked as one.
 - After the first release candidate, try the path users take: on a host without Drawbridge,
   `sh install.sh --version v0.1.0-rc.2`. After `v0.1.0`, the same without `--version` should
   pick `v0.1.0` and not the candidate.
-- After the first release, change what still says there's no release: the install guide's "Get
-  the package", and the status text in CLAUDE.md and PLAN.md.
+- After the first release, change what still says there's no release: the status text in
+  CLAUDE.md and PLAN.md. The Getting Started page already sends readers to the latest release's
+  package, so check that the
+  [latest release](https://github.com/stuffam/drawbridge/releases/latest) is `v0.1.0`.
 - After a final release, open https://stuffam.github.io/drawbridge/ and its version selector. The
   selector should list the release's minor, and when this has the highest version, mark it
   `latest` and send the root to it. If it doesn't, see [Docs versions](#docs-versions).

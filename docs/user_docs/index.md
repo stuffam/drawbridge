@@ -4,47 +4,39 @@ hide:
     - navigation
 ---
 
-# Drawbridge Documentation
+# Drawbridge
 
-Drawbridge is a self-hosted web manager for a WireGuard VPN server. It installs natively (no
-Docker) on Debian-family Linux with systemd, for arm64 and amd64, and it supports both IPv4 and
-IPv6. It's tested on a Raspberry Pi 5 running Debian 13.
+Drawbridge is a self-hosted web manager for a WireGuard VPN server. It gives you a VPN that runs
+at home, on a machine you own, so your phone and laptop can reach your home network, and use its
+internet connection, from anywhere. Nothing about it depends on a service run by someone else.
 
-You manage the tunnel and its clients from a web UI at `https://<host>:51821` that only your home
-network and the VPN can reach, from the command line (`sudo drawbridge client add phone --qr`), or
-through the same authenticated API.
+You manage it from a web page or from the command line on the host, and a dashboard such as
+Homepage can read its status through a read-only API token. There's one admin, and the web page
+is reachable only from your home network and the VPN, never from the internet.
 
-## What It Does
+## What it does
 
-- **Clients:** add, remove, rename, and pause them, hand out a config, a download, or a QR code,
-  and rotate a client's keys.
+- **Clients:** add, remove, rename, and pause the phones and laptops that connect. Hand out each
+  one's config as a QR code or a file, and give a client new keys when you need to.
 - **Connections and traffic:** see who is connected, their session history, and their traffic
   over time, with a log of every change.
-- **Server settings:** the endpoint, addresses, and MTU, with a safety net that undoes a change
-  that cuts you off unless you keep it.
+- **Server settings:** the address clients connect to, the VPN's own addresses, and the MTU. A
+  change that could cut you off is undone after a minute unless you keep it.
 - **DNS:** public resolvers by default, or a resolver on the host such as AdGuard Home, which can
   also have your clients' names kept in sync.
-- **Operations:** `drawbridge doctor` checks the host and network, encrypted backups, optional
-  two-factor authentication, and your own TLS certificate for the web UI.
+- **Care of the host:** a built-in check of the host and the network, encrypted backups,
+  optional two-factor authentication, and your own TLS certificate for the web page.
 
-The VPN doesn't depend on the web UI: the tunnel starts at boot from the database, and keeps
-running if the UI stops or is upgraded.
+## How it works
 
-## Before You Install
+Drawbridge installs natively on Debian-family Linux with systemd, as one package for arm64 or
+amd64, with no Docker. It supports both IPv4 and IPv6, and it's tested on a Raspberry Pi 5 running
+Debian 13.
 
-Read [Requirements and known roadblocks]. It lists what Drawbridge needs from
-the host and your network, and the setups where it needs a workaround, for example a host that
-configures IPv6 with ifupdown, or a router that won't forward UDP 51820. After you install, run
-`sudo drawbridge doctor` to check for most of them.
+The VPN doesn't depend on the web page. The tunnel starts at boot from the database, and it keeps
+running if the web page stops or is upgraded.
 
-Then follow [Getting Started](getting-started.md): get the package, install it, set it up in your
-browser, and connect a first client.
+## Where to start
 
-## Guides
-
-- [Backup and restore](guides/backup-restore.md): make an encrypted backup, keep it, and restore it onto
-  a fresh host.
-- [Two-factor authentication](guides/two-factor.md): ask for a code from an authenticator app at login.
-- [The web UI's TLS certificate](guides/tls-certificate.md): serve your own certificate instead of the
-  self-signed one.
-- [Read-only API tokens](guides/api-tokens.md): let a dashboard such as Homepage read the status.
+[Getting started](getting-started.md) takes you from a bare host to a phone connected to your VPN.
+The guides cover each feature after that.

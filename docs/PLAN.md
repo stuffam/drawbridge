@@ -89,7 +89,7 @@ and lets it in over IPv6. The kernel integration tests also run on Ubuntu 24.04 
 | D10 | Distribution | A **`.deb` built with nfpm** for arm64 and amd64, published as a GitHub Release when a version tag is pushed (§11.1) | Installs and upgrades natively with `apt`/`dpkg`. A release is built and tested from its tag, and stays a draft until the maintainer has installed its files on real hardware. |
 | D11 | Admin UI exposure | **Home network and VPN only** (decided), enforced both in the app and in nftables. The admin may add extra private-range sources, such as a Tailscale tailnet, as a setting (2026-09-26) | Anyone who controls the UI can reach the whole home network, so it must never face the internet. Two independent layers keep it off the internet even if one is misconfigured. |
 | D12 | Client DNS | **Public resolvers by default; a resolver on the host, such as AdGuard Home, when one answers on the VPN addresses** (decided; amended 2026-09-29); optional AdGuard Home integration syncs client names through its REST API (M4) | Ad-blocking and per-client DNS query logs for VPN clients, with no second resolver to run, on hosts that have one; a working default on hosts that don't. The setup wizard and Settings check the VPN addresses (`GET /api/server/dns-check`) and preselect the host only when it answers. |
-| D13 | Documentation site | **Zensical, built from `docs/` and published to GitHub Pages by a workflow** (decided 2026-10-04; versioned with mike, amended 2026-10-09) | Readers who aren't contributors get navigation, search, and a stable URL, and the Markdown stays GitHub-flavored (a user doc's title comes from its front matter, so GitHub shows it without a heading). Zensical is the successor to Material for MkDocs, which is in maintenance mode. It's alpha, so its version is pinned and the build is strict on every pull request. The site keeps `dev` and a version for each released minor in the `gh-pages` branch, which is now the Pages source; ADR 0013 has the trade-offs. |
+| D13 | Documentation site | **Zensical, built from `docs/user_docs/` and published to GitHub Pages by a workflow** (decided 2026-10-04; versioned with mike, amended 2026-10-09) | Readers who aren't contributors get navigation, search, and a stable URL, and the Markdown stays GitHub-flavored (a user doc's title comes from its front matter, so GitHub shows it without a heading). Zensical is the successor to Material for MkDocs, which is in maintenance mode. It's alpha, so its version is pinned and the build is strict on every pull request. The site keeps `dev` and a version for each released minor in the `gh-pages` branch, which is now the Pages source; ADR 0013 has the trade-offs. |
 
 ---
 
@@ -932,8 +932,8 @@ stateDiagram-v2
       closes its stream, so it does idle out.
     - The API lists active sessions and can revoke them. Changing the password ends every other
       session.
-- **TOTP 2FA** with recovery codes (M5, built 2026-10-04; docs/two-factor.md). It's optional, and
-  there's one account:
+- **TOTP 2FA** with recovery codes (M5, built 2026-10-04; docs/user_docs/guides/two-factor.md). It's
+  optional, and there's one account:
     - **The code** is RFC 6238: HMAC-SHA1, six digits, a 30-second step, which every authenticator
       app supports, and nothing more is offered. The secret is 160 random bits, sealed like the
       other secrets (`totp_secret_enc`, with a purpose that names the account). A code is accepted
@@ -1008,7 +1008,7 @@ stateDiagram-v2
     - An optional stricter mode allows VPN access only.
 - **One admin account** in v1.0 (decided). Multiple admins are optional (M6).
 - **Read-only API tokens (built ahead of M6)**, for a dashboard such as Homepage that can send a
-  header but can't log in (docs/api-tokens.md):
+  header but can't log in (docs/user_docs/guides/api-tokens.md):
     - A token is `dbt_` and 256 random bits. It's shown once, when it's made, and only its SHA-256
       hash is stored, as for a session. The first 8 characters are kept to tell tokens apart.
     - **It reads a short, fixed list of GET routes and nothing else**: the status, the clients, and
@@ -1194,13 +1194,13 @@ stateDiagram-v2
       self-signed key beside it. It is never in a view, an event, a log line, or an API response,
       and **it is not in a backup** (like the self-signed pair), so the admin keeps their own copy
       and installs it again after a restore.
-    - **Nothing renews it, and nothing replaces it unasked.** An installed certificate stays in
-      use after it expires: swapping in the self-signed one without being told would hide the
-      problem, and an expired certificate is the admin's to renew. The doctor's TLS check warns 30
-      days ahead and fails at expiry, with the command to install a renewed one (an ACME client's
-      deploy hook can run it; docs/tls-certificate.md). A file that can't be loaded at startup (it
-      was damaged, say) is logged and left alone while the self-signed certificate serves, so the
-      web UI stays reachable; `drawbridge tls reset` clears it.
+    - **Nothing renews it, and nothing replaces it unasked.** An installed certificate stays in use
+      after it expires: swapping in the self-signed one without being told would hide the problem,
+      and an expired certificate is the admin's to renew. The doctor's TLS check warns 30 days ahead
+      and fails at expiry, with the command to install a renewed one (an ACME client's deploy hook
+      can run it; docs/user_docs/guides/tls-certificate.md). A file that can't be loaded at startup
+      (it was damaged, say) is logged and left alone while the self-signed certificate serves, so
+      the web UI stays reachable; `drawbridge tls reset` clears it.
     - Events: `tls.certificate_installed` and `tls.certificate_reset` carry the old and new
       fingerprints (and the names and expiry, for an install), never a key.
 - **Retention settings, about/version, and an optional update check.**
@@ -1475,8 +1475,8 @@ home LAN. The UI is therefore treated as a high-value target:
 ### 11.1 Releases: tag, build, publish, install
 
 *Built (2026-10-05): `release.yml`, `scripts/install.sh`, and the scripts and tests behind them. No
-release has used them yet, so docs/install.md's "Get the package" section still has admins build
-the package or take CI's, and it changes when the first release is published.*
+release other than v0.1.0-rc.2, a pre-release published 2026-10-08, has used them, and
+docs/user_docs/getting-started.md sends admins to a release's package.*
 
 The goal is that someone with a Debian-family host installs a tested, checksummed `.deb` from
 GitHub, by hand or with one script, and upgrades the same way. Nothing here changes what the
@@ -1683,12 +1683,12 @@ drawbridge/                repository root
 ├── zensical.toml          the docs site's configuration (nav, theme, extensions)
 ├── requirements-docs.txt  the docs site's pinned build tools
 ├── docs/
-│   ├── index.md           the site's home page
+│   ├── user_docs/         the site, for the end user: index.md, getting-started.md, guides/
 │   ├── PLAN.md            this document
 │   ├── adr/               architecture decision records (D1–D13)
 │   ├── MANUAL_CHECKLIST.md  what has actually run on real hardware
 │   ├── REQUIREMENTS.md    what the host and network need, and known roadblocks
-│   ├── install.md, releasing.md, router-setup.md, troubleshooting.md
+│   ├── releasing.md       the maintainer's guide to cutting a release
 ├── Makefile               every build, lint, test, and package command
 └── .github/workflows/     ci.yml, docs.yml, prepare-release.yml, release.yml
 ```
@@ -1785,28 +1785,28 @@ Each milestone ends in a usable, tested state.
   backups, rotating the server's key (§6.2), uploading a certificate (§6.6), and TOTP 2FA with
   recovery codes (§6.5).*
 - The diagnostics page and `drawbridge doctor`, the upgrade and migration test matrix, and the docs
-  (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting),
-  growing out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the
-  dashboard's warnings are built (§6.6).* Of the backups, `backup
-  create|restore`, the local snapshots (nightly, and before a migration), and the System page's
-  download and snapshot list are built. *The upgrade matrix is built (§12): the data half in
-  `go test`, and the tunnel half, with a real older build and a connected client, in
-  `make test-upgrade`. The package scripts keep an admin's `systemctl disable` across upgrades
-  (§11), with their own test (§12). The install guide is written (`docs/install.md`); router setup
-  and troubleshooting aren't.*
+  (install, router setup for IPv4 and IPv6, dynamic DNS and DNS records, troubleshooting), growing
+  out of `docs/REQUIREMENTS.md`. *`drawbridge doctor`, the diagnostics page, and the dashboard's
+  warnings are built (§6.6).* Of the backups, `backup create|restore`, the local snapshots (nightly,
+  and before a migration), and the System page's download and snapshot list are built. *The upgrade
+  matrix is built (§12): the data half in `go test`, and the tunnel half, with a real older build
+  and a connected client, in `make test-upgrade`. The package scripts keep an admin's `systemctl
+  disable` across upgrades (§11), with their own test (§12). The install guide is written
+  (`docs/user_docs/getting-started.md`); router setup and troubleshooting aren't.*
 - Releases (§11.1): a version tag builds both packages twice, and drafts a GitHub release with
   checksums, SBOMs, build provenance, and notes from `CHANGELOG.md`, and `install.sh` installs the
-  latest one. *Built (2026-10-05), with its tests. The first release, v0.1.0, isn't cut yet, so
-  docs/install.md still has admins build the package or take CI's.*
+  latest one. *Built (2026-10-05), with its tests. The first release, v0.1.0, isn't cut yet
+  (v0.1.0-rc.2 is the candidate), and docs/user_docs/getting-started.md sends admins to a release's
+  package.*
 - **Exit:**
     - The security checklist passes.
     - Upgrading from v0.x keeps all data and keeps the tunnel up *(done in CI from every build there
       is, and by hand on the reference platform with a package upgrade, docs/MANUAL_CHECKLIST.md §2
       and §18)*.
     - Restoring onto a fresh host works.
-    - A release's `.deb`, from GitHub, installs on a fresh host the way docs/install.md says, and
-      upgrades over the previous release (by hand, on the draft's own files, before it's
-      published).
+    - A release's `.deb`, from GitHub, installs on a fresh host the way
+      docs/user_docs/getting-started.md says, and upgrades over the previous release (by hand, on
+      the draft's own files, before it's published).
 
 ### M6: Extras (pick as needed)
 
@@ -1876,7 +1876,7 @@ Each milestone ends in a usable, tested state.
 | Admins | One admin account (default) | Multiple admins stay optional (M6) |
 | Safe apply | A settings change that could cut the admin off (the listen port, removing an admin source, rotating the server's key) is applied on probation: undone after 60 s unless kept. Always from the web UI; from the CLI only with `--safe` | The browser asking may be on the connection the change breaks, and the only proof the admin can still get in is that they click. Held in the database so a reboot undoes it too, one at a time so an undo can't lose another change (§4.3, 2026-10-04) |
 | TLS certificate | The admin may install their own certificate (web and CLI), served at once without a restart; it stays in use after it expires, and is never replaced unasked | A browser warning about a self-signed certificate trains people to click through, and the UI is reachable only from the LAN and the VPN, so a public CA can issue for it only by DNS-01. The web install asks for the password again because a hijacked session could otherwise present a certificate whose key it holds. The private key sits in `tls/` beside the self-signed one, because the TLS stack needs it at startup (2026-10-04) |
-| Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/two-factor.md, 2026-10-04) |
+| Two-factor authentication | Optional TOTP (RFC 6238, SHA-1, six digits, 30 s) with ten single-use recovery codes. Turning it on or off and making new codes take the password again and, except the first, a code. Logging in is two steps of one endpoint. A code is good once. Failures of either factor share one limit, and a right password forgives nothing until the code has passed too. API tokens aren't asked. `drawbridge admin disable-2fa` is the way back | Every other credential in the design assumes the password is the only barrier, and a leaked or watched password gets a stranger onto a console that can add a VPN client. The first-code step keeps a typo from locking the admin out. Replay protection and the shared limit close the two ways a six-digit code is weak: it can be reused inside its window, and it can be guessed. Not adding a library: HOTP is thirty lines over `crypto/hmac`, and the RFC's test vectors are in its tests (§6.5, docs/user_docs/guides/two-factor.md, 2026-10-04) |
 | Backups | One file with the database and the secret key, encrypted with a required passphrase; restore is a root CLI command with the daemon stopped, never in the web UI | The key is on the same SD card as the database, so a backup without it couldn't restore after the card fails, and a file that holds both must be encrypted. A web restore would let a hijacked session replace the whole database (§6.6, 2026-10-03). The web download (2026-10-04) asks for the account's password again and the passphrase twice |
 | Downgrades | A database from a newer Drawbridge is never changed by an older one. The daemon, which writes, refuses to start on it, says which schema it found, and exits with status 78, which `drawbridge.service` doesn't restart on. `drawbridge-tunnel.service`, which only reads, warns and brings the VPN up. A restore refuses a newer backup | The VPN matters more than the web UI, so a downgrade (or a rollback after a bad release) mustn't take it down. An older build that writes to a schema it doesn't know could damage rows the newer one relies on, so only the reader goes on. That the tunnel only reads is structural: the reconciler's state has `Settings` and `Clients` and nothing else (§11, 2026-10-04) |
 | Releases | A `vX.Y.Z` tag on `main` starts `release.yml`, which runs CI's jobs on the tag, builds both `.deb`s twice (the two builds must match byte for byte), and drafts a GitHub release with `SHA256SUMS`, SBOMs, `install.sh`, build provenance (GitHub artifact attestations), and notes from `CHANGELOG.md`. The maintainer installs the draft's own files on real hardware, then publishes. `install.sh` checks the checksum and never downgrades, and the by-hand download is the documented default. Tags and published files are never changed. The first release is **v0.1.0** (an ordinary release, not a pre-release), after a release candidate has tried `install.sh` and the file names on GitHub (**v0.1.0-rc.1** found that GitHub renames a `~` in a file's name, so **v0.1.0-rc.2** is the one tried) | A package can't be taken back from a host once a migration has run, because an older build won't write the newer database (Downgrades, above), so what ships has to be tried first, as the files users will get. A script piped into a shell is a convenience, not something the guide should open with. Fixing forward means no tag or file ever changes under someone who already installed it. Provenance gives a checksum something to stand on, costs one workflow step, and has no key to keep. v0.1.0 because the plan has called the web UI's release v0.1 since M3, M5's exit assumes v0.x releases, a real tag is what lets the upgrade matrix list releases instead of merges, and "latest", which `install.sh` reads, skips pre-releases (§11.1, decided 2026-10-05) |

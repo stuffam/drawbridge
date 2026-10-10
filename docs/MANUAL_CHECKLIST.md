@@ -34,8 +34,8 @@ These are the preparation steps from docs/PLAN.md §14, M0.
 
 ## 1. Installing a build
 
-[The install guide](install.md) is the admin's version of these steps; this is the record of what
-ran on real hardware.
+[The install guide](user_docs/getting-started.md) is the admin's version of these steps; this is the
+record of what ran on real hardware.
 
 Get the package from CI: open the latest run of the **CI** workflow for the branch, download the
 `drawbridge-deb` artifact, unzip it, and copy `drawbridge_<version>_<arch>.deb` to the host. The
@@ -599,9 +599,9 @@ nothing here is `[VERIFIED]` yet.
 ## 11. Read-only API tokens (built ahead of M6)
 
 A token lets a dashboard such as Homepage read the status without logging in (docs/PLAN.md §6.5,
-docs/api-tokens.md). In a container, a Node process (as Homepage is) with the daemon's
-certificate trusted through `NODE_EXTRA_CA_CERTS` read the status with a token, and was refused
-(`ERR_TLS_CERT_ALTNAME_INVALID`) for a name the certificate doesn't have. That isn't real
+docs/user_docs/guides/api-tokens.md). In a container, a Node process (as Homepage is) with the
+daemon's certificate trusted through `NODE_EXTRA_CA_CERTS` read the status with a token, and was
+refused (`ERR_TLS_CERT_ALTNAME_INVALID`) for a name the certificate doesn't have. That isn't real
 hardware. Every step below has since passed on the reference platform, with a real Homepage.
 
 - `[VERIFIED 2026-10-03]` The Account page's **API Tokens** section makes a token (after the
@@ -610,22 +610,24 @@ hardware. Every step below has since passed on the reference platform, with a re
 - `[VERIFIED 2026-10-03]` From a laptop on the home network, `curl -k -H 'Authorization: Bearer
   dbt_…' https://<host>:51821/api/server/status` answers with the tunnel's numbers, and the same
   token gets `403` from `/api/clients/<id>/config` and from `/api/events`.
-- `[VERIFIED 2026-10-03]` A real Homepage shows the numbers, set up from docs/api-tokens.md with
-  no trouble. If it runs in Docker on the Pi, it needs the Docker network added with `sudo
-  drawbridge server set --admin-allow …` and the certificate trusted as that document says; each
-  of those two has its own message when it's missing. This Homepage reached Drawbridge by a name
-  whose certificate it already trusted (a reverse proxy's, from a public CA), so the certificate
-  steps weren't needed, and the document's advice for the certificate problems is still observed
-  only in a container. Whether the Docker network step was needed wasn't noted.
+- `[VERIFIED 2026-10-03]` A real Homepage shows the numbers, set up from
+  docs/user_docs/guides/homepage.md with no trouble. If it runs in Docker on the Pi, it needs the
+  Docker network added with `sudo drawbridge server set --admin-allow …` and the certificate trusted
+  as that document says; each of those two has its own message when it's missing. This Homepage
+  reached Drawbridge by a name whose certificate it already trusted (a reverse proxy's, from a
+  public CA), so the certificate steps weren't needed, and the document's advice for the certificate
+  problems is still observed only in a container. Whether the Docker network step was needed wasn't
+  noted.
 - `[VERIFIED 2026-10-03]` The token's "last used" updates, to the hour, while the widget polls.
   Revoking it makes the widget show an error within its next refresh, and nothing else on the Pi
   notices.
 - `[VERIFIED 2026-10-03]` `sudo drawbridge admin reset-password` revokes every token (the Account
   page shows none afterward), and the log lists "Revoked every API token (password reset)".
-- `[VERIFIED 2026-10-04]` A real Homepage shows the traffic totals (docs/api-tokens.md, "Traffic
-  totals"), with the same token that reads the status, and they work well. The run didn't note the
-  status numbers falling when a client is paused (a paused client has left the tunnel; the tests
-  pin that), so that part is still tested and not observed on hardware.
+- `[VERIFIED 2026-10-04]` A real Homepage shows the traffic totals
+  (docs/user_docs/guides/homepage.md, "Traffic totals"), with the same token that reads the
+  status, and they work well. The run didn't note the status numbers falling when a client is paused
+  (a paused client has left the tunnel; the tests pin that), so that part is still tested and not
+  observed on hardware.
 - `[VERIFIED 2026-10-05]` The gate holds across the whole route table, with a token made for the
   purpose and revoked afterward. On the installed daemon, the 8 routes a token may use (the status,
   the client list and one client, a client's traffic and sessions, and the three traffic totals)
@@ -640,11 +642,11 @@ hardware. Every step below has since passed on the reference platform, with a re
 
 ## 12. Backup and restore (the second M5 slice)
 
-`drawbridge backup create` makes one encrypted file with the database and the secret key, and
-`sudo drawbridge backup restore FILE` puts it back (docs/PLAN.md §6.6, docs/backup-restore.md). The
-tests run both against a real SQLite database, a real key, and the real command line. The hardware
-pass of 2026-10-05 and 2026-10-06 ran most of it on the reference platform, and each item says what
-was seen.
+`drawbridge backup create` makes one encrypted file with the database and the secret key, and `sudo
+drawbridge backup restore FILE` puts it back (docs/PLAN.md §6.6,
+docs/user_docs/guides/backup-restore.md). The tests run both against a real SQLite database, a real
+key, and the real command line. The hardware pass of 2026-10-05 and 2026-10-06 ran most of it on the
+reference platform, and each item says what was seen.
 
 - `[VERIFIED 2026-10-05]` `sudo drawbridge backup create` against the installed daemon asks for the
   passphrase twice with nothing echoed, and writes a file that only root can read. The daemon
@@ -1154,13 +1156,13 @@ daemon with the fake backend.
 
 `drawbridge tls install|show|reset`, the **Web UI Certificate** card on the System page, and
 `GET|PUT|DELETE /api/system/certificate` serve a certificate the admin brings instead of the
-self-signed one (docs/PLAN.md §6.6, docs/tls-certificate.md). Nothing here has run on the
-reference platform, so nothing is `[VERIFIED]` yet. What has run, away from it: the browser tests
-install a certificate made by openssl through the page and through the CLI against the real daemon
-(the fake backend), then open a raw TLS connection to the daemon and read the certificate it
-presents, which was the new one at once and the self-signed one again after a reset. The Go tests
-do the same through a TLS listener built from the store's configuration. No real certificate
-authority, no real browser trust store, and no ACME client has been involved.
+self-signed one (docs/PLAN.md §6.6, docs/user_docs/guides/tls-certificate.md). Nothing here has run
+on the reference platform, so nothing is `[VERIFIED]` yet. What has run, away from it: the browser
+tests install a certificate made by openssl through the page and through the CLI against the real
+daemon (the fake backend), then open a raw TLS connection to the daemon and read the certificate it
+presents, which was the new one at once and the self-signed one again after a reset. The Go tests do
+the same through a TLS listener built from the store's configuration. No real certificate authority,
+no real browser trust store, and no ACME client has been involved.
 
 - `[UNVERIFIED]` With a certificate from a CA your browser trusts (Let's Encrypt by the DNS-01
   challenge, say), for a name that resolves to the host on your network: `sudo drawbridge tls
@@ -1206,14 +1208,15 @@ authority, no real browser trust store, and no ACME client has been involved.
 ## 17. Two-factor authentication (the seventh M5 slice)
 
 TOTP two-factor authentication, the Account page's **Two-Factor Authentication** section, the
-login's second step, and `drawbridge admin disable-2fa` (docs/PLAN.md §6.5, docs/two-factor.md).
-Nothing here has run on the reference platform, so nothing is `[VERIFIED]` yet. What has run, away
-from it: the Go tests check the codes against the RFC 4226 and RFC 6238 test vectors, and the
-security rules (a code is good once, a right password forgives no failures, a wrong code is limited
-like a wrong password) with a mutation check of each; the browser tests turn it on, log in with
-codes and recovery codes, make new codes, turn it off, and use `admin disable-2fa` against the
-real daemon (the fake backend), with a code generator written separately from the server's. No
-real authenticator app has scanned the QR code, and no phone's clock has been involved.
+login's second step, and `drawbridge admin disable-2fa` (docs/PLAN.md §6.5,
+docs/user_docs/guides/two-factor.md). Nothing here has run on the reference platform, so nothing is
+`[VERIFIED]` yet. What has run, away from it: the Go tests check the codes against the RFC 4226 and
+RFC 6238 test vectors, and the security rules (a code is good once, a right password forgives no
+failures, a wrong code is limited like a wrong password) with a mutation check of each; the browser
+tests turn it on, log in with codes and recovery codes, make new codes, turn it off, and use `admin
+disable-2fa` against the real daemon (the fake backend), with a code generator written separately
+from the server's. No real authenticator app has scanned the QR code, and no phone's clock has been
+involved.
 
 - `[UNVERIFIED]` With a real authenticator app on a phone (try two of Aegis, Google Authenticator,
   1Password, and Bitwarden), scanning the QR code adds an entry for Drawbridge with the account `admin`, and
@@ -1236,15 +1239,16 @@ real authenticator app has scanned the QR code, and no phone's clock has been in
   doesn't turn it off.
 - `[UNVERIFIED]` Five wrong codes with the right password make the sixth attempt wait, even with
   the right code, and the wait doubles. `sudo drawbridge admin disable-2fa` lifts it.
-- `[UNVERIFIED]` A backup made with 2FA on, restored onto a fresh host (docs/backup-restore.md),
-  keeps it on: the same app's codes log in, and an unused recovery code works.
+- `[UNVERIFIED]` A backup made with 2FA on, restored onto a fresh host
+  (docs/user_docs/guides/backup-restore.md), keeps it on: the same app's codes log in, and an unused
+  recovery code works.
 - `[UNVERIFIED]` Upgrading from the previous `.deb` keeps the account and its password, with 2FA
   off; the journal says `upgraded the database` and `backups/` has the snapshot from before
   the migration. The maintainer's own upgrade on 2026-10-04 (not watched) is in the journal
   (`from_schema=10 to_schema=11`, the snapshot `pre-migration-v10-20261004-223428.db`, still in
   `backups/`); the one account is still there, was logged in to with its password the next day,
   and has 2FA off.
-- `[VERIFIED 2026-10-05]` A read-only API token (docs/api-tokens.md) still reads
+- `[VERIFIED 2026-10-05]` A read-only API token (docs/user_docs/guides/api-tokens.md) still reads
   `/api/server/status` with 2FA on, and gets 403 from all four `/api/auth/totp/*` routes. On the
   installed daemon (2FA off) a token got 403 from all four, with an empty body. On a scratch daemon
   with 2FA turned on through its API (a code made from the enrolled secret by a separate script

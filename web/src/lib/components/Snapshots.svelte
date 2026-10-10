@@ -74,7 +74,7 @@
 				<span class="mono whitespace-nowrap">sudo drawbridge backup restore</span> with its path:
 				<a
 					class="font-medium underline"
-					href="https://github.com/stuffam/drawbridge/blob/main/docs/backup-restore.md#snapshots-on-the-host"
+					href="https://stuffam.github.io/drawbridge/latest/guides/snapshots/"
 					target="_blank"
 					rel="noopener external">how</a
 				>.

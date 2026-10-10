@@ -1,5 +1,5 @@
-# The documentation site: Zensical reads docs/ and writes site/, and .github/workflows/docs.yml
-# publishes it to https://stuffam.github.io/drawbridge/. `make docs-serve` previews it.
+# The documentation site: Zensical reads docs/user_docs/ and writes site/, and
+# .github/workflows/docs.yml publishes it to https://stuffam.github.io/drawbridge/. `make docs-serve` previews it.
 
 [project]
 site_name = "Drawbridge"
@@ -38,12 +38,14 @@ nav = [
     { "System" = [
       "guides/diagnostics.md",
       "guides/backup-restore.md",
+      "guides/snapshots.md",
       "guides/tls-certificate.md",
       "guides/upgrade.md",
       "guides/remove.md"
     ] },
     { "Other Settings & Tools" = [
       "guides/api-tokens.md",
+      "guides/homepage.md",
       "guides/two-factor.md",
       "guides/cli-tools.md",
     ] },

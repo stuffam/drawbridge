@@ -2119,7 +2119,7 @@
     "/api/system/backup": {
       "post": {
         "summary": "Download a backup",
-        "description": "Makes an encrypted backup of the database and the secret key, and sends it as an attachment named `drawbridge-<time>.backup`. The file holds every secret the server has, so it takes the account's password again even in a logged-in session (wrong attempts count against the login limits, 429), and the passphrase that encrypts it: at least 12 characters, and the only thing that protects the file. Neither is kept or logged. The whole file is made before any of it is sent, so a failure is an error response and never a download that stops partway. Recorded as a `backup.created` event with the account's name. Restoring one isn't in the API: it replaces the database, including the password, so only `drawbridge backup restore`, run as root with the daemon stopped, does it (docs/backup-restore.md). Not available to an API token.",
+        "description": "Makes an encrypted backup of the database and the secret key, and sends it as an attachment named `drawbridge-<time>.backup`. The file holds every secret the server has, so it takes the account's password again even in a logged-in session (wrong attempts count against the login limits, 429), and the passphrase that encrypts it: at least 12 characters, and the only thing that protects the file. Neither is kept or logged. The whole file is made before any of it is sent, so a failure is an error response and never a download that stops partway. Recorded as a `backup.created` event with the account's name. Restoring one isn't in the API: it replaces the database, including the password, so only `drawbridge backup restore`, run as root with the daemon stopped, does it (https://stuffam.github.io/drawbridge/latest/guides/backup-restore/). Not available to an API token.",
         "responses": {
           "401": {
             "$ref": "#/components/responses/NotLoggedIn"
@@ -2186,7 +2186,7 @@
     "/api/system/snapshots": {
       "get": {
         "summary": "Database snapshots on the host",
-        "description": "Lists the snapshots of the database the host keeps beside it: a nightly one, and one before each migration (docs/backup-restore.md). They're listed, never downloadable: a snapshot is the database as it is on disk, with no passphrase, so it stays on the host. Restoring one is `drawbridge backup restore`, run as root with the daemon stopped. Read-only, and not readable with an API token.",
+        "description": "Lists the snapshots of the database the host keeps beside it: a nightly one, and one before each migration (https://stuffam.github.io/drawbridge/latest/guides/snapshots/). They're listed, never downloadable: a snapshot is the database as it is on disk, with no passphrase, so it stays on the host. Restoring one is `drawbridge backup restore`, run as root with the daemon stopped. Read-only, and not readable with an API token.",
         "responses": {
           "401": {
             "$ref": "#/components/responses/NotLoggedIn"

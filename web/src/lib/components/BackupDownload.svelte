@@ -71,7 +71,7 @@
 			Restoring one is done from the command line on the host, because it replaces the password too:
 			<a
 				class="font-medium underline"
-				href="https://github.com/stuffam/drawbridge/blob/main/docs/backup-restore.md"
+				href="https://stuffam.github.io/drawbridge/latest/guides/backup-restore/"
 				target="_blank"
 				rel="noopener external">how</a
 			>.

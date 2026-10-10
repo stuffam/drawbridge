@@ -61,12 +61,12 @@ setups.** What exists:
   the endpoint's A record with the current public IPv4 address isn't built (docs/PLAN.md §16).
 - `drawbridge backup create|restore` (2026-10-03), the second slice of M5: one file with a
   consistent snapshot of the database and the secret key, encrypted with a required passphrase
-  (`internal/backup`, docs/backup-restore.md). `create` goes through the daemon; `restore` is
-  root-only with the daemon stopped, checks everything before it changes anything, and keeps
-  what it replaces. The host also keeps snapshots of the database alone (`internal/snapshot`, in
-  `backups/` beside it): a nightly one, and one before a migration, which `restore` takes too. The
-  System page makes the same file (it takes the password again and the passphrase twice) and lists
-  the snapshots, which it never offers for download.
+  (`internal/backup`, docs/user_docs/guides/backup-restore.md). `create` goes through the daemon;
+  `restore` is root-only with the daemon stopped, checks everything before it changes anything, and
+  keeps what it replaces. The host also keeps snapshots of the database alone (`internal/snapshot`,
+  in `backups/` beside it): a nightly one, and one before a migration, which `restore` takes too.
+  The System page makes the same file (it takes the password again and the passphrase twice) and
+  lists the snapshots, which it never offers for download.
 - Outdated-config tracking and client key rotation (2026-10-04), the third slice of M5. Handing
   out a client's config (a download, a QR code, `client config`) stores its fingerprint
   (`clientconf.Fingerprint`, docs/PLAN.md §6.1); a client whose current fingerprint differs is
@@ -87,19 +87,20 @@ setups.** What exists:
   config show as outdated). The web UI always puts it on safe apply, because the admin on the VPN
   is cut off by it.
 - Your own TLS certificate (2026-10-04), the sixth slice of M5 (docs/PLAN.md §6.6,
-  docs/tls-certificate.md). `drawbridge tls install --cert FILE --key FILE`, `PUT
+  docs/user_docs/guides/tls-certificate.md). `drawbridge tls install --cert FILE --key FILE`, `PUT
   /api/system/certificate`, and the System page's **Web UI Certificate** card serve a certificate
   the admin brings instead of the self-signed one, checked first (`tlscert.Parse`) and used by the
   next connection with no restart (`tlscert.Store` is the TLS config's `GetCertificate`). `tls
   reset` and `DELETE` go back. The web path asks for the password again.
 - TOTP two-factor authentication (2026-10-04), the seventh slice of M5 (docs/PLAN.md §6.5,
-  docs/two-factor.md). The Account page's **Two-Factor Authentication** section turns it on (the
-  password again, a QR code, and the first code from the admin's app), shows ten single-use
-  recovery codes once, makes new ones, and turns it off (`POST /api/auth/totp/enroll|verify|disable|
-  recovery-codes`, `internal/service/totp.go`, `internal/auth/totp.go`, `internal/store/totp.go`).
-  With it on, `POST /api/auth/login` answers a right password and no code with a 401 whose error
-  code is `totp_required`, and the login page asks for the code in a second step.
-  `drawbridge admin disable-2fa` is the way back for an admin who lost the app and the codes.
+  docs/user_docs/guides/two-factor.md). The Account page's **Two-Factor Authentication** section
+  turns it on (the password again, a QR code, and the first code from the admin's app), shows ten
+  single-use recovery codes once, makes new ones, and turns it off (`POST
+  /api/auth/totp/enroll|verify|disable| recovery-codes`, `internal/service/totp.go`,
+  `internal/auth/totp.go`, `internal/store/totp.go`). With it on, `POST /api/auth/login` answers a
+  right password and no code with a 401 whose error code is `totp_required`, and the login page asks
+  for the code in a second step. `drawbridge admin disable-2fa` is the way back for an admin who
+  lost the app and the codes.
 - The upgrade matrix (2026-10-04), the eighth slice of M5 (docs/PLAN.md §12). Its data half runs in
   `go test`: a database as each schema from 1 to 11 left it, for a used host and one never set up
   (`internal/store/storetest`), is opened by this build and restored from an old backup and an old
@@ -117,19 +118,20 @@ setups.** What exists:
   `remove` stops the units and leaves them enabled, `purge` deletes their links, and a daemon
   that won't restart no longer fails `postinst`. `make test-packaging` runs the real scripts
   through real `dpkg` against a fake `systemctl`.
-- The documentation site (2026-10-04, docs/adr/0013-docs-site-zensical.md): `docs/` is published
-  at https://stuffam.github.io/drawbridge/, built by Zensical (`zensical.toml`) in
-  `.github/workflows/docs.yml`, with a landing page (`docs/index.md`) and a nav of guides and
-  project docs. `make docs` builds it strictly and checks that every list on every page has the
-  depth GitHub gives it (`test/docs/check_lists.py`).
-  It is versioned with mike (2026-10-09, the amendment to that ADR). `docs.yml`'s `publish` job
-  commits to the `gh-pages` branch, which is the Pages source: `dev` when `main` changes, and a
-  version for each released minor, with `latest` on the highest version, when a release is
-  published. `scripts/docs-version.sh` decides a release's version and whether `latest` moves.
-  The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
-  from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
-  upgrading, and removing. Left in M5: router setup and troubleshooting, and cutting the first
-  release.
+- The documentation site (2026-10-04, docs/adr/0013-docs-site-zensical.md): `docs/user_docs/` is
+  published at https://stuffam.github.io/drawbridge/, built by Zensical (`zensical.toml`) in
+  `.github/workflows/docs.yml`, with a home page (`index.md`), a getting-started page, and a nav of
+  guides. The rest of `docs/` is for contributors and isn't published. `make docs` builds it
+  strictly and checks that every list on every page has the depth GitHub gives it
+  (`test/docs/check_lists.py`). It is versioned with mike (2026-10-09, the amendment to that ADR).
+  `docs.yml`'s `publish` job commits to the `gh-pages` branch, which is the Pages source: `dev` when
+  `main` changes, and a version for each released minor, with `latest` on the highest version, when
+  a release is published. `scripts/docs-version.sh` decides a release's version and whether `latest`
+  moves. The getting-started page (`docs/user_docs/getting-started.md`, 2026-10-04, rewritten for a
+  release's package on 2026-10-09) covers what to have first, downloading and installing a release's
+  package (by hand, or with `install.sh`), first-run setup, the doctor, and a first client;
+  upgrading and removing are guides beside it. Left in M5: router setup and troubleshooting, and
+  cutting the first release.
 - The release pipeline (2026-10-05, the tenth slice of M5, docs/PLAN.md §11.1): a `vX.Y.Z` tag on
   `main` starts `.github/workflows/release.yml`, which checks the tag (`scripts/release-check.sh`),
   runs every CI job on it (`ci.yml` has a `workflow_call` trigger), builds both packages with
@@ -145,7 +147,7 @@ setups.** What exists:
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,
-  made on the Account page (docs/api-tokens.md).
+  made on the Account page (docs/user_docs/guides/api-tokens.md).
 - The web UI: setup (account, endpoint, and a DNS step that checks whether the host answers DNS
   on the VPN addresses), login, dashboard, clients (QR codes and downloads), settings (DNS
   included), logs, and account.
@@ -218,7 +220,8 @@ a step describes.
   tested reference platform. When a feature assumes something about the host or network, say so
   in docs/REQUIREMENTS.md.
 - **A secret in an example is its real prefix followed by an ellipsis** (`dbt_…`, as in
-  docs/api-tokens.md), so a reader can recognize the real one and a copied example can't work.
+  docs/user_docs/guides/api-tokens.md), so a reader can recognize the real one and a copied example
+  can't work.
 - **Version numbers are prefixed with a lowercase `v`** in prose, git tags, release names, and
   `CHANGELOG.md` headings: `v1.0.0`, never `1.0.0`. This is about Drawbridge's own versions; other
   software's follow its own project's convention ("Go 1.26", "govulncheck v1.8.0"). Four places
@@ -243,7 +246,7 @@ a step describes.
   hand-rolling termios for each platform is worse.) The plan names the core libraries: `wgctrl`,
   `vishvananda/netlink`, and `modernc.org/sqlite` in §3, Tailwind, uPlot, and `qrcode` in §9, and
   Playwright in §12. The docs site's build tools (Zensical and what it needs) are Python, used only
-  for `docs/` and pinned in `requirements-docs.txt` (ADR 0013).
+  for `docs/user_docs/` and pinned in `requirements-docs.txt` (ADR 0013).
   Anything else needs an explicit argument in its PR, and the default answer is no. Everything is
   pure Go (`CGO_ENABLED=0`), so the arm64 build stays a plain cross-compile.
 - **When adding behavior, add a test.** This project is most exposed to quiet failures: a change
@@ -279,6 +282,12 @@ a step describes.
     virtualization, and its React-only rules.
 - **Formatting:** `gofmt` and `goimports` for Go, and Prettier for the web app. Markdown wraps at
   100 columns.
+- **`docs/user_docs/` is for the end user, and the rest of `docs/` is for contributors.** A user
+  page covers one topic, in plain words, and never links to a file outside that directory or names
+  one of the repository's paths: say what the file said, or leave it out. The web UI, the README,
+  and the code that point at a guide use its address on the site,
+  `https://stuffam.github.io/drawbridge/latest/guides/<page>/`, which exists from the first
+  release. The contributor docs link to a user page by its path in the repository.
 - **Docs are GitHub-flavored Markdown that the site must show the same way.** Zensical's parser,
   Python-Markdown, needs what GitHub doesn't: indent a nested list 4 spaces (not 2), indent a
   paragraph or a fenced block inside a list item 4 spaces per level, and put a blank line before a
@@ -817,8 +826,8 @@ empty `$2`. A script can't tell the first three apart by its arguments.
 
 - Zensical is alpha (its PyPI classifier says so). `zensical build --strict` aborts with exit status
   1 (and a Python traceback) on a link to a page that doesn't exist and on an anchor that doesn't;
-  `zensical serve --strict` is unsupported. A build of the whole of `docs/` takes under half a
-  second.
+  `zensical serve --strict` is unsupported. A build of the whole of `docs/user_docs/` takes under
+  half a second.
 - It builds with Python-Markdown 3.11. Two GitHub habits quietly break there: a nested list
   indented 2 spaces comes out flat (a numbered sub-list becomes sibling bullets), and a list right
   after a paragraph, or an item right after the block paragraph or fence of the item above, is
@@ -906,17 +915,14 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/PLAN.md` is the specification. Read it first. §13 has the planned repository layout.
 - `docs/adr/` holds one decision record per decision in the plan's §3 (D1–D13).
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
-- `docs/install.md` is the admin's install guide, from getting the package to a first client. Its
-  "Get the package" section describes how to get a `.deb` before there's a release; change it
-  when the first release is published.
-- `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks.
-- `docs/api-tokens.md` is the admin's guide to read-only API tokens and getting Homepage to use one.
-- `docs/two-factor.md` is the admin's guide to two-factor authentication: turning it on, the
-  recovery codes, getting back in without them, and what it does and doesn't cover.
-- `docs/tls-certificate.md` is the admin's guide to serving their own TLS certificate: what it
-  needs to cover, installing, renewing, and going back.
-- `docs/backup-restore.md` is the admin's guide to backups: making one, keeping it, and restoring
-  onto a fresh host.
+- `docs/user_docs/` is the end user's documentation, and the only part of `docs/` the site
+  publishes: `index.md` (what Drawbridge is), `getting-started.md` (what to have first, installing
+  a release's package, and setting up after), and `guides/`, one page for each topic: backup and
+  restore, database snapshots, the web UI's TLS certificate, two-factor authentication, read-only
+  API tokens, the Homepage dashboard, upgrading, and removing. A guide that says "Coming soon..."
+  is a placeholder.
+- `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks. It's for
+  contributors; the user docs say what an end user needs in their own words.
 - `docs/releasing.md` is the maintainer's guide to cutting a release: the changelog pull request
   (the **Prepare release** workflow, `.github/workflows/prepare-release.yml`), checking and pushing
   the tag, trying the draft's own files on the Pi, publishing, and what to do when a step fails.
@@ -965,8 +971,8 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports
   readiness to systemd, and `internal/version/` holds the build-time version.
 - `zensical.toml` configures the docs site (the nav, the theme, the Markdown extensions) and
-  `requirements-docs.txt` pins its build tools. `test/docs/` has the list check and its tests.
-  `docs/index.md` is the site's home page.
+  `requirements-docs.txt` pins its build tools. `test/docs/` has the list check, and a check that no
+  tracked file names a `docs/….md` path that doesn't exist, both run by `make docs`.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
   and `release-check.sh`, `release-notes.sh`, `release-verify.sh`, and `release-install-url.sh`
   (what `release.yml` runs; the last makes the install guide's link for a release's notes), and

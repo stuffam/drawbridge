@@ -11,15 +11,16 @@ only the home network and the VPN can reach, from the command line
 documentation is at <https://stuffam.github.io/drawbridge/>, and
 [docs/PLAN.md](docs/PLAN.md) has the architecture, feature spec, and roadmap.
 
-To use your own TLS certificate for the web UI instead of the self-signed one, see
-[docs/tls-certificate.md](docs/tls-certificate.md). To ask for a code from an authenticator app
-at login, see [docs/two-factor.md](docs/two-factor.md).
+To use your own TLS certificate for the web UI instead of the self-signed one, see [the TLS
+certificate guide](https://stuffam.github.io/drawbridge/latest/guides/tls-certificate/). To ask for
+a code from an authenticator app at login, see [the two-factor
+guide](https://stuffam.github.io/drawbridge/latest/guides/two-factor/).
 
-**To install it**, follow [docs/install.md](docs/install.md). Before you do, read
-[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md): it lists what
-Drawbridge needs from the host and your network, and the setups where it needs a workaround
-(for example, a host that configures IPv6 with ifupdown, or a router that won't forward
-UDP 51820).
+**To install it**, follow [Getting
+started](https://stuffam.github.io/drawbridge/latest/getting-started/). For the fuller list of what
+Drawbridge needs from the host and your network, and the setups where it needs a workaround (for
+example, a host that configures IPv6 with ifupdown, or a router that won't forward UDP 51820), read
+[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Building
 
@@ -32,7 +33,9 @@ make test-e2e           # the web app in a browser, against a fake tunnel
 make deb                # dist/drawbridge_<version>_arm64.deb and _amd64.deb
 ```
 
-`make help` lists every target. To install a build, see [docs/install.md](docs/install.md).
+`make help` lists every target. To install a build on a host, run `sudo apt install
+./dist/drawbridge_<version>_<arch>.deb`, and carry on with [Getting
+started](https://stuffam.github.io/drawbridge/latest/getting-started/#set-it-up-in-your-browser).
 
 ## License
 

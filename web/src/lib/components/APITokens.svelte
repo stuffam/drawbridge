@@ -102,7 +102,7 @@
 						Homepage has to trust this server's certificate and be allowed in:
 						<a
 							class="font-medium underline"
-							href="https://github.com/stuffam/drawbridge/blob/main/docs/api-tokens.md"
+							href="https://stuffam.github.io/drawbridge/latest/guides/homepage/"
 							target="_blank"
 							rel="noopener external">how, and what its errors mean</a
 						>.
