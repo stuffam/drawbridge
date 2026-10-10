@@ -166,13 +166,12 @@ jobs:
       - name: Draft the release
         run: |
           notes=$(mktemp)
+          # A release's notes can't change once published, so the link names this version's docs.
+          install_url=$(scripts/release-install-url.sh "$TAG")
           {
             scripts/release-notes.sh "$TAG"
+            printf '\n---\n\n**Install:** follow the [install guide](%s).\n' "$install_url"
             cat <<'EOF'
-
-          ---
-
-          **Install:** follow the [install guide](https://stuffam.github.io/drawbridge/install/).
           **Check what you downloaded:** `sha256sum -c --ignore-missing SHA256SUMS`, and
           `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
           EOF

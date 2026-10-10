@@ -36,25 +36,27 @@ now named for the version (`drawbridge_0.1.0-rc.2_arm64.deb`), and the package's
 
 - **There's nothing to upgrade from.** This is the first release. Install it on a Debian-family host
   with systemd, arm64 or amd64, by the [install
-  guide](https://stuffam.github.io/drawbridge/install/), after reading what the host and your
-  network need ([requirements](https://stuffam.github.io/drawbridge/REQUIREMENTS/)).
+  guide](https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.2/docs/install.md), after reading
+  what the host and your network need
+  ([requirements](https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.2/docs/REQUIREMENTS.md)).
 - **Where it has run.** A Raspberry Pi 5 on Debian 13, with NetworkManager, real phones, and a
   laptop. CI runs the kernel WireGuard tests and the upgrade tests on Ubuntu 24.04 (amd64). The
   amd64 package hasn't been installed on a real machine yet.
 - **A downgrade isn't supported, so make a
-  [backup](https://stuffam.github.io/drawbridge/backup-restore/) before you upgrade.** Once a
-  version has changed the database's layout, an older Drawbridge reads it and never writes it: its
-  web UI won't start, and the VPN keeps running.
+  [backup](https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.2/docs/backup-restore.md) before
+  you upgrade.** Once a version has changed the database's layout, an older Drawbridge reads it and
+  never writes it: its web UI won't start, and the VPN keeps running.
 - **Some things haven't run on real hardware yet:** changing the listen port or rotating the
   server's key from a phone behind a router's NAT, two-factor authentication with a real
   authenticator app, a restore onto a freshly flashed card, a certificate from a public CA, and a
   week or more of traffic history behind the long chart ranges. The [manual
-  checklist](https://stuffam.github.io/drawbridge/MANUAL_CHECKLIST/) lists each one and what was
-  seen so far.
+  checklist](https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.2/docs/MANUAL_CHECKLIST.md) lists
+  each one and what was seen so far.
 - **One admin, and the same settings for every client.** There's no per-client DNS, MTU, access
   rule, or expiry yet, and a client has a name and nothing else.
 - **No router setup or troubleshooting guide yet.** The
-  [requirements](https://stuffam.github.io/drawbridge/REQUIREMENTS/) list the known roadblocks.
+  [requirements](https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.2/docs/REQUIREMENTS.md) list
+  the known roadblocks.
 - **`drawbridge doctor` doesn't compare the endpoint's A record with your public IPv4 address.** It
   warns when the name resolves to an address that can't be reached from the internet, but telling a
   stale record from a current one would mean asking a third party what your address is.
