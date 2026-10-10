@@ -211,18 +211,12 @@ sudo drawbridge client list
 shows the client as `active` with a handshake a few seconds old. A site such as test-ipv6.com
 shows your home network's public address, and your IPv6 address if the VPN has one.
 
-If it doesn't connect:
-
-- **No handshake:** the port forward (UDP 51820 to the host) or the endpoint isn't right yet, or
-  the connection has no inbound IPv4 (CGNAT). Run `sudo drawbridge doctor`.
-- **A handshake, but nothing loads:** another firewall on the host (ufw, firewalld, or Docker, for
-  example) is dropping forwarded traffic, and `doctor` names the command that fixes it.
-- **Pages load, but names don't resolve:** the DNS the VPN hands out isn't answering. Check it
-  under DNS for Clients in Settings.
-- The services' own logs: `journalctl -u drawbridge -u drawbridge-tunnel`.
+If it doesn't connect, see [Troubleshooting](guides/troubleshooting.md), which starts with
+`sudo drawbridge doctor`.
 
 ## What's next
 
-Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only
-way back if the host's disk fails. To install a newer version later, see
-[Upgrade](guides/upgrade.md), and to take Drawbridge off the host, [Remove](guides/remove.md).
+Add the rest of your devices (see [Clients](guides/client-configuration.md)), then make a
+[backup](guides/backup-restore.md). It's the only way back if the host's disk fails. To install a
+newer version later, see [Upgrade](guides/upgrade.md), and to take Drawbridge off the host,
+[Remove](guides/remove.md).
