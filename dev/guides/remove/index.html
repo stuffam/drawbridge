@@ -839,6 +839,8 @@
       
         
       
+        
+      
     
     
     
@@ -947,6 +949,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../tls-certificate/" class="md-nav__link">
         
   
@@ -1008,6 +1037,23 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Remove
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -1023,6 +1069,46 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#remove-it-and-keep-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Remove it, and keep your data
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#purge-it-and-delete-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Purge it, and delete your data
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1046,6 +1132,8 @@
   
     
     
+      
+        
       
         
       
@@ -1115,6 +1203,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1213,6 +1328,11 @@
                     
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1222,6 +1342,36 @@
   
   
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#remove-it-and-keep-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Remove it, and keep your data
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#purge-it-and-delete-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Purge it, and delete your data
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1324,6 +1474,8 @@
       
         
       
+        
+      
     
     
     
@@ -1362,18 +1514,20 @@
 
   <h1>Remove</h1>
 
-<p>Drawbridge is removed using the following command:</p>
+<p>To take Drawbridge off the host, remove or purge its package.</p>
+<h2 id="remove-it-and-keep-your-data">Remove it, and keep your data<a class="headerlink" href="#remove-it-and-keep-your-data" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>remove<span class="w"> </span>drawbridge
 </span></code></pre></div>
-<p>stops both services, and deletes the <code>wg0</code> interface and the <code>inet drawbridge</code> firewall table. It
-keeps your data, so installing the package again brings back the same clients, settings, and
-certificate.</p>
+<p>This stops both services, and deletes the <code>wg0</code> interface and the <code>inet drawbridge</code> firewall
+table. It keeps your data, so installing the package again brings back the same clients, settings,
+and certificate. IP forwarding, which the package turned on, stays on until the next reboot.</p>
+<h2 id="purge-it-and-delete-your-data">Purge it, and delete your data<a class="headerlink" href="#purge-it-and-delete-your-data" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>purge<span class="w"> </span>drawbridge
 </span></code></pre></div>
-<p>also deletes <code>/var/lib/drawbridge</code> and <code>/etc/drawbridge</code>, the database, the certificate, and the
-key included. <strong>This can't be undone,</strong> and a backup is the only way back, so make one first. The
-<code>drawbridge</code> user stays, as Debian packages leave their users, so a later install owns its files
-the same way.</p>
+<p>This does the same, and also deletes <code>/var/lib/drawbridge</code> and <code>/etc/drawbridge</code>: the database, the
+certificate, and the key included. <strong>This can't be undone,</strong> and a <a href="../backup-restore/">backup</a> is
+the only way back, so make one first. The <code>drawbridge</code> user stays, as Debian packages leave their
+users, so a later install owns its files the same way.</p>
 
 
 

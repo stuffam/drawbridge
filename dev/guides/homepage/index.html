@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/client-configuration/">
+        <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/homepage/">
       
       
-        <link rel="prev" href="../../getting-started/">
+        <link rel="prev" href="../api-tokens/">
       
       
-        <link rel="next" href="../client-rotate-key/">
+        <link rel="next" href="../two-factor/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Client Configuration - Drawbridge</title>
+        <title>Homepage Dashboard - Drawbridge</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Client Configuration
+              Homepage Dashboard
             
           </span>
         </div>
@@ -279,7 +279,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="././" class="md-tabs__link">
+        <a href="../client-configuration/" class="md-tabs__link">
           
   
   Guides
@@ -460,8 +460,6 @@
                   
   
   
-    
-  
   
   
     
@@ -483,11 +481,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
@@ -508,7 +506,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
             <label class="md-nav__title" for="__nav_3_1">
               <span class="md-nav__icon md-icon"></span>
               
@@ -522,17 +520,10 @@
                   
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../client-configuration/" class="md-nav__link">
         
   
   
@@ -547,7 +538,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1071,6 +1061,8 @@
                   
   
   
+    
+  
   
   
     
@@ -1096,11 +1088,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
         
           
           <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
@@ -1121,7 +1113,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
             <label class="md-nav__title" for="__nav_3_4">
               <span class="md-nav__icon md-icon"></span>
               
@@ -1162,10 +1154,34 @@
                   
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../homepage/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1180,6 +1196,58 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The widget
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traffic-totals" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Traffic totals
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-homepage-cant-reach-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When Homepage can't reach it
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1271,6 +1339,11 @@
                     
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1280,6 +1353,47 @@
   
   
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-widget" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The widget
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traffic-totals" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Traffic totals
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-homepage-cant-reach-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When Homepage can't reach it
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1350,7 +1464,7 @@
     
     
       <li class="md-path__item">
-        <a href="././" class="md-path__link">
+        <a href="../client-configuration/" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1376,16 +1490,20 @@
       
         
       
+        
+      
+        
+      
     
     
     
     
       <li class="md-path__item">
-        <a href="././" class="md-path__link">
+        <a href="../api-tokens/" class="md-path__link">
           
   
   <span class="md-ellipsis">
-    Client
+    Other Settings & Tools
   </span>
 
         </a>
@@ -1404,7 +1522,7 @@
                   
 
   
-    <a href="https://github.com/stuffam/drawbridge/edit/main/docs/user_docs/guides/client-configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/stuffam/drawbridge/edit/main/docs/user_docs/guides/homepage.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1412,9 +1530,122 @@
   
 
 
-  <h1>Client Configuration</h1>
+  <h1>Homepage Dashboard</h1>
 
-<p>Coming soon...</p>
+<p><a href="https://gethomepage.dev">Homepage</a> is a dashboard that can show Drawbridge's status, such as how
+many clients are online. It can't log in to Drawbridge, so it uses a
+<a href="../api-tokens/">read-only API token</a>. Make a token first, then set up the widget below.</p>
+<h2 id="the-widget">The widget<a class="headerlink" href="#the-widget" title="Permanent link">&para;</a></h2>
+<p>In Homepage's <code>services.yaml</code>, under the service that should show it:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">widget</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customapi</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://your-host:51821/api/server/status</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Bearer dbt_…</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">mappings</span><span class="p">:</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Online</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clients</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Clients</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paused</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Paused</span>
+</span></code></pre></div>
+<p>The Account page shows this with the real address and the new token filled in, to copy.</p>
+<h2 id="traffic-totals">Traffic totals<a class="headerlink" href="#traffic-totals" title="Permanent link">&para;</a></h2>
+<p>Homepage shows a value; it can't add up a list. So there are two routes that return the sums.</p>
+<p><strong>Since the tunnel started.</strong> <code>/api/server/status</code> has <code>receive_bytes</code> and <code>send_bytes</code>, the
+counters of the clients that are in the tunnel now, added up:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">receive_bytes</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Received</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">send_bytes</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sent</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
+</span></code></pre></div>
+<p>They're counted at the server, so "received" is what the clients sent up, and "sent" is what they
+downloaded. A client's counters run from when it joined the tunnel, so the sums <strong>fall when a client
+is paused or deleted</strong> (a paused client has left the tunnel), a resumed client starts at zero, and
+they all start over when the tunnel restarts. They're a "since the tunnel last started" number, not
+a total that only grows.</p>
+<p><strong>Over a range.</strong> <code>/api/traffic/total?range=24h</code> adds up the stored history. The range is <code>1m</code>,
+<code>1h</code>, <code>12h</code>, <code>24h</code> (the default), <code>7d</code>, <code>30d</code>, or <code>90d</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">widget</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customapi</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://your-host:51821/api/traffic/total?range=24h</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Bearer dbt_…</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">mappings</span><span class="p">:</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">receive_bytes</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Received (24 h)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">send_bytes</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sent (24 h)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
+</span></code></pre></div>
+<p>The reply is one object:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span><span class="nt">"range"</span><span class="p">:</span><span class="s2">"24h"</span><span class="p">,</span><span class="nt">"since"</span><span class="p">:</span><span class="s2">"2026-10-03T21:15:00Z"</span><span class="p">,</span><span class="nt">"until"</span><span class="p">:</span><span class="s2">"2026-10-04T21:15:00Z"</span><span class="p">,</span><span class="nt">"receive_bytes"</span><span class="p">:</span><span class="mi">734003200</span><span class="p">,</span><span class="nt">"send_bytes"</span><span class="p">:</span><span class="mi">125829120</span><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li>A restart or a paused client doesn't take anything out of it. <strong>Deleting a client does</strong>: its
+  history goes with it, so the total falls by its share.</li>
+<li>It's the same history the charts draw, so it stops at the last complete bucket. That's a minute
+  behind for the ranges up to 24 h, and up to an hour behind for 7d, 30d, and 90d.</li>
+<li>History is kept for 90 days, so there's no all-time total. For a longer one, ask for <code>90d</code> and
+  keep the number somewhere else.</li>
+</ul>
+<p>For more than one range, use a widget for each. The reply is one object, not a list, so
+<code>dynamic-list</code> doesn't apply to it.</p>
+<h2 id="when-homepage-cant-reach-it">When Homepage can't reach it<a class="headerlink" href="#when-homepage-cant-reach-it" title="Permanent link">&para;</a></h2>
+<p>Three things can stop it, and each gives a different message in Homepage's log.</p>
+<p><strong><code>403</code> and "only reachable from the home network and the VPN".</strong> Drawbridge only answers
+requests from the home network, the VPN, and any extra sources you've added, tokens included. A
+Homepage in Docker on the same machine connects from Docker's own network, which isn't one of
+them. Add it (use the subnet your Docker network has: <code>docker network inspect bridge</code>):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--admin-allow<span class="w"> </span><span class="m">172</span>.17.0.0/16
+</span></code></pre></div>
+<p>This replaces the list of extra sources, so if you've added others, such as a Tailscale range,
+name them all, separated by commas.</p>
+<p><strong><code>DEPTH_ZERO_SELF_SIGNED_CERT</code>, or "self signed certificate".</strong> Drawbridge makes its own
+certificate, and Homepage, which runs on Node, doesn't trust it. Copy the certificate to where
+Homepage can read it, and tell Node to trust it:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>cp<span class="w"> </span>/var/lib/drawbridge/tls/cert.pem<span class="w"> </span>/path/to/homepage/config/drawbridge.pem
+</span></code></pre></div>
+<p>and in Homepage's environment: <code>NODE_EXTRA_CA_CERTS=/app/config/drawbridge.pem</code> (the path inside
+its container). This trusts that one certificate, and checks it. Drawbridge replaces the
+certificate about 30 days before it expires, which is about every two years; copy it again then.
+If you <a href="../tls-certificate/">installed your own certificate</a> that Node already trusts, skip the
+copying: the <code>url</code> only has to use a name that the certificate covers.</p>
+<p><strong><code>ERR_TLS_CERT_ALTNAME_INVALID</code>.</strong> Node trusts the certificate, but the name in the <code>url</code> isn't
+one the certificate was made for. It covers the host's name, that name with <code>.local</code>,
+<code>localhost</code>, and the host's addresses when it was made:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>openssl<span class="w"> </span>x509<span class="w"> </span>-in<span class="w"> </span>/var/lib/drawbridge/tls/cert.pem<span class="w"> </span>-noout<span class="w"> </span>-ext<span class="w"> </span>subjectAltName
+</span></code></pre></div>
+<p>Use one of those in the <code>url</code>. A public name that your router resolves to the host, such as
+<code>vpn.example.com</code>, isn't on the list.</p>
+<p>As a last resort, <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code> makes Node skip the check. It does so for
+every request that Homepage makes, not just this one, so prefer the two steps above.</p>
+<table>
+<thead>
+<tr>
+<th>What Homepage logs</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>401</code> "invalid API token"</td>
+<td>The token is wrong, was revoked, or isn't there. Check for a stray space or line break in the file.</td>
+</tr>
+<tr>
+<td><code>403</code> "an API token can't use this endpoint"</td>
+<td>The <code>url</code> is a route a token can't read.</td>
+</tr>
+<tr>
+<td><code>403</code> "only reachable from the home network and the VPN"</td>
+<td>The address Homepage connects from isn't allowed (above).</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -1457,7 +1688,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+          <a href="../api-tokens/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API Tokens">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1467,20 +1698,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Getting Started
+                API Tokens
               </div>
             </div>
           </a>
         
         
           
-          <a href="../client-rotate-key/" class="md-footer__link md-footer__link--next" aria-label="Next: Rotate Client Key">
+          <a href="../two-factor/" class="md-footer__link md-footer__link--next" aria-label="Next: Two-Factor Authentication">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Rotate Client Key
+                Two-Factor Authentication
               </div>
             </div>
             <div class="md-footer__button md-icon">

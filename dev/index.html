@@ -405,7 +405,7 @@
   <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What It Does
+        What it does
       </span>
     </span>
   </a>
@@ -413,10 +413,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#before-you-install" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Before You Install
+        How it works
       </span>
     </span>
   </a>
@@ -424,10 +424,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#guides" class="md-nav__link">
+  <a href="#where-to-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Guides
+        Where to start
       </span>
     </span>
   </a>
@@ -904,6 +904,8 @@
       
         
       
+        
+      
     
     
     
@@ -990,6 +992,33 @@
     
   
   Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./guides/snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
 
     
   </span>
@@ -1107,6 +1136,8 @@
       
         
       
+        
+      
     
     
     
@@ -1166,6 +1197,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./guides/homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1295,7 +1353,7 @@
   <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What It Does
+        What it does
       </span>
     </span>
   </a>
@@ -1303,10 +1361,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#before-you-install" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Before You Install
+        How it works
       </span>
     </span>
   </a>
@@ -1314,10 +1372,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#guides" class="md-nav__link">
+  <a href="#where-to-start" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Guides
+        Where to start
       </span>
     </span>
   </a>
@@ -1359,44 +1417,35 @@
   
 
 
-<h1 id="drawbridge-documentation">Drawbridge Documentation<a class="headerlink" href="#drawbridge-documentation" title="Permanent link">&para;</a></h1>
-<p>Drawbridge is a self-hosted web manager for a WireGuard VPN server. It installs natively (no
-Docker) on Debian-family Linux with systemd, for arm64 and amd64, and it supports both IPv4 and
-IPv6. It's tested on a Raspberry Pi 5 running Debian 13.</p>
-<p>You manage the tunnel and its clients from a web UI at <code>https://&lt;host&gt;:51821</code> that only your home
-network and the VPN can reach, from the command line (<code>sudo drawbridge client add phone --qr</code>), or
-through the same authenticated API.</p>
-<h2 id="what-it-does">What It Does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h2>
+<h1 id="drawbridge">Drawbridge<a class="headerlink" href="#drawbridge" title="Permanent link">&para;</a></h1>
+<p>Drawbridge is a self-hosted web manager for a WireGuard VPN server. It gives you a VPN that runs
+at home, on a machine you own, so your phone and laptop can reach your home network, and use its
+internet connection, from anywhere. Nothing about it depends on a service run by someone else.</p>
+<p>You manage it from a web page or from the command line on the host, and a dashboard such as
+Homepage can read its status through a read-only API token. There's one admin, and the web page
+is reachable only from your home network and the VPN, never from the internet.</p>
+<h2 id="what-it-does">What it does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Clients:</strong> add, remove, rename, and pause them, hand out a config, a download, or a QR code,
-  and rotate a client's keys.</li>
+<li><strong>Clients:</strong> add, remove, rename, and pause the phones and laptops that connect. Hand out each
+  one's config as a QR code or a file, and give a client new keys when you need to.</li>
 <li><strong>Connections and traffic:</strong> see who is connected, their session history, and their traffic
   over time, with a log of every change.</li>
-<li><strong>Server settings:</strong> the endpoint, addresses, and MTU, with a safety net that undoes a change
-  that cuts you off unless you keep it.</li>
+<li><strong>Server settings:</strong> the address clients connect to, the VPN's own addresses, and the MTU. A
+  change that could cut you off is undone after a minute unless you keep it.</li>
 <li><strong>DNS:</strong> public resolvers by default, or a resolver on the host such as AdGuard Home, which can
   also have your clients' names kept in sync.</li>
-<li><strong>Operations:</strong> <code>drawbridge doctor</code> checks the host and network, encrypted backups, optional
-  two-factor authentication, and your own TLS certificate for the web UI.</li>
+<li><strong>Care of the host:</strong> a built-in check of the host and the network, encrypted backups,
+  optional two-factor authentication, and your own TLS certificate for the web page.</li>
 </ul>
-<p>The VPN doesn't depend on the web UI: the tunnel starts at boot from the database, and keeps
-running if the UI stops or is upgraded.</p>
-<h2 id="before-you-install">Before You Install<a class="headerlink" href="#before-you-install" title="Permanent link">&para;</a></h2>
-<p>Read [Requirements and known roadblocks]. It lists what Drawbridge needs from
-the host and your network, and the setups where it needs a workaround, for example a host that
-configures IPv6 with ifupdown, or a router that won't forward UDP 51820. After you install, run
-<code>sudo drawbridge doctor</code> to check for most of them.</p>
-<p>Then follow <a href="getting-started/">Getting Started</a>: get the package, install it, set it up in your
-browser, and connect a first client.</p>
-<h2 id="guides">Guides<a class="headerlink" href="#guides" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="guides/backup-restore/">Backup and restore</a>: make an encrypted backup, keep it, and restore it onto
-  a fresh host.</li>
-<li><a href="guides/two-factor/">Two-factor authentication</a>: ask for a code from an authenticator app at login.</li>
-<li><a href="guides/tls-certificate/">The web UI's TLS certificate</a>: serve your own certificate instead of the
-  self-signed one.</li>
-<li><a href="guides/api-tokens/">Read-only API tokens</a>: let a dashboard such as Homepage read the status.</li>
-</ul>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p>Drawbridge installs natively on Debian-family Linux with systemd, as one package for arm64 or
+amd64, with no Docker. It supports both IPv4 and IPv6, and it's tested on a Raspberry Pi 5 running
+Debian 13.</p>
+<p>The VPN doesn't depend on the web page. The tunnel starts at boot from the database, and it keeps
+running if the web page stops or is upgraded.</p>
+<h2 id="where-to-start">Where to start<a class="headerlink" href="#where-to-start" title="Permanent link">&para;</a></h2>
+<p><a href="getting-started/">Getting started</a> takes you from a bare host to a phone connected to your VPN.
+The guides cover each feature after that.</p>
 
   
 

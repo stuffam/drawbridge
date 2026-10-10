@@ -437,17 +437,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get-the-package" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Get the package
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -458,6 +447,28 @@
   
     <nav class="md-nav" aria-label="Install">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#download-the-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Download the package
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Install it
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#where-everything-went" class="md-nav__link">
@@ -502,6 +513,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Connect a first client
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What's next
       </span>
     </span>
   </a>
@@ -952,6 +974,8 @@
       
         
       
+        
+      
     
     
     
@@ -1038,6 +1062,33 @@
     
   
   Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
 
     
   </span>
@@ -1155,6 +1206,8 @@
       
         
       
+        
+      
     
     
     
@@ -1214,6 +1267,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1347,17 +1427,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#get-the-package" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Get the package
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1368,6 +1437,28 @@
   
     <nav class="md-nav" aria-label="Install">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#download-the-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Download the package
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Install it
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#where-everything-went" class="md-nav__link">
@@ -1418,6 +1509,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What's next
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1458,19 +1560,17 @@
 <p>This takes you from a bare Debian-family host to a phone connected to your VPN. The steps:</p>
 <ol>
 <li><a href="#before-you-start">Get the host and your network ready.</a></li>
-<li><a href="#get-the-package">Get the package.</a></li>
-<li><a href="#install">Install it.</a></li>
+<li><a href="#install">Install Drawbridge.</a></li>
 <li><a href="#set-it-up-in-your-browser">Set it up in your browser.</a></li>
 <li><a href="#check-the-host">Check the host.</a></li>
 <li><a href="#connect-a-first-client">Connect a first client.</a></li>
 </ol>
 <h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Permanent link">&para;</a></h2>
-<p>[Requirements and known roadblocks] has the full list, and the setups that need a
-workaround. The short version:</p>
+<p>Check that you have these:</p>
 <ul>
 <li><strong>A host that runs Debian or something built on it</strong> (Debian, Raspberry Pi OS, Ubuntu Server),
   with systemd, a kernel that has WireGuard (5.6 or later), and <code>sudo</code>. Drawbridge is tested on a
-  Raspberry Pi 5 running Debian 13, and in CI on Ubuntu 24.04.</li>
+  Raspberry Pi 5 running Debian 13. Other Debian-family systems should work but aren't tested.</li>
 <li>
 <p><strong>The host's architecture is arm64 or amd64.</strong> This prints it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dpkg<span class="w"> </span>--print-architecture
@@ -1492,36 +1592,32 @@ workaround. The short version:</p>
 </ul>
 <p>You can install first and do the router afterward. The VPN won't work from outside until the port
 forward is in, and <code>drawbridge doctor</code> says what's still missing.</p>
-<h2 id="get-the-package">Get the package<a class="headerlink" href="#get-the-package" title="Permanent link">&para;</a></h2>
-<p>Drawbridge hasn't had a release yet, so there's no package to download from a releases page. Until
-there is, get it one of two ways. Both give the same files: <code>drawbridge_&lt;version&gt;_arm64.deb</code> and
-<code>drawbridge_&lt;version&gt;_amd64.deb</code>.</p>
-<p><strong>Build it.</strong> You need <code>git</code>, <code>make</code>, Go 1.26 or later, and Node.js 24 with npm 11, on any
-machine (the host, or a laptop: the Go build cross-compiles for both architectures).</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/stuffam/drawbridge.git
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>drawbridge
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>make<span class="w"> </span>deb
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>ls<span class="w"> </span>dist/*.deb
-</span></code></pre></div>
-<p>The first run downloads the packaging tool (<code>nfpm</code>) into <code>./bin</code>.</p>
-<p><strong>Or take the one CI built.</strong> On GitHub, open the repository's <strong>Actions</strong> tab, choose the
-<strong>CI</strong> workflow, and open the latest run on <code>main</code> that passed. Its <strong>drawbridge-deb</strong> artifact is
-a zip of both packages. The package only exists when every CI job passed, including the kernel
-tests, and GitHub keeps an artifact for 90 days. Downloading one needs a GitHub account.</p>
-<p>With the <code>gh</code> command line, give it the run's ID (the number at the end of the run's address), and
-it saves both packages in the current directory:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gh<span class="w"> </span>run<span class="w"> </span>download<span class="w"> </span>&lt;run-id&gt;<span class="w"> </span>--repo<span class="w"> </span>stuffam/drawbridge<span class="w"> </span>--name<span class="w"> </span>drawbridge-deb
-</span></code></pre></div>
-<p>Then copy the package that matches the host's architecture to the host:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scp<span class="w"> </span>drawbridge_*_arm64.deb<span class="w"> </span>you@&lt;host&gt;:
-</span></code></pre></div>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
-<p>On the host:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./drawbridge_&lt;version&gt;_&lt;arch&gt;.deb
+<p>Drawbridge is a Debian package, <code>drawbridge_&lt;version&gt;_&lt;arch&gt;.deb</code>. Each release on GitHub has
+one for arm64 and one for amd64, and a <code>SHA256SUMS</code> file to check them against.</p>
+<h3 id="download-the-package">Download the package<a class="headerlink" href="#download-the-package" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open the <a href="https://github.com/stuffam/drawbridge/releases/latest">latest release</a> and download
+   the package that matches the host's architecture, and <code>SHA256SUMS</code>, to the host. To download
+   on another computer, copy the two files over with <code>scp</code>.</li>
+<li>
+<p>Check the package against the sums, in the folder that has both files:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sha256sum<span class="w"> </span>--check<span class="w"> </span>--ignore-missing<span class="w"> </span>SHA256SUMS
+</span></code></pre></div>
+<p>It should print <code>OK</code> beside the package's name. If it doesn't, download the package again.</p>
+</li>
+</ol>
+<h3 id="install-it">Install it<a class="headerlink" href="#install-it" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./drawbridge_&lt;version&gt;_&lt;arch&gt;.deb
 </span></code></pre></div>
 <p>Keep the <code>./</code>: without it, <code>apt</code> looks for a package of that name in its repositories. It pulls in
 <code>nftables</code>, which Drawbridge needs, and <code>wireguard-tools</code>, which it recommends (<code>wg show</code> is handy
 for debugging).</p>
+<p>If you'd rather have a script do the download, the check, and the install, every release also has
+<code>install.sh</code>. Read it, then run it on the host. It asks before it installs anything:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-fsSLO<span class="w"> </span>https://github.com/stuffam/drawbridge/releases/latest/download/install.sh
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>sh<span class="w"> </span>install.sh
+</span></code></pre></div>
 <p>The package's install script runs as root and, on a first install:</p>
 <ul>
 <li>Creates the <code>drawbridge</code> system user, and <code>/etc/drawbridge/secret.key</code>, the key that encrypts the
@@ -1540,10 +1636,10 @@ for debugging).</p>
 <li><code>drawbridge.service</code> is the web UI and the API. If it stops, the VPN keeps running.</li>
 </ul>
 <p>The end of the output looks like this:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Setup token: ABCDE-FGHJK-LMNPQ-RSTUV
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Open https://vpnhost:51821 from your home network or the VPN, and enter it to create the admin account.
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Your browser will warn that the certificate is self-signed. Check that its SHA-256
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>fingerprint is 3F:9A:...:C1
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Setup token: ABCDE-FGHJK-LMNPQ-RSTUV
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Open https://vpnhost:51821 from your home network or the VPN, and enter it to create the admin account.
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Your browser will warn that the certificate is self-signed. Check that its SHA-256
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>fingerprint is 3F:9A:...:C1
 </span></code></pre></div>
 <p>The token and fingerprint are yours alone (the ones above are examples). If you missed them, run
 <code>sudo drawbridge admin setup-token</code>: it shows them until the admin account exists, and then says
@@ -1599,12 +1695,17 @@ another table.</p>
 instead.</p>
 <p>Your browser will warn about the certificate, because Drawbridge made it itself. Open the
 certificate's details, check that its SHA-256 fingerprint matches the one the install printed, and
-continue. You can <a href="../guides/tls-certificate/">serve your own certificate</a> later to get rid of the warning.</p>
+continue. You can <a href="../guides/tls-certificate/">serve your own certificate</a> later to get rid of the
+warning.</p>
 <p>The web UI answers only your home network and the VPN. A device on another subnet gets no answer,
-and so does the internet. To allow another subnet, see
-[the admin UI's home network].</p>
-<p>Don't put a reverse proxy in front of the UI
-([why]).</p>
+and so does the internet. To let in another private network, such as a Tailscale tailnet, give its
+range to the server. This replaces any extra sources you set before, so list them all, separated
+by commas:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--admin-allow<span class="w"> </span><span class="m">100</span>.64.0.0/10
+</span></code></pre></div>
+<p>Don't put a reverse proxy in front of the UI on the same host. The UI decides who may reach it by
+the address a connection comes from, and a proxy on the host forwards every request from the host
+itself, which is always allowed, so it would put the UI on the internet. Open it directly instead.</p>
 <p>Setup has three steps:</p>
 <ol>
 <li><strong>Create the admin account.</strong> Enter the setup token, then choose a username and a password of
@@ -1615,17 +1716,17 @@ and so does the internet. To allow another subnet, see
    Settings, but a client can't be given a config until it's set.</li>
 <li><strong>DNS for Clients.</strong> A new server hands out Cloudflare's public resolvers (<code>1.1.1.1</code> and
    <code>1.0.0.1</code>, and the IPv6 pair when the VPN has IPv6), which work anywhere. If the host runs a
-   resolver such as AdGuard Home, Pi-hole, or Unbound that listens on the VPN's addresses, setup
-   offers it as <strong>This server</strong>. Either way, you can change it later in Settings. If you want your
-   own resolver and it isn't found, see
-   [DNS for VPN clients].</li>
+   resolver such as AdGuard Home, Pi-hole, or Unbound that answers on the VPN's addresses, setup
+   offers it as <strong>This server</strong>. If setup doesn't find yours, it isn't answering on those
+   addresses (systemd-resolved, for one, listens only on the host itself), so carry on with the
+   public resolvers. Either way, you can change the choice later in Settings.</li>
 </ol>
 <p>Then turn on <a href="../guides/two-factor/">two-factor authentication</a> if you want a second factor at login.</p>
 <h2 id="check-the-host">Check the host<a class="headerlink" href="#check-the-host" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>doctor
 </span></code></pre></div>
-<p>It runs 13 checks of the host and the network, prints a fix for each problem, and changes nothing.
-The tunnel, forwarding, the firewall, DNS on the VPN addresses, the endpoint, the clock, and the
+<p>It checks the host and the network, prints a fix for each problem, and changes nothing. The
+tunnel, forwarding, the firewall, DNS on the VPN addresses, the endpoint, the clock, and the
 certificate are among them. It exits with status 1 if any check failed. The same checks are on the
 web UI's System page (the pulse icon in the header), and the dashboard shows a banner when one
 warns or fails.</p>
@@ -1639,7 +1740,7 @@ warns or fails.</p>
 <h2 id="connect-a-first-client">Connect a first client<a class="headerlink" href="#connect-a-first-client" title="Permanent link">&para;</a></h2>
 <p>Install the WireGuard app on a phone (it's in the App Store and Google Play), or on a laptop
 (<a href="https://www.wireguard.com/install/">wireguard.com/install</a>).</p>
-<p>Then add the client, in the web UI (<strong>Clients</strong>, then <strong>Add</strong>) or on the host:</p>
+<p>Then add the client, in the web UI (<strong>Clients</strong>, then <strong>Add Client</strong>) or on the host:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>client<span class="w"> </span>add<span class="w"> </span>phone<span class="w"> </span>--qr
 </span></code></pre></div>
 <p>The terminal shows a QR code. In the app, tap <strong>+</strong>, then <strong>Scan from QR code</strong>. The code is large,
@@ -1658,14 +1759,16 @@ shows your home network's public address, and your IPv6 address if the VPN has o
 <ul>
 <li><strong>No handshake:</strong> the port forward (UDP 51820 to the host) or the endpoint isn't right yet, or
   the connection has no inbound IPv4 (CGNAT). Run <code>sudo drawbridge doctor</code>.</li>
-<li><strong>A handshake, but nothing loads:</strong> another firewall on the host is dropping forwarded traffic
-  ([host firewalls and Docker]),
-  and <code>doctor</code> names the command that fixes it.</li>
-<li><strong>Pages load, but names don't resolve:</strong> the DNS the VPN hands out isn't answering
-  ([DNS for VPN clients]).</li>
+<li><strong>A handshake, but nothing loads:</strong> another firewall on the host (ufw, firewalld, or Docker, for
+  example) is dropping forwarded traffic, and <code>doctor</code> names the command that fixes it.</li>
+<li><strong>Pages load, but names don't resolve:</strong> the DNS the VPN hands out isn't answering. Check it
+  under DNS for Clients in Settings.</li>
 <li>The services' own logs: <code>journalctl -u drawbridge -u drawbridge-tunnel</code>.</li>
 </ul>
-<p>Make a <a href="../guides/backup-restore/">backup</a> once you've added the clients you want. It's the only way back if the host's disk fails.</p>
+<h2 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
+<p>Make a <a href="../guides/backup-restore/">backup</a> once you've added the clients you want. It's the only
+way back if the host's disk fails. To install a newer version later, see
+<a href="../guides/upgrade/">Upgrade</a>, and to take Drawbridge off the host, <a href="../guides/remove/">Remove</a>.</p>
 
   
 

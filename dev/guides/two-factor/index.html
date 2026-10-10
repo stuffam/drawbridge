@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/two-factor/">
       
       
-        <link rel="prev" href="../api-tokens/">
+        <link rel="prev" href="../homepage/">
       
       
         <link rel="next" href="../cli-tools/">
@@ -837,6 +837,8 @@
       
         
       
+        
+      
     
     
     
@@ -926,6 +928,33 @@
     
   
   Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
 
     
   </span>
@@ -1045,6 +1074,8 @@
       
         
       
+        
+      
     
     
     
@@ -1107,6 +1138,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1566,6 +1624,8 @@
       
         
       
+        
+      
     
     
     
@@ -1622,7 +1682,8 @@ home network, so it's worth the extra ten seconds.</p>
 </ul>
 <h2 id="turn-it-on">Turn it on<a class="headerlink" href="#turn-it-on" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Open the Account page and find <strong>Two-Factor Authentication</strong>.</li>
+<li>Open the Account page (the person icon in the header, then Settings) and find
+   <strong>Two-Factor Authentication</strong>.</li>
 <li>Press <strong>Turn On…</strong> and type your password again. Whoever turns this on decides what the second
    factor is, so a logged-in browser alone can't do it.</li>
 <li>Scan the QR code with your app. If it can't scan, type the key shown beside the code into it.</li>
@@ -1668,18 +1729,17 @@ phone are separate problems. After a reset the new password still needs a code.<
 <ul>
 <li>It protects <strong>the login</strong>: the web UI's password step. The password and the code are both
   checked before a session starts, and every failure of either counts toward the same lockout.</li>
-<li><strong>Read-only API tokens</strong> (docs/api-tokens.md) aren't asked for a code: a dashboard can't type
+<li><strong><a href="../api-tokens/">Read-only API tokens</a></strong> aren't asked for a code: a dashboard can't type
   one. A token can't change anything, and you can revoke it on the Account page. Making a token
   takes your password again, but not a code.</li>
 <li><strong>Sessions</strong> are checked once, when they start. Turning 2FA on or off logs out your other
   browsers, so none outlives the change; after that a session lasts as usual, an hour idle or
   twelve hours at most.</li>
-<li>The command line (<code>drawbridge ...</code> as root, through the control socket) doesn't use the web
-  login, so it doesn't ask either. Anyone with a root shell on the host can already read the
-  database and the key.</li>
+<li>The command line on the host doesn't use the web login, so it doesn't ask for a code either.
+  Anyone with a root shell on the host can already read the database and the key.</li>
 <li>The host's own secret key seals the TOTP secret in the database, as it does the private keys. A
-  copy of the database alone can't make codes; <strong>a backup holds both</strong>, and is encrypted for that
-  reason (docs/backup-restore.md). Restoring one onto a new host brings 2FA with it: your
+  copy of the database alone can't make codes; <strong>a <a href="../backup-restore/">backup</a> holds both</strong>, and
+  is encrypted for that reason. Restoring one onto a new host brings 2FA with it: your
   authenticator app keeps working, and the recovery codes you haven't used still do.</li>
 </ul>
 <h2 id="what-the-log-shows">What the log shows<a class="headerlink" href="#what-the-log-shows" title="Permanent link">&para;</a></h2>
@@ -1773,7 +1833,7 @@ a code was:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../api-tokens/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API Tokens">
+          <a href="../homepage/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Homepage Dashboard">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1783,7 +1843,7 @@ a code was:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                API Tokens
+                Homepage Dashboard
               </div>
             </div>
           </a>

@@ -16,7 +16,7 @@
         <link rel="prev" href="../remove/">
       
       
-        <link rel="next" href="../two-factor/">
+        <link rel="next" href="../homepage/">
       
       
         
@@ -837,6 +837,8 @@
       
         
       
+        
+      
     
     
     
@@ -926,6 +928,33 @@
     
   
   Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
 
     
   </span>
@@ -1038,6 +1067,8 @@
   
     
     
+      
+        
       
         
       
@@ -1187,39 +1218,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#homepage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Homepage
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#traffic-totals" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Traffic totals
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-homepage-cant-reach-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        When Homepage can't reach it
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#revoke-and-replace" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1234,6 +1232,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1380,39 +1405,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#homepage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Homepage
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#traffic-totals" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Traffic totals
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-homepage-cant-reach-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        When Homepage can't reach it
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#revoke-and-replace" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1522,6 +1514,8 @@
       
         
       
+        
+      
     
     
     
@@ -1560,9 +1554,9 @@
 
   <h1>API Tokens</h1>
 
-<p>A dashboard such as <a href="https://gethomepage.dev">Homepage</a> can't log in to Drawbridge: it can send a
-header, but it can't fill in a form, keep a cookie, or send the <code>X-Drawbridge</code> header. An API
-token is a credential for that. It's read-only, it shows a few numbers, and you can revoke it.</p>
+<p>A dashboard such as <a href="../homepage/">Homepage</a> can't log in to Drawbridge: it can send a header, but
+it can't fill in a form, keep a cookie, or send the <code>X-Drawbridge</code> header. An API token is a
+credential for that. It's read-only, it shows a few numbers, and you can revoke it.</p>
 <h2 id="what-a-token-can-read">What a token can read<a class="headerlink" href="#what-a-token-can-read" title="Permanent link">&para;</a></h2>
 <p>A token works on these <code>GET</code> routes and no others:</p>
 <table>
@@ -1575,7 +1569,7 @@ token is a credential for that. It's read-only, it shows a few numbers, and you 
 <tbody>
 <tr>
 <td><code>/api/server/status</code></td>
-<td>whether the tunnel is up, how many clients there are, online, and paused, and the bytes received and sent since the tunnel started (below)</td>
+<td>whether the tunnel is up, how many clients there are, and how many are online (a handshake in the last three minutes), paused, and outdated, and the bytes received and sent since the tunnel started</td>
 </tr>
 <tr>
 <td><code>/api/clients</code> and <code>/api/clients/{id}</code></td>
@@ -1591,7 +1585,7 @@ token is a credential for that. It's read-only, it shows a few numbers, and you 
 </tr>
 <tr>
 <td><code>/api/traffic/total</code></td>
-<td>every client's traffic over a range, added up into one received and one sent number (below)</td>
+<td>every client's traffic over a range, added up into one received and one sent number</td>
 </tr>
 </tbody>
 </table>
@@ -1603,7 +1597,7 @@ Those routes need a login.</p>
 household. Treat a token like a password you've written in another program's config file.</p>
 <h2 id="make-one">Make one<a class="headerlink" href="#make-one" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Open the Account page (the person icon, then Settings) and find <strong>API Tokens</strong>.</li>
+<li>Open the Account page (the person icon in the header, then Settings) and find <strong>API Tokens</strong>.</li>
 <li>Give the token a name, such as <code>Homepage</code>, so you know which to revoke later.</li>
 <li>Type your password again. A token outlives the session that made it, and a password change,
    so a logged-in browser alone can't make one.</li>
@@ -1612,122 +1606,17 @@ household. Treat a token like a password you've written in another program's con
    make another.</li>
 </ol>
 <p>You can have 20 tokens, and each needs a different name.</p>
-<p>If you've turned on two-factor authentication (docs/two-factor.md), a token still works without a
+<p>If you've turned on <a href="../two-factor/">two-factor authentication</a>, a token still works without a
 code: a dashboard can't type one. That's why a token is read-only. Making a token asks for your
 password again, as it always did, but not for a code.</p>
 <h2 id="try-it">Try it<a class="headerlink" href="#try-it" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>--cacert<span class="w"> </span>cert.pem<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer dbt_…'</span><span class="w"> </span>https://your-host:51821/api/server/status
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer dbt_…'</span><span class="w"> </span>https://your-host:51821/api/server/status
 </span></code></pre></div>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"tunnel_up"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">"clients"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nt">"paused"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">"online"</span><span class="p">:</span><span class="mi">2</span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"tunnel_up"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">"clients"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nt">"paused"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">"online"</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nt">"outdated"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">"receive_bytes"</span><span class="p">:</span><span class="mi">734003200</span><span class="p">,</span><span class="nt">"send_bytes"</span><span class="p">:</span><span class="mi">125829120</span><span class="p">}</span>
 </span></code></pre></div>
-<p>(<code>--cacert</code> is explained below. <code>curl -k</code> skips the check, and is fine for a quick look.)</p>
-<h2 id="homepage">Homepage<a class="headerlink" href="#homepage" title="Permanent link">&para;</a></h2>
-<p>In <code>services.yaml</code>, under the service that should show it:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">widget</span><span class="p">:</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customapi</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://your-host:51821/api/server/status</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Bearer dbt_…</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">mappings</span><span class="p">:</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Online</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clients</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Clients</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paused</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Paused</span>
-</span></code></pre></div>
-<p>The Account page shows this with the real address and the new token filled in, to copy.</p>
-<h2 id="traffic-totals">Traffic totals<a class="headerlink" href="#traffic-totals" title="Permanent link">&para;</a></h2>
-<p>Homepage shows a value; it can't add up a list. So there are two routes that return the sums.</p>
-<p><strong>Since the tunnel started.</strong> <code>/api/server/status</code> has <code>receive_bytes</code> and <code>send_bytes</code>, the
-counters of the clients that are in the tunnel now, added up:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">receive_bytes</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Received</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">send_bytes</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sent</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
-</span></code></pre></div>
-<p>They're counted at the server, so "received" is what the clients sent up, and "sent" is what they
-downloaded. A client's counters run from when it joined the tunnel, so the sums <strong>fall when a client
-is paused or deleted</strong> (a paused client has left the tunnel), a resumed client starts at zero, and
-they all start over when the tunnel restarts. They're a "since the tunnel last started" number, not
-a total that only grows.</p>
-<p><strong>Over a range.</strong> <code>/api/traffic/total?range=24h</code> adds up the stored history. The range is <code>1m</code>,
-<code>1h</code>, <code>12h</code>, <code>24h</code> (the default), <code>7d</code>, <code>30d</code>, or <code>90d</code>:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">widget</span><span class="p">:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customapi</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://your-host:51821/api/traffic/total?range=24h</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">Authorization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Bearer dbt_…</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">mappings</span><span class="p">:</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">receive_bytes</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Received (24 h)</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">field</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">send_bytes</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">      </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sent (24 h)</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">      </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bytes</span>
-</span></code></pre></div>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span><span class="nt">"range"</span><span class="p">:</span><span class="s2">"24h"</span><span class="p">,</span><span class="nt">"since"</span><span class="p">:</span><span class="s2">"2026-10-03T21:15:00Z"</span><span class="p">,</span><span class="nt">"until"</span><span class="p">:</span><span class="s2">"2026-10-04T21:15:00Z"</span><span class="p">,</span><span class="nt">"receive_bytes"</span><span class="p">:</span><span class="mi">734003200</span><span class="p">,</span><span class="nt">"send_bytes"</span><span class="p">:</span><span class="mi">125829120</span><span class="p">}</span>
-</span></code></pre></div>
-<ul>
-<li>A restart or a paused client doesn't take anything out of it. <strong>Deleting a client does</strong>: its
-  history goes with it, so the total falls by its share.</li>
-<li>It's the same history the charts draw, so it stops at the last complete bucket. That's a minute
-  behind for the ranges up to 24 h, and up to an hour behind for 7d, 30d, and 90d.</li>
-<li>History is kept for 90 days, so there's no all-time total. For a longer one, ask for <code>90d</code> and
-  keep the number somewhere else.</li>
-</ul>
-<p>For more than one range, use a widget for each. The reply is one object, not a list, so
-<code>dynamic-list</code> doesn't apply to it.</p>
-<h2 id="when-homepage-cant-reach-it">When Homepage can't reach it<a class="headerlink" href="#when-homepage-cant-reach-it" title="Permanent link">&para;</a></h2>
-<p>Three things can stop it, and each gives a different message in Homepage's log.</p>
-<p><strong><code>403</code> and "only reachable from the home network and the VPN".</strong> Drawbridge only answers
-requests from the home network, the VPN, and any extra sources you've added, tokens included. A
-Homepage in Docker on the same machine connects from Docker's own network, which isn't one of
-them. Add it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--admin-allow<span class="w"> </span><span class="m">172</span>.17.0.0/16
-</span></code></pre></div>
-<p>(Use the subnet your Docker network has: <code>docker network inspect bridge</code>.)</p>
-<p><strong><code>DEPTH_ZERO_SELF_SIGNED_CERT</code>, or "self signed certificate".</strong> Drawbridge makes its own
-certificate, and Homepage, which runs on Node, doesn't trust it. Copy the certificate to where
-Homepage can read it, and tell Node to trust it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>cp<span class="w"> </span>/var/lib/drawbridge/tls/cert.pem<span class="w"> </span>/path/to/homepage/config/drawbridge.pem
-</span></code></pre></div>
-<p>and in Homepage's environment: <code>NODE_EXTRA_CA_CERTS=/app/config/drawbridge.pem</code> (the path inside
-its container). This trusts that one certificate, and checks it. Drawbridge replaces the
-certificate about 30 days before it expires, which is about every two years; copy it again then.</p>
-<p><strong><code>ERR_TLS_CERT_ALTNAME_INVALID</code>.</strong> Node trusts the certificate, but the name in the <code>url</code> isn't
-one the certificate was made for. It covers the host's name, that name with <code>.local</code>,
-<code>localhost</code>, and the host's addresses when it was made:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>openssl<span class="w"> </span>x509<span class="w"> </span>-in<span class="w"> </span>/var/lib/drawbridge/tls/cert.pem<span class="w"> </span>-noout<span class="w"> </span>-ext<span class="w"> </span>subjectAltName
-</span></code></pre></div>
-<p>Use one of those in the <code>url</code>. A public name that your router resolves to the host, such as
-<code>vpn.example.com</code>, isn't on the list.</p>
-<p>As a last resort, <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code> makes Node skip the check. It does so for
-every request that Homepage makes, not just this one, so prefer the two steps above.</p>
-<table>
-<thead>
-<tr>
-<th>What Homepage logs</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>401</code> "invalid API token"</td>
-<td>The token is wrong, was revoked, or isn't there. Check for a stray space or line break in the file.</td>
-</tr>
-<tr>
-<td><code>403</code> "an API token can't use this endpoint"</td>
-<td>The <code>url</code> is a route a token can't read.</td>
-</tr>
-<tr>
-<td><code>403</code> "only reachable from the home network and the VPN"</td>
-<td>The address Homepage connects from isn't allowed (above).</td>
-</tr>
-</tbody>
-</table>
+<p><code>-k</code> tells <code>curl</code> to skip the certificate check, which is fine for a quick look: Drawbridge's own
+certificate is self-signed. A program that keeps using the token should check the certificate
+instead; <a href="../homepage/#when-homepage-cant-reach-it">the Homepage page</a> shows how.</p>
 <h2 id="revoke-and-replace">Revoke, and replace<a class="headerlink" href="#revoke-and-replace" title="Permanent link">&para;</a></h2>
 <p>On the Account page, <strong>Revoke</strong> ends a token at once, and anything using it gets <code>401</code>. To replace
 one: make the new token, put it in the dashboard, then revoke the old one.</p>
@@ -1799,13 +1688,13 @@ for months, is one to revoke.</p>
         
         
           
-          <a href="../two-factor/" class="md-footer__link md-footer__link--next" aria-label="Next: Two-Factor Authentication">
+          <a href="../homepage/" class="md-footer__link md-footer__link--next" aria-label="Next: Homepage Dashboard">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Two-Factor Authentication
+                Homepage Dashboard
               </div>
             </div>
             <div class="md-footer__button md-icon">

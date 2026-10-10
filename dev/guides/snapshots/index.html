@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/client-configuration/">
+        <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/snapshots/">
       
       
-        <link rel="prev" href="../../getting-started/">
+        <link rel="prev" href="../backup-restore/">
       
       
-        <link rel="next" href="../client-rotate-key/">
+        <link rel="next" href="../tls-certificate/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Client Configuration - Drawbridge</title>
+        <title>Database Snapshots - Drawbridge</title>
       
     
     
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Client Configuration
+              Database Snapshots
             
           </span>
         </div>
@@ -279,7 +279,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="././" class="md-tabs__link">
+        <a href="../client-configuration/" class="md-tabs__link">
           
   
   Guides
@@ -460,8 +460,6 @@
                   
   
   
-    
-  
   
   
     
@@ -483,11 +481,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
@@ -508,7 +506,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
             <label class="md-nav__title" for="__nav_3_1">
               <span class="md-nav__icon md-icon"></span>
               
@@ -522,17 +520,10 @@
                   
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../client-configuration/" class="md-nav__link">
         
   
   
@@ -547,7 +538,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -832,6 +822,8 @@
                   
   
   
+    
+  
   
   
     
@@ -861,11 +853,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
@@ -886,7 +878,7 @@
           </label>
         
         
-          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
             <label class="md-nav__title" for="__nav_3_3">
               <span class="md-nav__icon md-icon"></span>
               
@@ -954,10 +946,34 @@
                   
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../snapshots/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -972,6 +988,47 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#go-back-to-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Go back to one
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disk-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disk space
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1271,6 +1328,11 @@
                     
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1280,6 +1342,36 @@
   
   
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#go-back-to-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Go back to one
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disk-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disk space
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1350,7 +1442,7 @@
     
     
       <li class="md-path__item">
-        <a href="././" class="md-path__link">
+        <a href="../client-configuration/" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1376,16 +1468,24 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
     
       <li class="md-path__item">
-        <a href="././" class="md-path__link">
+        <a href="../diagnostics/" class="md-path__link">
           
   
   <span class="md-ellipsis">
-    Client
+    System
   </span>
 
         </a>
@@ -1404,7 +1504,7 @@
                   
 
   
-    <a href="https://github.com/stuffam/drawbridge/edit/main/docs/user_docs/guides/client-configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/stuffam/drawbridge/edit/main/docs/user_docs/guides/snapshots.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1412,9 +1512,38 @@
   
 
 
-  <h1>Client Configuration</h1>
+  <h1>Database Snapshots</h1>
 
-<p>Coming soon...</p>
+<p>Besides a <a href="../backup-restore/">backup</a> you make, Drawbridge keeps copies of its database on the
+host, in <code>/var/lib/drawbridge/backups/</code>:</p>
+<ul>
+<li><strong>Nightly:</strong> the daemon makes one when the newest is a day old, and keeps the newest seven.</li>
+<li><strong>Before an upgrade changes the database:</strong> <code>pre-migration-v&lt;n&gt;-&lt;time&gt;.db</code>, where <code>&lt;n&gt;</code> is the
+  version the database was at, and the newest three are kept. If it can't be made (a full disk),
+  the upgrade doesn't change the database, and says why.</li>
+</ul>
+<p>They're a way back from a bad change or a bad upgrade, <strong>not from a lost disk</strong>: they sit on the
+same disk as the database, with the key. Keep a backup somewhere else for that.</p>
+<p>The System page lists the snapshots, with the time and size of each, and doesn't offer them for
+download: a snapshot has no passphrase, and the database has your password hash in it. A backup is
+how a copy leaves the host.</p>
+<h2 id="go-back-to-one">Go back to one<a class="headerlink" href="#go-back-to-one" title="Permanent link">&para;</a></h2>
+<p>Stop the daemon and restore it. A snapshot needs no passphrase, and the host's own key stays,
+because it's what the snapshot was sealed with:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>stop<span class="w"> </span>drawbridge.service
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>/var/lib/drawbridge/backups/nightly-20261004-030000.db
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>drawbridge-tunnel.service<span class="w"> </span>drawbridge.service
+</span></code></pre></div>
+<p>It's the same restore as for a backup, with the same checks, and what it replaces is kept as
+<code>*.before-restore-&lt;time&gt;</code>. The database is as it was when the snapshot was made, so changes since
+then are gone: a client added after it isn't there. A snapshot from before an upgrade is brought up
+to date when it goes in.</p>
+<p>A snapshot that was made under another key (copied from another host, say) is refused, and says
+that the host's key doesn't open it. Use a backup for that.</p>
+<h2 id="disk-space">Disk space<a class="headerlink" href="#disk-space" title="Permanent link">&para;</a></h2>
+<p>The snapshots take room: each is about the size of the database, so allow ten times its size
+(<code>ls -lh /var/lib/drawbridge/drawbridge.db</code>) for the seven nightly ones and the three from
+upgrades. <code>sudo drawbridge doctor</code> checks the free space.</p>
 
 
 
@@ -1457,7 +1586,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+          <a href="../backup-restore/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Backup &amp; Restore">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1467,20 +1596,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Getting Started
+                Backup & Restore
               </div>
             </div>
           </a>
         
         
           
-          <a href="../client-rotate-key/" class="md-footer__link md-footer__link--next" aria-label="Next: Rotate Client Key">
+          <a href="../tls-certificate/" class="md-footer__link md-footer__link--next" aria-label="Next: TLS Certificate">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Rotate Client Key
+                TLS Certificate
               </div>
             </div>
             <div class="md-footer__button md-icon">

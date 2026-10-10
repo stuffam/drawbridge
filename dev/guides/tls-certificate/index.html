@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/tls-certificate/">
       
       
-        <link rel="prev" href="../backup-restore/">
+        <link rel="prev" href="../snapshots/">
       
       
         <link rel="next" href="../upgrade/">
@@ -839,6 +839,8 @@
       
         
       
+        
+      
     
     
     
@@ -928,6 +930,33 @@
     
   
   Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
 
     
   </span>
@@ -1056,17 +1085,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#from-the-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        From the API
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1154,6 +1172,8 @@
       
         
       
+        
+      
     
     
     
@@ -1216,6 +1236,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1390,17 +1437,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#from-the-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        From the API
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1504,6 +1540,8 @@
       
         
       
+        
+      
     
     
     
@@ -1544,9 +1582,8 @@
 
 <p>The web UI is served over HTTPS. On first start the daemon makes a <strong>self-signed</strong> certificate
 for the host's names and addresses, so the connection is encrypted from the start, but a browser
-can't tell it from a forgery and warns until you trust it. The setup token's command
-(<code>sudo drawbridge admin setup-token</code>) prints the certificate's SHA-256 fingerprint so you can check
-that the warning is about this certificate.</p>
+can't tell it from a forgery and warns until you trust it. <code>sudo drawbridge tls show</code> prints the
+certificate's SHA-256 fingerprint, so you can check that the warning is about this certificate.</p>
 <p>If you'd rather not click through a warning, give Drawbridge a certificate your devices already
 trust. This guide is for that.</p>
 <h2 id="what-you-need">What you need<a class="headerlink" href="#what-you-need" title="Permanent link">&para;</a></h2>
@@ -1604,14 +1641,11 @@ are forgotten, and the self-signed one serves again (a new one is made if it had
 by the <code>drawbridge</code> user. The key isn't encrypted there, like the self-signed key beside it,
 because the web server needs it at startup. It is never shown in the UI, the event log, or the
 journal.</p>
-<p><strong>It isn't in a backup</strong> (<a href="../backup-restore/">docs/backup-restore.md</a>). Keep your own copy, and
-install it again after restoring onto a new host.</p>
+<p><strong>It isn't in a <a href="../backup-restore/">backup</a>.</strong> Keep your own copy, and install it again after
+restoring onto a new host.</p>
 <p>If the file can't be read when the daemon starts (it was damaged, say), the daemon logs why and
 serves the self-signed certificate meanwhile, so the web UI stays reachable. <code>sudo drawbridge tls
 reset</code> clears the file; then install again.</p>
-<h2 id="from-the-api">From the API<a class="headerlink" href="#from-the-api" title="Permanent link">&para;</a></h2>
-<p><code>GET</code>, <code>PUT</code>, and <code>DELETE /api/system/certificate</code>, documented in the OpenAPI document
-(<code>internal/api/openapi.json</code>). They need a login, and an API token can't use them.</p>
 
 
 
@@ -1654,7 +1688,7 @@ reset</code> clears the file; then install again.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../backup-restore/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Backup &amp; Restore">
+          <a href="../snapshots/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Database Snapshots">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1664,7 +1698,7 @@ reset</code> clears the file; then install again.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Backup & Restore
+                Database Snapshots
               </div>
             </div>
           </a>

@@ -34,6 +34,9 @@
         <loc>https://stuffam.github.io/drawbridge/dev/guides/dns-settings/</loc>
       </url>
       <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/homepage/</loc>
+      </url>
+      <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/pi-hole/</loc>
       </url>
       <url>
@@ -44,6 +47,9 @@
       </url>
       <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/server-rotate-key/</loc>
+      </url>
+      <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/snapshots/</loc>
       </url>
       <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/tls-certificate/</loc>

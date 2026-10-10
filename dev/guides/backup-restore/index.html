@@ -16,7 +16,7 @@
         <link rel="prev" href="../diagnostics/">
       
       
-        <link rel="next" href="../tls-certificate/">
+        <link rel="next" href="../snapshots/">
       
       
         
@@ -839,6 +839,8 @@
       
         
       
+        
+      
     
     
     
@@ -1008,17 +1010,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#snapshots-on-the-host" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Snapshots on the host
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#not-in-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1033,6 +1024,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1143,6 +1161,8 @@
       
         
       
+        
+      
     
     
     
@@ -1205,6 +1225,33 @@
     
   
   API Tokens
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../homepage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Homepage Dashboard
 
     
   </span>
@@ -1358,17 +1405,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#snapshots-on-the-host" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Snapshots on the host
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#not-in-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1482,6 +1518,8 @@
       
         
       
+        
+      
     
     
     
@@ -1524,8 +1562,8 @@
 clients (with their keys, so their configs keep working), the settings, the admin account, and
 the event and traffic history.</p>
 <p>It holds a snapshot of the database <strong>and</strong> the key the database's secrets are encrypted with
-(<code>/etc/drawbridge/secret.key</code>), because the key is on the same SD card as the database, and a
-backup without it would be useless after the card fails. So the file is encrypted with a
+(<code>/etc/drawbridge/secret.key</code>), because the key is on the same disk as the database, and a
+backup without it would be useless after the disk fails. So the file is encrypted with a
 passphrase you choose, and <strong>the passphrase is the only thing that protects it</strong>. Without it, the
 file can't be opened by you, by anyone, or by the project's developers.</p>
 <h2 id="make-one">Make one<a class="headerlink" href="#make-one" title="Permanent link">&para;</a></h2>
@@ -1538,8 +1576,8 @@ from a script.</p>
 <ul>
 <li>The passphrase needs at least 12 characters. A stolen file can be guessed at offline, with no
   limit on the tries, so a long phrase is worth more than a clever short one.</li>
-<li><strong>Keep the file, and the passphrase, somewhere other than the host.</strong> A backup on the SD card
-  that fails isn't one. A password manager holds both well.</li>
+<li><strong>Keep the file, and the passphrase, somewhere other than the host.</strong> A backup on the disk that
+  fails isn't one. A password manager holds both well.</li>
 <li>Making one is in the event log (<code>Made a backup</code>), because the file holds every secret.</li>
 <li>Make one after you add clients. A client added later isn't in an older backup.</li>
 </ul>
@@ -1554,7 +1592,7 @@ that stops partway.</p>
 <p>Restoring is only on the command line, on purpose: it replaces the database, your password
 included, so a web page that could do it would let a hijacked session take everything.</p>
 <h2 id="restore-onto-a-fresh-host">Restore onto a fresh host<a class="headerlink" href="#restore-onto-a-fresh-host" title="Permanent link">&para;</a></h2>
-<p>This is what the backup is for: the SD card failed, or you're moving to another Raspberry Pi.</p>
+<p>This is what the backup is for: the host's disk failed, or you're moving to another machine.</p>
 <ol>
 <li>Install Drawbridge on the new host, as you did the first time. Don't go through the web
    setup: the backup has your admin account.</li>
@@ -1593,7 +1631,7 @@ says so and the host is as it was.</p>
   API tokens are kept, so a dashboard that has one keeps working. If you restored because
   someone else had access, run <code>sudo drawbridge admin reset-password</code>, which revokes the
   tokens too.</li>
-<li>Two-factor authentication (docs/two-factor.md) comes with the backup, if it was on: the secret
+<li><a href="../two-factor/">Two-factor authentication</a> comes with the backup, if it was on: the secret
   is in the database and sealed with the key, so your authenticator app keeps working and the
   recovery codes you hadn't used still do. If you restored because someone else had access, make
   new recovery codes.</li>
@@ -1608,11 +1646,14 @@ says so and the host is as it was.</p>
   warning is about the host's certificate, as it was before. It names the VPN addresses as they
   were when the host made it; if you reach the UI through the VPN's address and the restored VPN has
   other addresses, stop the daemon, <code>sudo rm -r /var/lib/drawbridge/tls</code>, and start it for a new
-  one. On a new host, a certificate you installed
-  (<a href="../tls-certificate/">docs/tls-certificate.md</a>) isn't there either: install it again with
+  one. On a new host, a certificate you
+  <a href="../tls-certificate/">installed yourself</a> isn't there either: install it again with
   <code>sudo drawbridge tls install</code>. (<code>rm -r</code> on that directory removes an installed certificate too.)</li>
 </ul>
 <p>It needs room for a second copy of the database beside the first while it works.</p>
+<p>Drawbridge also keeps copies of its database on the host, and can restore from one in the same
+way: see <a href="../snapshots/">Database snapshots</a>. They don't replace a backup, because a lost disk takes
+them too.</p>
 <h2 id="when-something-goes-wrong">When something goes wrong<a class="headerlink" href="#when-something-goes-wrong" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1650,35 +1691,6 @@ says so and the host is as it was.</p>
 </table>
 <p>In every one of these, nothing was changed. If a restore fails while it's moving files (a full
 disk, say), it puts back the ones it moved, and says so.</p>
-<h2 id="snapshots-on-the-host">Snapshots on the host<a class="headerlink" href="#snapshots-on-the-host" title="Permanent link">&para;</a></h2>
-<p>Besides a backup you make, Drawbridge keeps copies of its database on the host, in
-<code>/var/lib/drawbridge/backups/</code>:</p>
-<ul>
-<li><strong>Nightly:</strong> the daemon makes one when the newest is a day old, and keeps the newest seven.
-  <code>--snapshot-interval</code> changes the interval (0 turns them off) and <code>--snapshot-keep</code> the number.</li>
-<li><strong>Before an upgrade changes the database:</strong> <code>pre-migration-v&lt;n&gt;-&lt;time&gt;.db</code>, where <code>&lt;n&gt;</code> is the
-  version the database was at, and the newest three are kept. If it can't be made (a full disk),
-  the upgrade doesn't change the database, and says why.</li>
-</ul>
-<p>They're a way back from a bad change or a bad upgrade, <strong>not from a lost card</strong>: they sit on the
-same card as the database, with the key. Keep a backup somewhere else for that. The System page
-lists them, with the time and size of each, and doesn't offer them for download: a snapshot has no
-passphrase, and the database has your password hash in it. A backup is how a copy leaves the host.</p>
-<p>To go back to one, stop the daemon and restore it. A snapshot needs no passphrase, and the host's
-own key stays, because it's what the snapshot was sealed with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>stop<span class="w"> </span>drawbridge.service
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>/var/lib/drawbridge/backups/nightly-20261004-030000.db
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>drawbridge-tunnel.service<span class="w"> </span>drawbridge.service
-</span></code></pre></div>
-<p>It's the same restore as above, with the same checks, and what it replaces is kept as
-<code>*.before-restore-&lt;time&gt;</code>. The database is as it was when the snapshot was made, so changes since
-then are gone: a client added after it isn't there. A snapshot from before an upgrade is brought up
-to date when it goes in.</p>
-<p>A snapshot that was made under another key (copied from another host, say) is refused, and says
-that the host's key doesn't open it. Use a backup for that.</p>
-<p>The snapshots take room: each is about the size of the database, so allow ten times its size
-(<code>ls -lh /var/lib/drawbridge/drawbridge.db</code>) for the seven nightly ones and the three from
-upgrades. <code>sudo drawbridge doctor</code> checks the free space.</p>
 <h2 id="not-in-a-backup">Not in a backup<a class="headerlink" href="#not-in-a-backup" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The web UI's certificate (above), and the log in the journal (the event log is in the backup).</li>
@@ -1747,13 +1759,13 @@ upgrades. <code>sudo drawbridge doctor</code> checks the free space.</p>
         
         
           
-          <a href="../tls-certificate/" class="md-footer__link md-footer__link--next" aria-label="Next: TLS Certificate">
+          <a href="../snapshots/" class="md-footer__link md-footer__link--next" aria-label="Next: Database Snapshots">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                TLS Certificate
+                Database Snapshots
               </div>
             </div>
             <div class="md-footer__button md-icon">
