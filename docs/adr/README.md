@@ -17,7 +17,7 @@ to "Accepted, amended". Either way, update docs/PLAN.md §3 and §16 in the same
 | [0007](0007-unprivileged-cap-net-admin.md) | Run unprivileged, with only CAP_NET_ADMIN (D7) | Accepted, amended |
 | [0008](0008-separate-tunnel-and-ui-units.md) | Separate systemd units for the tunnel and the UI (D8) | Accepted |
 | [0009](0009-server-sent-events.md) | Server-Sent Events for live updates (D9) | Accepted |
-| [0010](0010-deb-with-nfpm.md) | Distribute as a .deb built with nfpm (D10) | Accepted |
+| [0010](0010-deb-with-nfpm.md) | Distribute as a .deb built with nfpm (D10) | Accepted, amended |
 | [0011](0011-admin-ui-lan-and-vpn-only.md) | Admin UI on the home network and VPN only (D11) | Accepted, amended |
 | [0012](0012-adguard-home-client-dns.md) | A resolver on the host, such as AdGuard Home, as the clients' DNS (D12) | Accepted, amended |
 | [0013](0013-docs-site-zensical.md) | A documentation site built with Zensical, on GitHub Pages (D13) | Accepted, amended |

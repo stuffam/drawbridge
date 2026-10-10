@@ -1,6 +1,6 @@
 # ADR 0010: Distribute as a .deb built with nfpm
 
-- **Status:** Accepted (2026-09-26), amended 2026-10-04
+- **Status:** Accepted (2026-09-26), amended 2026-10-04 and 2026-10-10
 - **Plan reference:** docs/PLAN.md §3, D10
 
 ## Context
@@ -39,3 +39,13 @@ changed: a bad release is fixed by the next version.
   is named for the commit (SvelteKit names it for the time otherwise).
 - GitHub's "latest" release skips pre-releases, which `install.sh` reads, so releases before v1.0
   are ordinary releases.
+- **Amended 2026-10-10: a build between releases is named for the release before it.** The
+  decision stands (nfpm, a bare version, a tag decides a release), but `0.0.0-dev` no longer names
+  every build made between releases. It was chosen before there was a release, and once
+  v0.1.0-rc.2 was published, `0.0.0~dev` sorted below it, so installing a build over a release
+  (`apt install ./drawbridge_*.deb`, the upgrade step in docs/MANUAL_CHECKLIST.md) was a downgrade
+  to dpkg and apt. The Makefile now names such a build for the nearest tag and the commits since
+  it, `0.1.0-rc.2+61`, whose Debian version `0.1.0~rc.2+61` sorts after that release and before the
+  next (docs/PLAN.md §11.1). `0.1.0~dev` would not have done: it sorts below `0.1.0~rc.2`.
+  `0.0.0-dev` remains for a checkout where git reaches no tag, and for the release workflow's dry
+  run.
