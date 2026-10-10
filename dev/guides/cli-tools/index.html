@@ -1980,7 +1980,8 @@ client it was about, and the details. <code>--client NAME</code> shows only the 
 <p><code>admin create</code> and <code>admin reset-password</code> print the new password once. Log in, then change it.</p>
 <h2 id="other-commands">Other commands<a class="headerlink" href="#other-commands" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>drawbridge version</code> prints the version.</li>
+<li><code>drawbridge version</code> prints the version, then the commit it was built from and that commit's
+  date, such as <code>drawbridge v0.1.0 (abc1234, 7 Oct 2026)</code>. The dashboard's footer says the same.</li>
 <li><code>drawbridge serve</code> and <code>drawbridge tunnel up|down</code> are what the two services run. Start and stop
   them with <code>systemctl</code>, not by hand.</li>
 </ul>
