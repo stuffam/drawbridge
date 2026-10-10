@@ -124,8 +124,8 @@ setups.** What exists:
   depth GitHub gives it (`test/docs/check_lists.py`).
   It is versioned with mike (2026-10-09, the amendment to that ADR). `docs.yml`'s `publish` job
   commits to the `gh-pages` branch, which is the Pages source: `dev` when `main` changes, and a
-  version for each released minor, with `latest` on the newest, when a release is published.
-  `scripts/docs-version.sh` decides a release's version and whether `latest` moves.
+  version for each released minor, with `latest` on the highest version, when a release is
+  published. `scripts/docs-version.sh` decides a release's version and whether `latest` moves.
   The install guide (`docs/install.md`, 2026-10-04) covers getting the package (by building it or
   from CI's artifact, because there's no release yet), installing, first-run setup, a first client,
   upgrading, and removing. Left in M5: router setup and troubleshooting, and cutting the first
@@ -854,6 +854,14 @@ empty `$2`. A script can't tell the first three apart by its arguments.
     - The version selector shows an alias (`v0.1 latest`) only with `alias = true` under
       `[project.extra.version]`, which `zensical.toml` sets. It reads `versions.json`, which lists
       versions newest first.
+    - mike never fetches (2026-10-10, against a local bare remote). It reads the clone's local
+      `gh-pages`, or `origin/gh-pages` as of the last fetch when there's no local one, so in an old
+      clone `mike list` is stale and a `--push` is refused as not a fast-forward, exit status 1,
+      leaving its commit on the local branch (mike then warns that it has diverged). After `git
+      fetch origin`, a local branch that is only behind is brought forward and the push works;
+      after a refused push, `git branch -D gh-pages` and a fetch are the way back. The same
+      refusal is what the loser of two overlapping publishes in `docs.yml` gets: its checkout
+      fetches every branch, so it starts current and is refused only by a push in between.
 
 **The plan's example ruleset** (§5.3) passes `nft -c` and loads in a network namespace with
 nftables 1.0.9.
@@ -960,9 +968,12 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   `requirements-docs.txt` pins its build tools. `test/docs/` has the list check and its tests.
   `docs/index.md` is the site's home page.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
-  and `release-check.sh`, `release-notes.sh`, and `release-verify.sh` (what `release.yml` runs), and
+  and `release-check.sh`, `release-notes.sh`, `release-verify.sh`, and `release-install-url.sh`
+  (what `release.yml` runs; the last makes the install guide's link for a release's notes), and
   `changelog-release.sh` (what the Prepare release workflow runs: it turns `[Unreleased]` into a
-  version's section and rebuilds the links at the foot of `CHANGELOG.md`).
+  version's section and rebuilds the links at the foot of `CHANGELOG.md`), and `docs-version.sh`
+  (what `docs.yml` runs for a published release: the docs version it publishes as, and whether
+  `latest` moves).
   `test/release/test.sh` and `test/install/test.sh` test them with throwaway repositories and a fake
   release page, and install nothing. `CHANGELOG.md` is in Keep a Changelog's form, with a section
   for each release (`## [vX.Y.Z] — date`) under `[Unreleased]`, which is the release's notes.

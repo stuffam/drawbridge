@@ -57,7 +57,7 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
     - **A change that reaches `main` is published as `dev`, not as the site.** Each final release
       publishes its minor, `v0.1` for v0.1.0 and v0.1.1 alike, when the release is published (not
       when its tag is pushed, which comes first, before its files are tried on hardware), and
-      moves the `latest` alias to it when it is the newest release. The site's root goes to
+      moves the `latest` alias to it when its version is the highest. The site's root goes to
       `latest`, or to `dev` until the first release. A pre-release publishes nothing, and a patch
       for an older minor leaves `latest` where it is. `scripts/docs-version.sh` decides a
       release's version and whether `latest` moves, and has tests; the workflow decides the rest.
@@ -65,18 +65,23 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
       address without one, such as `/getting-started/`, no longer lands anywhere; only the root
       redirects.
 
-  The fork is transitional, kept by Zensical's authors until Zensical has versioning of its own, so
-  it is pinned to a tag in `requirements-docs.txt` and updated by hand. An alias is a small
-  redirect page, not a symlink, because whether GitHub Pages serves a symlink wasn't observed. The
-  publish commands were run against a local remote on 2026-10-09, through a release history
-  (v0.1.0, v0.2.0, a v0.1.1 patch, a push to `main` after a release, a pre-release, and a hostile
-  tag) with the results as intended. The first run on GitHub, for the merge of this change into
-  `main` the same day, then succeeded: it made the `gh-pages` branch with `dev` in it, and the
-  branch's root redirects there. That evening the maintainer switched the Pages source to the
-  branch and allowed `gh-pages` in the `github-pages` environment, which until then allowed only
-  `main`, and GitHub served the site: the Pages build was clean, `/dev/` and `versions.json`
-  answered, and the page carried the selector's settings. Not yet observed: what the environment
-  does without that second setting (both were changed together), and a release's publish.
+    The fork is transitional, kept by Zensical's authors until Zensical has versioning of its own,
+    so it is pinned to a tag in `requirements-docs.txt` and updated by hand. An alias is a small
+    redirect page, not a symlink, because whether GitHub Pages serves a symlink wasn't observed.
+    `latest` goes by the release tags and not by which releases are published, so a final tag with
+    no published release still counts. A release's publish has a concurrency group of its own,
+    because GitHub keeps one run waiting in a group and a push to `main` would replace a release's
+    waiting publish; the two can then overlap, and whichever pushes second is refused (mike never
+    forces a push) and is run again. The publish commands were run against a local remote on
+    2026-10-09, through a release history (v0.1.0, v0.2.0, a v0.1.1 patch, a push to `main` after a
+    release, a pre-release, and a hostile tag) with the results as intended. The first run on
+    GitHub, for the merge of this change into `main` the same day, then succeeded: it made the
+    `gh-pages` branch with `dev` in it, and the branch's root redirects there. That evening the
+    maintainer switched the Pages source to the branch and allowed `gh-pages` in the `github-pages`
+    environment, which until then allowed only `main`, and GitHub served the site: the Pages build
+    was clean, `/dev/` and `versions.json` answered, and the page carried the selector's settings.
+    Not yet observed: what the environment does without that second setting (both were changed
+    together), and a release's publish.
 - **Amended 2026-10-09: the user docs are written for the site.** The guides moved to
   `docs/user_docs/`, and most pages there start with front matter (`title:`, and `hide:` on the
   home and getting-started pages) instead of a `# Title`. The site shows the title, because the
