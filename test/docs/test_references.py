@@ -17,8 +17,9 @@ ROOT = Path(__file__).resolve().parents[2]
 # user_docs/guides/x.md from being read as docs/guides/x.md.
 PATH = re.compile(r"(?<![\w])docs/[\w./-]*?\.md")
 
-# The changelog quotes old release notes, whose links are fixed for good (docs/releasing.md, step 2).
-SKIP = {"CHANGELOG.md"}
+# The changelog quotes old release notes, whose links are fixed for good (docs/releasing.md, step 2),
+# and this file names dead paths on purpose, as examples of what it looks for.
+SKIP = {"CHANGELOG.md", Path(__file__).resolve().relative_to(ROOT).as_posix()}
 
 
 def tracked_files():
