@@ -3,7 +3,7 @@
 Drawbridge was developed and tested on one home network. This page lists what it needs, what
 it has been tested on, and the places where other setups commonly differ. Read it before you
 install: a few of these can leave VPN clients without DNS, or the host without IPv6. The steps
-to install are in [Install Drawbridge](install.md).
+to install are in [Getting started](user_docs/getting-started.md).
 
 After you install, run `sudo drawbridge doctor`. It checks the host for most of what's below (the
 tunnel, forwarding, `accept_ra`, a firewall that drops forwarded traffic, DNS on the VPN
@@ -140,7 +140,7 @@ internet).
 ### The host's clock has to be right
 
 TLS certificates, WireGuard's handshakes, and two-factor authentication's codes
-(docs/two-factor.md) depend on the time. A host without a battery-backed
+(docs/user_docs/guides/two-factor.md) depend on the time. A host without a battery-backed
 clock, such as a Raspberry Pi without its RTC battery, needs network time
 (`systemd-timesyncd`) running before it can be trusted. The package recommends
 `systemd-timesyncd`, or any other time daemon, so a plain `apt install` brings one to a host that

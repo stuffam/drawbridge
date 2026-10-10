@@ -40,8 +40,8 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   request that touches the docs, so a release that breaks a page or a link fails there. If it
   stalls, its `classic` design keeps Material's look, and the configuration translates to a
   `mkdocs.yml` for Material for MkDocs.
-- A page's URL follows its file name (`/PLAN/`, `/MANUAL_CHECKLIST/`). Renaming a doc changes its
-  URL, and the README, `CLAUDE.md`, and the code refer to the files by name.
+- A page's URL follows its file name (`/getting-started/`, with a version in front, as amended
+  below). Renaming a page changes its URL, and the README and the web UI link to pages by address.
 - The navigation is a list in `zensical.toml`. A page that isn't listed is built but not linked.
 - A change to `docs/` is published when it reaches `main`.
 - **Amended 2026-10-09: versioned docs.** A reader who installed v0.1 shouldn't be reading what
@@ -92,4 +92,6 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   list in `zensical.toml` is still the short one that doesn't reinterpret it, and
   `test/docs/check_lists.py` still compares every list with GitHub's reading, allowing for the
   front matter and for the title the theme adds. Documents outside `docs/user_docs/`, such as
-  PLAN.md and the ADRs, are read on GitHub and keep their `# Title`.
+  PLAN.md and the ADRs, are read on GitHub and keep their `# Title`. They aren't published: the
+  site is `docs/user_docs/` alone (`docs_dir` in `zensical.toml`), for the end user, and a page
+  there covers one topic and links to no file outside it. The rest of `docs/` is for contributors.
