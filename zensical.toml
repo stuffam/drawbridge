@@ -34,9 +34,12 @@ nav = [
       "guides/dns-settings.md",
       "guides/adguard-home.md",
       "guides/pi-hole.md",
+      "guides/web-ui-access.md",
     ] },
     { "System" = [
+      "guides/troubleshooting.md",
       "guides/diagnostics.md",
+      "guides/logs.md",
       "guides/backup-restore.md",
       "guides/snapshots.md",
       "guides/tls-certificate.md",
