@@ -1030,3 +1030,9 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- graphify reads `internal/store/migrations/*.sql` only with its `sql` extra. Without it,
+  `graphify update` warns `tree_sitter_sql not installed`, loses those nodes, and refuses to
+  overwrite the graph (the shrink guard). Fix that by reinstalling with the extra, pinned to the
+  installed version (`graphify --version`): `uv tool install --force "graphifyy[sql]==<version>"`.
+  Never `--force` past the guard, and never install or upgrade graphify without `[sql]`, which
+  drops it.
