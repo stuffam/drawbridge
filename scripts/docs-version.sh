@@ -9,6 +9,10 @@
 #                                 for an older minor (v0.1.5 after v0.2.0) then refreshes its own
 #                                 entry and leaves the `latest` alias where it is.
 #
+# "Highest" goes by the tags in the clone and not by which releases are published: a final tag with
+# no published release (a draft, an abandoned tag) still counts, so a lower release leaves `latest`
+# alone. docs/releasing.md ("Docs versions") has the command that moves it by hand.
+#
 # Only a final vMAJOR.MINOR.PATCH publishes: a pre-release such as v0.2.0-rc.1 has no docs of its
 # own, and a tag is a name from the network, so anything else is refused before it can reach mike.
 # --latest runs in the repository, with the tags fetched.

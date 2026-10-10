@@ -11,8 +11,9 @@ name: Docs
 #
 #   - A push to main, or a manual run on main, publishes `dev`.
 #   - A published release publishes its minor (v0.1 for v0.1.0 and v0.1.1 alike) and moves `latest`
-#     to it when it is the newest release; scripts/docs-version.sh decides both. The site's root
-#     goes to `latest`, or to `dev` until the first release. A pre-release publishes nothing.
+#     to it when its version is the highest of the release tags; scripts/docs-version.sh decides
+#     both. The site's root goes to `latest`, or to `dev` until the first release. A pre-release
+#     publishes nothing.
 #
 # The repository's Pages source has to be "Deploy from a branch", gh-pages, / (root) (Settings,
 # Pages, Build and deployment), set once by the maintainer after the first publish has made the
@@ -70,9 +71,14 @@ jobs:
     # The only job that can push, and only to gh-pages (mike never touches another branch).
     permissions:
       contents: write
-    # One publish at a time, and none canceled halfway: each one builds on the branch the last left.
+    # One publish at a time of each kind, and none canceled halfway. GitHub keeps one run waiting in
+    # a group and replaces it when another arrives, so a release gets a group of its own: in one
+    # shared with the pushes to main, a push that landed while its publish waited would cancel it,
+    # and its docs would never go up. The two kinds can then overlap. mike never forces a push, so
+    # whichever pushes second is refused and fails, with gh-pages as the first left it, and
+    # re-running it mends that (test/release/test.sh checks the group).
     concurrency:
-      group: docs-publish
+      group: docs-publish-${{ github.event_name == 'release' && 'release' || 'dev' }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7

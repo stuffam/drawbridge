@@ -408,6 +408,16 @@ unversioned=$(
 )
 same "links: nothing the notes come from links to an unversioned docs address" "" "$unversioned"
 
+# ---- docs.yml ----
+
+# GitHub keeps one run waiting in a concurrency group and replaces it when another arrives. A
+# release's publish shares a group with the pushes to main unless the group names the event, and
+# then a push that lands while it waits cancels it, so its docs never go up (docs/releasing.md,
+# "Docs versions").
+group=$(sed -n 's/^ *group: *//p' "$root/.github/workflows/docs.yml")
+expect "docs.yml: a release's publish has a concurrency group of its own" 0 "event_name == 'release'" \
+	printf '%s\n' "$group"
+
 # ---- release-verify.sh ----
 
 if ! command -v dpkg-deb >/dev/null 2>&1; then
