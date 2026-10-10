@@ -670,7 +670,7 @@
   <span class="md-ellipsis">
     
   
-  Client Configuration
+  Clients
 
     
   </span>
@@ -697,7 +697,7 @@
   <span class="md-ellipsis">
     
   
-  Rotate Client Key
+  Rotate Client Keys
 
     
   </span>
@@ -727,6 +727,8 @@
   
     
     
+      
+        
       
         
       
@@ -852,7 +854,7 @@
   <span class="md-ellipsis">
     
   
-  Rotate Server Key
+  Rotate the Server Key
 
     
   </span>
@@ -946,6 +948,33 @@
 
                 
               
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/web-ui-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Web UI Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
             </ul>
           </nav>
         
@@ -963,6 +992,10 @@
   
     
     
+      
+        
+      
+        
       
         
       
@@ -1027,6 +1060,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guides/diagnostics/" class="md-nav__link">
         
   
@@ -1035,6 +1095,33 @@
     
   
   Diagnostic Tools
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logs
 
     
   </span>
@@ -1755,20 +1842,13 @@ a connection to their own public address back inside.</p>
 </span></code></pre></div>
 <p>shows the client as <code>active</code> with a handshake a few seconds old. A site such as test-ipv6.com
 shows your home network's public address, and your IPv6 address if the VPN has one.</p>
-<p>If it doesn't connect:</p>
-<ul>
-<li><strong>No handshake:</strong> the port forward (UDP 51820 to the host) or the endpoint isn't right yet, or
-  the connection has no inbound IPv4 (CGNAT). Run <code>sudo drawbridge doctor</code>.</li>
-<li><strong>A handshake, but nothing loads:</strong> another firewall on the host (ufw, firewalld, or Docker, for
-  example) is dropping forwarded traffic, and <code>doctor</code> names the command that fixes it.</li>
-<li><strong>Pages load, but names don't resolve:</strong> the DNS the VPN hands out isn't answering. Check it
-  under DNS for Clients in Settings.</li>
-<li>The services' own logs: <code>journalctl -u drawbridge -u drawbridge-tunnel</code>.</li>
-</ul>
+<p>If it doesn't connect, see <a href="../guides/troubleshooting/">Troubleshooting</a>, which starts with
+<code>sudo drawbridge doctor</code>.</p>
 <h2 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
-<p>Make a <a href="../guides/backup-restore/">backup</a> once you've added the clients you want. It's the only
-way back if the host's disk fails. To install a newer version later, see
-<a href="../guides/upgrade/">Upgrade</a>, and to take Drawbridge off the host, <a href="../guides/remove/">Remove</a>.</p>
+<p>Add the rest of your devices (see <a href="../guides/client-configuration/">Clients</a>), then make a
+<a href="../guides/backup-restore/">backup</a>. It's the only way back if the host's disk fails. To install a
+newer version later, see <a href="../guides/upgrade/">Upgrade</a>, and to take Drawbridge off the host,
+<a href="../guides/remove/">Remove</a>.</p>
 
   
 
@@ -1834,13 +1914,13 @@ way back if the host's disk fails. To install a newer version later, see
         
         
           
-          <a href="../guides/client-configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Client Configuration">
+          <a href="../guides/client-configuration/" class="md-footer__link md-footer__link--next" aria-label="Next: Clients">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Client Configuration
+                Clients
               </div>
             </div>
             <div class="md-footer__button md-icon">

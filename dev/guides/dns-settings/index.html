@@ -530,7 +530,7 @@
   <span class="md-ellipsis">
     
   
-  Client Configuration
+  Clients
 
     
   </span>
@@ -557,7 +557,7 @@
   <span class="md-ellipsis">
     
   
-  Rotate Client Key
+  Rotate Client Keys
 
     
   </span>
@@ -589,6 +589,8 @@
   
     
     
+      
+        
       
         
       
@@ -717,7 +719,7 @@
   <span class="md-ellipsis">
     
   
-  Rotate Server Key
+  Rotate the Server Key
 
     
   </span>
@@ -744,6 +746,23 @@
       
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DNS Settings
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -759,6 +778,57 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-four-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The four choices
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-a-resolver-on-the-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Use a resolver on the host
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-you-change-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        After you change it
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -819,6 +889,33 @@
 
                 
               
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-ui-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Web UI Access
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
             </ul>
           </nav>
         
@@ -836,6 +933,10 @@
   
     
     
+      
+        
+      
+        
       
         
       
@@ -903,6 +1004,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -911,6 +1039,33 @@
     
   
   Diagnostic Tools
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logs
 
     
   </span>
@@ -1271,6 +1426,11 @@
                     
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1280,6 +1440,47 @@
   
   
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-four-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The four choices
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-a-resolver-on-the-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Use a resolver on the host
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-you-change-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        After you change it
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1384,6 +1585,8 @@
       
         
       
+        
+      
     
     
     
@@ -1422,7 +1625,62 @@
 
   <h1>DNS Settings</h1>
 
-<p>Coming soon...</p>
+<p>Clients ask a DNS server to turn names into addresses. The ones you choose here are written into
+each client's config, so they apply while the client is connected to the VPN. Set them in
+<strong>Settings</strong>, under <strong>DNS for Clients</strong>, or on the host with <code>sudo drawbridge server set --dns</code>.</p>
+<h2 id="the-four-choices">The four choices<a class="headerlink" href="#the-four-choices" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>What clients use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Public resolvers</strong></td>
+<td>Cloudflare's <code>1.1.1.1</code> and <code>1.0.0.1</code>, and its two IPv6 addresses when the VPN has IPv6. This is the default. It works anywhere, and Cloudflare sees the names your clients look up.</td>
+</tr>
+<tr>
+<td><strong>This server</strong></td>
+<td>The server's own VPN addresses (<code>10.8.0.1</code> on a default setup, and its IPv6 counterpart). It works only if a DNS resolver on the host listens on them.</td>
+</tr>
+<tr>
+<td><strong>Other servers</strong></td>
+<td>The addresses you type, IPv4 or IPv6, separated by commas or spaces.</td>
+</tr>
+<tr>
+<td><strong>None</strong></td>
+<td>Nothing is given, so each client keeps using its own DNS. Its lookups may leak outside the tunnel.</td>
+</tr>
+</tbody>
+</table>
+<p>On the command line, <code>--dns</code> takes the addresses, <code>server</code>, or <code>none</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--dns<span class="w"> </span><span class="m">9</span>.9.9.9,149.112.112.112
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--dns<span class="w"> </span>server
+</span></code></pre></div>
+<h2 id="use-a-resolver-on-the-host">Use a resolver on the host<a class="headerlink" href="#use-a-resolver-on-the-host" title="Permanent link">&para;</a></h2>
+<p>A resolver such as AdGuard Home, Pi-hole, Unbound, or dnsmasq can answer for your clients, so
+that, say, an ad blocker works over the VPN too. Pick <strong>This server</strong>, then press <strong>Check This
+Server</strong>. The check sends a test query to each of the server's VPN addresses and says which
+answer. <code>--dns server</code> does the same check and saves only the addresses that answered; <code>--force</code>
+saves them anyway.</p>
+<p>If the check finds nothing on a host that runs a resolver:</p>
+<ul>
+<li><strong>It has to listen on the VPN addresses.</strong> Most resolvers listen only on the host's own
+  addresses by default. For AdGuard Home, <code>bind_hosts</code> in <code>AdGuardHome.yaml</code> lists the addresses,
+  or <code>0.0.0.0</code> and <code>::</code> for all of them. The resolver also has to start after the tunnel exists,
+  or listen on all addresses.</li>
+<li><strong>It has to answer the VPN's subnets.</strong> If the check says the resolver "refused the query," its
+  access settings don't allow the VPN's subnets.</li>
+<li><strong>systemd-resolved doesn't count.</strong> It listens only on <code>127.0.0.53</code>.</li>
+</ul>
+<h2 id="after-you-change-it">After you change it<a class="headerlink" href="#after-you-change-it" title="Permanent link">&para;</a></h2>
+<p>DNS is part of each client's config, so the clients that were handed a config show as
+<strong>outdated</strong>. Give each one its config again. See
+<a href="../client-configuration/#when-a-config-is-outdated">Clients</a>.</p>
+<p>If names stop resolving, <a href="../diagnostics/">Diagnostic tools</a> has a <strong>DNS for clients</strong> check. To
+let Drawbridge also name your clients in AdGuard Home, see <a href="../adguard-home/">AdGuard Home</a>.</p>
 
 
 
@@ -1465,7 +1723,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../server-rotate-key/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rotate Server Key">
+          <a href="../server-rotate-key/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rotate the Server Key">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1475,7 +1733,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Rotate Server Key
+                Rotate the Server Key
               </div>
             </div>
           </a>

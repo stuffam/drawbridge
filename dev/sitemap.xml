@@ -37,6 +37,9 @@
         <loc>https://stuffam.github.io/drawbridge/dev/guides/homepage/</loc>
       </url>
       <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/logs/</loc>
+      </url>
+      <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/pi-hole/</loc>
       </url>
       <url>
@@ -55,9 +58,15 @@
         <loc>https://stuffam.github.io/drawbridge/dev/guides/tls-certificate/</loc>
       </url>
       <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/troubleshooting/</loc>
+      </url>
+      <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/two-factor/</loc>
       </url>
       <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/upgrade/</loc>
+      </url>
+      <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/web-ui-access/</loc>
       </url>
 </urlset>
