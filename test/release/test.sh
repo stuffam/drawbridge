@@ -487,6 +487,16 @@ group=$(sed -n 's/^ *group: *//p' "$root/.github/workflows/docs.yml")
 expect "docs.yml: a release's publish has a concurrency group of its own" 0 "event_name == 'release'" \
 	printf '%s\n' "$group"
 
+# ---- release.yml ----
+
+# A dry run has no tag, and the Makefile names a build for the nearest tag and the commits since it
+# (`make version`), so the first build, the second, and the check of the files all have to be given
+# the version the tag says, or 0.0.0-dev. The check expects exactly that name, and the second build
+# has to match the first. The two builds each set it for the whole job.
+named="VERSION: \${{ needs.check.outputs.version || '0.0.0-dev' }}"
+same "release.yml: both builds are given the tag's version, and a dry run's is 0.0.0-dev" 2 \
+	"$(grep -cF -- "$named" "$root/.github/workflows/release.yml")"
+
 # ---- release-verify.sh ----
 
 if ! command -v dpkg-deb >/dev/null 2>&1; then

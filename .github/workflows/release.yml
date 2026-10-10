@@ -70,10 +70,14 @@ jobs:
     name: Build
     needs: check
     runs-on: ubuntu-24.04
+    env:
+      # What the tag says, and for a dry run, which has no tag, 0.0.0-dev. Without it the Makefile
+      # names a build for the nearest tag and the commits since it (`make version`), which is right
+      # for a build made by hand and not for a rehearsal of a release.
+      VERSION: ${{ needs.check.outputs.version || '0.0.0-dev' }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # Tags, so the build gets its version from `git describe`.
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
@@ -86,9 +90,6 @@ jobs:
       - name: Build the web app, the packages, the SBOMs, and the checksums
         run: make release-files
       - name: Check the files against the tag's version
-        env:
-          # A dry run has no tag, and builds 0.0.0-dev.
-          VERSION: ${{ needs.check.outputs.version || '0.0.0-dev' }}
         run: scripts/release-verify.sh dist/release "$VERSION"
       - uses: actions/upload-artifact@v7
         with:
@@ -105,8 +106,11 @@ jobs:
     name: Build again
     # The same commit has to give the same packages on another machine, or what was tested isn't
     # what's shipped, and nobody can check the provenance by building it themselves.
-    needs: build
+    needs: [check, build]
     runs-on: ubuntu-24.04
+    env:
+      # The same as the first build's, or the two builds would differ by their version alone.
+      VERSION: ${{ needs.check.outputs.version || '0.0.0-dev' }}
     steps:
       - uses: actions/checkout@v7
         with:
