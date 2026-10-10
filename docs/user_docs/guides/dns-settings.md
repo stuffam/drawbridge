@@ -2,4 +2,4 @@
 title: DNS Settings
 ---
 
-placeholder file
+Coming soon...
