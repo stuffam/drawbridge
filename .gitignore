@@ -20,3 +20,16 @@ desktop.ini
 # `make web` copies the web app's build here; only the placeholder is tracked.
 /internal/webui/dist/*
 !/internal/webui/dist/.keep
+
+# Python's bytecode: `make docs` runs the docs tests (test/docs/), and a standard CPython writes
+# __pycache__/ next to them.
+__pycache__/
+
+# Claude Code: .claude/settings.json is shared, and these two are one person's: the local overrides
+# and the worktrees it makes for a session.
+/.claude/settings.local.json
+/.claude/worktrees/
+
+# graphify's knowledge graph, which `/graphify` builds on each machine (graph.json, the report, and
+# graph.html). Unanchored, because it writes to wherever it's run.
+graphify-out/
