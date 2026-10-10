@@ -8,6 +8,10 @@ NPM ?= npm
 GIT_TAG := $(shell git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null)
 VERSION ?= $(if $(GIT_TAG),$(patsubst v%,%,$(GIT_TAG)),0.0.0-dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(if $(shell git status --porcelain 2>/dev/null),-dirty)
+# The time of that commit, in UTC as RFC 3339 (the web UI's footer names its day in the viewer's time
+# zone). It's the commit's time and never the build's, so the same commit gives the same binary.
+# Empty where git can't say.
+COMMIT_DATE ?= $(shell TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
 # The Debian version nfpm makes of VERSION: the first - becomes ~, so 1.0.0-rc.1 sorts before 1.0.0.
 DEB_VERSION := $(subst -,~,$(VERSION))
 # The time of the commit being built. nfpm puts it on every file in a package, where it would put
@@ -26,7 +30,7 @@ GO_PKGS := ./cmd/... ./internal/...
 GO_LINT := --build-tags integration $(GO_PKGS) ./test/...
 # Run the integration tests as root: directly if we are root, otherwise through sudo.
 SUDO_EXEC := $(if $(filter 0,$(shell id -u)),,-exec 'sudo -E')
-LDFLAGS := -s -w -X $(PKG)/internal/version.Version=$(VERSION) -X $(PKG)/internal/version.Commit=$(COMMIT)
+LDFLAGS := -s -w -X $(PKG)/internal/version.Version=$(VERSION) -X $(PKG)/internal/version.Commit=$(COMMIT) -X $(PKG)/internal/version.Date=$(COMMIT_DATE)
 GOBUILD := CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)'
 
 # Pinned build tools, installed into ./bin by `make tools`.

@@ -24,7 +24,13 @@
 	import RangeSelect from '$lib/components/RangeSelect.svelte';
 	import SortSelect from '$lib/components/SortSelect.svelte';
 	import StateBadge from '$lib/components/StateBadge.svelte';
-	import { fetchVersion, formatVersion, type VersionInfo } from '$lib/version';
+	import {
+		fetchVersion,
+		formatVersion,
+		repoUrl,
+		versionLink,
+		type VersionInfo
+	} from '$lib/version';
 
 	// How often the dashboard runs the host's checks again.
 	const checksMs = 5 * 60 * 1000;
@@ -369,5 +375,15 @@
 </div>
 
 {#if version}
-	<p class="text-center text-xs text-neutral-400">Drawbridge {formatVersion(version)}</p>
+	{@const link = versionLink(version)}
+	<p class="text-center text-xs text-neutral-400">
+		<a href={repoUrl} target="_blank" rel="noopener external">Drawbridge</a>
+		{#if link}
+			<a class="whitespace-nowrap" href={link} target="_blank" rel="noopener external"
+				>{formatVersion(version)}</a
+			>
+		{:else}
+			<span class="whitespace-nowrap">{formatVersion(version)}</span>
+		{/if}
+	</p>
 {/if}

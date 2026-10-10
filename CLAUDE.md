@@ -603,15 +603,17 @@ These are the rules most likely to get silently broken.
   puts every file's modification time in the package (the Makefile exports `SOURCE_DATE_EPOCH`, the
   commit's time), SvelteKit names each build for the time it was made (`web/vite.config.ts` names it
   for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are
-  made with `-noserial -notimestamp`; the SBOMs aren't compared). A tag is never moved and a
-  published release's files are never replaced: a mistake is fixed by the next version, because an
-  older build won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an
-  older version over a newer one, never lets a name from the network into a path or URL unchecked,
-  and never reaches `apt-get` before the package's checksum matches; its tests break the script to
-  prove each. A release's files are named for the version (`1.0.0-rc.1`), never the package's Debian
-  version (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't
-  have. `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and checks
-  it against the downloaded package's `Version`.
+  made with `-noserial -notimestamp`; the SBOMs aren't compared). The commit's own time is allowed:
+  the web UI's footer shows `internal/version.Date`, which the Makefile stamps from it (UTC, RFC
+  3339), never from the clock. A tag is never moved and a published release's files are never
+  replaced: a mistake is fixed by the next version, because an older build won't write a newer
+  database (docs/PLAN.md §11.1). `install.sh` never installs an older version over a newer one,
+  never lets a name from the network into a path or URL unchecked, and never reaches `apt-get`
+  before the package's checksum matches; its tests break the script to prove each. A release's files
+  are named for the version (`1.0.0-rc.1`), never the package's Debian version (`1.0.0~rc.1`):
+  GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't have. `install.sh`
+  takes the Debian version from the name (the first `-` becomes `~`) and checks it against the
+  downloaded package's `Version`.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,

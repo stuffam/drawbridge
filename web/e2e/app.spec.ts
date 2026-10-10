@@ -270,6 +270,26 @@ test('the dashboard lists clients and links its tiles to a filtered list', async
 	await expect(page.getByText('No client is online.')).toBeVisible();
 });
 
+test("the dashboard's footer names the build and links to it on GitHub", async ({ page }) => {
+	await login(page);
+	const footer = page.locator('p').filter({ hasText: /Drawbridge\s+v\d/ });
+	// The day is the commit's, so the binary has to come from `make build`, which stamps it.
+	await expect(footer).toContainText(
+		/Drawbridge\s+v\d+\.\d+\.\d+\S*\s+\(\S+, \d{1,2} [A-Z][a-z]{2} \d{4}\)/
+	);
+
+	const hrefs = await footer
+		.getByRole('link')
+		.evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+	expect(hrefs[0]).toBe('https://github.com/stuffam/drawbridge');
+	await expect(footer.getByRole('link').first()).toHaveAttribute('target', '_blank');
+	// A tagged build links to its release and a build between releases to its commit. A dirty
+	// tree has no page on GitHub, so there only the name is a link.
+	expect(hrefs.slice(1).join()).toMatch(
+		/^(|https:\/\/github\.com\/stuffam\/drawbridge\/(releases\/tag\/v\d\S*|commit\/[0-9a-f]{7,40}))$/
+	);
+});
+
 test("the dashboard's boxes open their pages, and say so when the pointer is over them", async ({
 	page
 }) => {
