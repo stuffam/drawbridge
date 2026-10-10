@@ -1497,8 +1497,9 @@ package does once it's installed (above).
       v0.1.0-rc.2 was published, and `0.0.0~dev` sorts below every release, which made the same
       install a downgrade. Where git reaches no tag (a shallow clone, an archive), or the nearest
       isn't a plain `vX.Y.Z` with an optional pre-release (git allows `;` and `$` in a tag's name,
-      and the version reaches shell commands), a build is still `0.0.0-dev`. `release.yml` leaves nothing to git: both its builds are given the tag's version,
-      or `0.0.0-dev` for a dry run, which has no tag.
+      and the version reaches shell commands), a build is still `0.0.0-dev`. `release.yml` leaves
+      nothing to git: both its builds are given the tag's version, or `0.0.0-dev` for a dry run,
+      which has no tag.
     - A release before v1.0 is an ordinary GitHub release, not a pre-release: the "latest" release
       that `install.sh` reads skips pre-releases, and M5's exit criterion (upgrading from v0.x)
       assumes v0.x releases exist.
