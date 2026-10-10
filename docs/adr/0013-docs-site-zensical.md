@@ -70,8 +70,11 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   redirect page, not a symlink, because whether GitHub Pages serves a symlink wasn't observed. The
   publish commands were run against a local remote on 2026-10-09, through a release history
   (v0.1.0, v0.2.0, a v0.1.1 patch, a push to `main` after a release, a pre-release, and a hostile
-  tag) with the results as intended. Not yet observed: GitHub Pages serving the branch, and the
-  first run of the workflow itself.
+  tag) with the results as intended. The first run on GitHub, for the merge of this change into
+  `main` the same day, then succeeded: it made the `gh-pages` branch with `dev` in it, and the
+  branch's root redirects there. Not yet observed: GitHub Pages serving the branch (the Pages
+  source was still "GitHub Actions" then), the `github-pages` environment's branch rule, and a
+  release's publish.
 - **Amended 2026-10-09: the user docs are written for the site.** The guides moved to
   `docs/user_docs/`, and most pages there start with front matter (`title:`, and `hide:` on the
   home and getting-started pages) instead of a `# Title`. The site shows the title, because the

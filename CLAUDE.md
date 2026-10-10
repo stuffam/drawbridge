@@ -835,10 +835,13 @@ empty `$2`. A script can't tell the first three apart by its arguments.
   directory that ignores itself.
 - What publishes it: mike, Zensical's fork of it, run by `docs.yml`'s `publish` job, with
   `actions/setup-python@v7` at its current major. The Pages artifact actions (`configure-pages`,
-  `upload-pages-artifact`, `deploy-pages`) aren't used any more: the Pages source is the `gh-pages`
-  branch.
+  `upload-pages-artifact`, `deploy-pages`) aren't used any more: the Pages source is meant to be
+  the `gh-pages` branch, a setting the maintainer switches by hand (it was still "GitHub Actions"
+  on 2026-10-09).
 - **mike** (2026-10-09, run against a local bare remote with Zensical 0.0.67 and the fork's
-  `2.2.0+zensical-0.1.0`; GitHub Pages serving the branch hasn't been observed):
+  `2.2.0+zensical-0.1.0`, and then by the workflow's first run on GitHub, which made `gh-pages`
+  with `dev` in it; GitHub Pages serving the branch, and a release's publish, haven't been
+  observed):
     - It isn't on PyPI: `requirements-docs.txt` pins `git+https://github.com/squidfunk/mike.git`
       to that tag, and both pip and uv accept the `+` in it.
     - It reads `zensical.toml` before `mkdocs.yml`, so no `mkdocs.yml` is needed, and builds with
