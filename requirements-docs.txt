@@ -19,5 +19,5 @@ pyparsing==3.3.3
 pyyaml==6.0.3
 tomli==2.4.1
 verspec==0.1.0
-zensical==0.0.67
+zensical==0.0.68
 git+https://github.com/squidfunk/mike.git@2.2.0+zensical-0.1.0
