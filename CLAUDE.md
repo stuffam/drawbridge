@@ -285,9 +285,11 @@ a step describes.
   list, and before an item that follows a paragraph or a fence of the item above. A page that
   breaks one still builds, with its bullets flattened or folded into a paragraph, so `make docs`
   compares every list with GitHub's reading (`test/docs/check_lists.py`) and CI fails on a
-  difference. Don't turn on a Markdown extension in `zensical.toml` before checking that no page
-  changes: several in Zensical's starter list reinterpret `$`, `~`, `^`, and `1/2`. New pages go in
-  the `nav` there.
+  difference. This is about syntax, not about how a page looks on GitHub: the pages in
+  `docs/user_docs/` start with front matter instead of a `# Title`, so GitHub shows them as a table
+  with no heading (ADR 0013, amended 2026-10-09). Don't turn on a Markdown extension in
+  `zensical.toml` before checking that no page changes: several in Zensical's starter list
+  reinterpret `$`, `~`, `^`, and `1/2`. New pages go in the `nav` there.
 
 ## Commands
 
@@ -834,9 +836,12 @@ empty `$2`. A script can't tell the first three apart by its arguments.
 - What publishes it: mike, Zensical's fork of it, run by `docs.yml`'s `publish` job, with
   `actions/setup-python@v7` at its current major. The Pages artifact actions (`configure-pages`,
   `upload-pages-artifact`, `deploy-pages`) aren't used any more: the Pages source is the `gh-pages`
-  branch.
+  branch, a setting the maintainer switched by hand on 2026-10-09, along with allowing that branch
+  in the `github-pages` environment.
 - **mike** (2026-10-09, run against a local bare remote with Zensical 0.0.67 and the fork's
-  `2.2.0+zensical-0.1.0`; GitHub Pages serving the branch hasn't been observed):
+  `2.2.0+zensical-0.1.0`, and then by the workflow's first run on GitHub, which made `gh-pages`
+  with `dev` in it, and by Pages once its source was switched, which served it; a release's
+  publish hasn't been observed):
     - It isn't on PyPI: `requirements-docs.txt` pins `git+https://github.com/squidfunk/mike.git`
       to that tag, and both pip and uv accept the `+` in it.
     - It reads `zensical.toml` before `mkdocs.yml`, so no `mkdocs.yml` is needed, and builds with
