@@ -2,4 +2,4 @@
 title: AdGuard Home
 ---
 
-placeholder file
+Coming soon...

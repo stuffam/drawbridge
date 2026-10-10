@@ -2,4 +2,4 @@
 title: Pi-hole
 ---
 
-placeholder file
+Coming soon...

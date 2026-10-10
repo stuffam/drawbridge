@@ -2,4 +2,4 @@
 title: Client Configuration
 ---
 
-placeholder file
+Coming soon...
