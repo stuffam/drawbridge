@@ -1585,3 +1585,26 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   and immutable releases `enabled`. (The same read found `main protection`, which requires a pull
   request and passing status checks, with no bypass actors, and the repository has auto-merge off.
   Nobody has pushed a tag to see it hold.)
+- `[VERIFIED 2026-10-09]` The docs site's first publish, and Pages serving it. The **Docs** run for
+  the merge of the versioning change into `main` (run 38007035920, `da6c6cc`) succeeded in both of
+  its jobs, **Build** and **Publish**: it made the `gh-pages` branch with `dev` in it, and the
+  branch's root is a redirect to `dev/`. Once the maintainer set the Pages source to that branch
+  (folder `/`) and allowed `gh-pages` in the `github-pages` environment, the Pages build finished
+  with no error, `/dev/` and `versions.json` answered 200, the page carried the selector's settings
+  (`provider: mike`, `alias: true`), and the old unversioned address `/getting-started/` was a 404,
+  as expected. Not seen: what the environment does without its second setting, because both were
+  changed together.
+- `[NEXT]` Publishing `v0.1.0` (docs/releasing.md, step 6) starts the **Docs** workflow on the tag,
+  and **Publish** succeeds: `gh-pages` gets `v0.1` with the alias `latest` beside `dev`,
+  `versions.json` lists `v0.1` with `latest`, the version selector says "v0.1 latest", and the
+  site's root goes to `latest/` and from there to `v0.1/`. The commands that do it have only run
+  against a local remote (ADR 0013).
+- `[NEXT]` The install guide link in `v0.1.0`'s notes, `.../drawbridge/v0.1/getting-started/`,
+  opens the guide once the docs have published. The notes exist before then, so the link is dead
+  while the **Docs** run is going.
+- `[NEXT]` A push to `main` that changes the docs, after `v0.1.0`, publishes `dev` and nothing else:
+  `latest` and the root stay where they are.
+- `[NEXT]` Publishing `v0.1.1` refreshes `v0.1`, which keeps `latest`, and leaves `dev` alone.
+- `[NEXT]` A pre-release publishes no docs: the **Docs** run for the next pre-release, if there is
+  one, shows **Build** and **Publish** skipped. (`v0.1.0-rc.2` was published before the workflow
+  listened for releases.)

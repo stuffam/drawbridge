@@ -166,8 +166,8 @@ same way and is marked as one.
 - After the first release, change what still says there's no release: the install guide's "Get
   the package", and the status text in CLAUDE.md and PLAN.md.
 - After a final release, open https://stuffam.github.io/drawbridge/ and its version selector. The
-  selector should list the release's minor, and when this is the newest release, mark it `latest`
-  and send the root to it. If it doesn't, see [Docs versions](#docs-versions).
+  selector should list the release's minor, and when this has the highest version, mark it
+  `latest` and send the root to it. If it doesn't, see [Docs versions](#docs-versions).
 
 ## Docs versions
 
@@ -176,12 +176,16 @@ nothing from the changelog:
 
 - **Publishing a final release** (step 6) starts the **Docs** workflow on the tag. It builds the
   docs and publishes them as the release's minor, `v0.1` for `v0.1.0` and `v0.1.1` alike, and moves
-  `latest` to it when it's the newest release. The site's root goes to `latest`.
+  `latest` to it when its version is the highest. The site's root goes to `latest`.
 - **Publishing a pre-release** publishes nothing.
 - **A push to `main` that touches the docs** publishes `dev`, and so does running the workflow by
   hand on `main`. The root goes to `dev` only until the first release.
 - A patch for an older minor (`v0.1.5` after `v0.2.0`) refreshes `v0.1` and leaves `latest` on
   `v0.2`.
+- "Highest" goes by the tags, not by which releases are published. A final tag with no published
+  release (a draft, or a tag you gave up on) still counts, so a release below it doesn't move
+  `latest`. If that leaves `latest` somewhere it shouldn't be, use the first command in the table
+  below.
 - It starts only when the release is published with your own login, the `gh` command or the button
   in step 6. GitHub doesn't start a workflow for an event that a workflow's own token caused, and
   nothing here publishes a release that way.
@@ -194,6 +198,14 @@ from a clone with the docs tools installed (`pip install -r requirements-docs.tx
 Python 3.10 or later) and a login that can push to the repository, and use mike. Each command takes
 `--push` to publish. An alias is a redirect page here, so `mike alias` needs `--alias-type
 redirect`, or it makes a symlink.
+
+Run `git fetch origin` first, every time. mike never fetches: it reads the clone's own `gh-pages`
+branch, or `origin/gh-pages` as of the last fetch when there's no local one, so in an old clone
+`mike list` shows old versions, and a command with `--push` is refused as not a fast-forward. The
+refused attempt still leaves its commit on the local `gh-pages`, and mike then warns that it has
+diverged from `origin/gh-pages`. To get back, delete the local branch (`git branch -D gh-pages`,
+which throws away only commits that were never pushed), run `git fetch origin`, and repeat the
+command. After a fetch, a local `gh-pages` that is only behind is brought forward by mike itself.
 
 | What happened | Command |
 | --- | --- |
@@ -216,7 +228,7 @@ A tag and a published release can't be changed, so a mistake is fixed by the nex
 | **Build again** says the packages differ | Don't publish. A change made a build depend on the time or the machine: find it (docs/PLAN.md §11.1 lists the three that did), fix it, and release the next version |
 | **Draft the release** says GitHub renamed a file | Delete the draft (a draft can be deleted), and release the next version. GitHub rewrites a `~` in a file's name to a `.`, which is why a release's files are named for the version (`0.1.0-rc.2`), never the Debian version (`0.1.0~rc.2`): if the names changed in the build, that's where to look |
 | You published, and found a problem | Delete the release or mark it a pre-release, so "latest" goes back to the last good one, say why in a note, and release the next version. Its docs stay up until you `mike delete` them ([Docs versions](#docs-versions)) |
-| The **Docs** workflow's **Publish** job failed | Read its log. A build or a push that failed leaves the `gh-pages` branch as it was. Use **Re-run failed jobs**: both of a release's steps are safe to repeat, so a failure between them (the version published, the root not moved) is mended by the re-run |
+| The **Docs** workflow's **Publish** job failed | Read its log. A build or a push that failed leaves the `gh-pages` branch as it was. A push is refused when another publish (a release's and a push to `main` have separate queues, so they can overlap) pushed first, and the log says it wasn't a fast-forward. Use **Re-run failed jobs**: both of a release's steps are safe to repeat, so a failure between them (the version published, the root not moved) is mended by the re-run |
 | A release you published isn't on the docs site | Open **Actions → Docs** and look for a run for the release. There's none if the release was published by a workflow's token, or was a pre-release. A manual run publishes only `dev`, so for a release, check out its tag and run the commands of the **Publish the release's version** step in `.github/workflows/docs.yml` by hand, with `$TAG` and `$version` filled in |
 
 ## What isn't automated, and why
