@@ -424,8 +424,13 @@ else
 	cat >"$work/print.mk" <<-'EOF'
 		print-%: ; @echo $($*)
 	EOF
-	build_version() { make -s -C "$vrepo" -f "$root/Makefile" version; }
-	deb_version() { make -s -C "$vrepo" -f "$root/Makefile" -f "$work/print.mk" print-DEB_VERSION; }
+	mk=(make -s -C "$vrepo" -f "$root/Makefile")
+	# Runs a command as a caller with a clean environment would: without a VERSION, or make's or
+	# git's own variables, which `make test-release` or a shell may have set. Assignments at the
+	# start of the command (VERSION=1.2.3 make ...) are made after those are removed.
+	clean() { env -u VERSION -u MAKEFLAGS -u MFLAGS -u MAKELEVEL -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE "$@"; }
+	build_version() { clean "${mk[@]}" version; }
+	deb_version() { clean "${mk[@]}" -f "$work/print.mk" print-DEB_VERSION; }
 	debs=()
 	# at NAME WANT-VERSION WANT-DEBIAN: the repository's HEAD is built as that version. The Debian
 	# version make gives is remembered, in the order of the history, for the ordering check below.
@@ -461,8 +466,22 @@ else
 
 	# VERSION in the environment (as release.yml sets it) or on the command line is the name,
 	# whatever git says.
-	same "version: from the environment" "9.9.9-rc.1" "$(VERSION=9.9.9-rc.1 build_version)"
-	same "version: from the command line" "9.9.9" "$(make -s -C "$vrepo" -f "$root/Makefile" VERSION=9.9.9 version)"
+	same "version: from the environment" "9.9.9-rc.1" "$(clean VERSION=9.9.9-rc.1 "${mk[@]}" version)"
+	same "version: from the command line" "9.9.9" "$(clean "${mk[@]}" VERSION=9.9.9 version)"
+
+	# What the caller has exported is not the Makefile's business: `make test-release` passes its
+	# own flags down, and a shell may have a VERSION of its own.
+	same "version: a VERSION left in the caller's environment is not read" "0.1.1" \
+		"$(VERSION=leaked MAKEFLAGS=-e build_version)"
+
+	# A tag's name is text from whoever pushed it, and git allows `;`, `$`, and quotes in one. It
+	# must never reach a shell, and a tag that isn't a plain version names no build.
+	vgit commit -q --allow-empty -m "after the next release"
+	vgit tag "v9.9.9;touch\${IFS}INJECTED"
+	same "version: a tag that isn't a plain version names no build" "0.0.0-dev" "$(build_version)"
+	# (A command in a tag's name that did run would be given the rest of the Makefile's command as
+	# an argument, so it leaves a file whose name starts with INJECTED.)
+	same "version: a tag's name is not run as a command" "" "$(find "$vrepo" -maxdepth 1 -name 'INJECTED*')"
 
 	if ! command -v dpkg >/dev/null 2>&1; then
 		echo "SKIP: the Debian versions' order (no dpkg)"

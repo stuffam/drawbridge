@@ -610,11 +610,12 @@ These are the rules most likely to get silently broken.
   3339), never from the clock. So is the version a build between releases is named for: the
   Makefile reads the nearest tag and the commits since it (`0.1.0-rc.2+61`, Debian `0.1.0~rc.2+61`,
   which sorts after that release and before the next, so a build installed over a release is an
-  upgrade), and `0.0.0-dev` where git reaches no tag (CI's shallow checkouts); `release.yml` gives
-  both its builds the tag's version, or `0.0.0-dev` for a dry run, and leaves nothing to git. A tag
-  is never moved and a published release's files are never
-  replaced: a mistake is fixed by the next version, because an older build won't write a newer
-  database (docs/PLAN.md §11.1). `install.sh` never installs an older version over a newer one,
+  upgrade), and `0.0.0-dev` where git reaches no tag (CI's shallow checkouts) or the nearest one
+  isn't a plain `vX.Y.Z[-pre]`: git allows `;` and `$` in a tag's name, which is the pusher's text,
+  and the version reaches shell commands. `release.yml` gives both its builds the tag's version, or
+  `0.0.0-dev` for a dry run, and leaves nothing to git. A tag is never moved and a published
+  release's files are never replaced: a mistake is fixed by the next version, because an older
+  build won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older version over a newer one,
   never lets a name from the network into a path or URL unchecked, and never reaches `apt-get`
   before the package's checksum matches; its tests break the script to prove each. A release's files
   are named for the version (`1.0.0-rc.1`), never the package's Debian version (`1.0.0~rc.1`):
