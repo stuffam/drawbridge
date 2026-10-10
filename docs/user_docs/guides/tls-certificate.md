@@ -4,9 +4,8 @@ title: TLS Certificate
 
 The web UI is served over HTTPS. On first start the daemon makes a **self-signed** certificate
 for the host's names and addresses, so the connection is encrypted from the start, but a browser
-can't tell it from a forgery and warns until you trust it. The setup token's command
-(`sudo drawbridge admin setup-token`) prints the certificate's SHA-256 fingerprint so you can check
-that the warning is about this certificate.
+can't tell it from a forgery and warns until you trust it. `sudo drawbridge tls show` prints the
+certificate's SHA-256 fingerprint, so you can check that the warning is about this certificate.
 
 If you'd rather not click through a warning, give Drawbridge a certificate your devices already
 trust. This guide is for that.
@@ -84,14 +83,9 @@ by the `drawbridge` user. The key isn't encrypted there, like the self-signed ke
 because the web server needs it at startup. It is never shown in the UI, the event log, or the
 journal.
 
-**It isn't in a backup** ([docs/backup-restore.md](backup-restore.md)). Keep your own copy, and
-install it again after restoring onto a new host.
+**It isn't in a [backup](backup-restore.md).** Keep your own copy, and install it again after
+restoring onto a new host.
 
 If the file can't be read when the daemon starts (it was damaged, say), the daemon logs why and
 serves the self-signed certificate meanwhile, so the web UI stays reachable. `sudo drawbridge tls
 reset` clears the file; then install again.
-
-## From the API
-
-`GET`, `PUT`, and `DELETE /api/system/certificate`, documented in the OpenAPI document
-(`internal/api/openapi.json`). They need a login, and an API token can't use them.

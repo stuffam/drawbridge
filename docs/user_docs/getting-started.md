@@ -7,20 +7,18 @@ hide:
 This takes you from a bare Debian-family host to a phone connected to your VPN. The steps:
 
 1. [Get the host and your network ready.](#before-you-start)
-2. [Get the package.](#get-the-package)
-3. [Install it.](#install)
-4. [Set it up in your browser.](#set-it-up-in-your-browser)
-5. [Check the host.](#check-the-host)
-6. [Connect a first client.](#connect-a-first-client)
+2. [Install Drawbridge.](#install)
+3. [Set it up in your browser.](#set-it-up-in-your-browser)
+4. [Check the host.](#check-the-host)
+5. [Connect a first client.](#connect-a-first-client)
 
 ## Before you start
 
-[Requirements and known roadblocks] has the full list, and the setups that need a
-workaround. The short version:
+Check that you have these:
 
 - **A host that runs Debian or something built on it** (Debian, Raspberry Pi OS, Ubuntu Server),
   with systemd, a kernel that has WireGuard (5.6 or later), and `sudo`. Drawbridge is tested on a
-  Raspberry Pi 5 running Debian 13, and in CI on Ubuntu 24.04.
+  Raspberry Pi 5 running Debian 13. Other Debian-family systems should work but aren't tested.
 - **The host's architecture is arm64 or amd64.** This prints it:
 
     ```bash
@@ -42,45 +40,25 @@ workaround. The short version:
 You can install first and do the router afterward. The VPN won't work from outside until the port
 forward is in, and `drawbridge doctor` says what's still missing.
 
-## Get the package
-
-Drawbridge hasn't had a release yet, so there's no package to download from a releases page. Until
-there is, get it one of two ways. Both give the same files: `drawbridge_<version>_arm64.deb` and
-`drawbridge_<version>_amd64.deb`.
-
-**Build it.** You need `git`, `make`, Go 1.26 or later, and Node.js 24 with npm 11, on any
-machine (the host, or a laptop: the Go build cross-compiles for both architectures).
-
-```bash
-git clone https://github.com/stuffam/drawbridge.git
-cd drawbridge
-make deb
-ls dist/*.deb
-```
-
-The first run downloads the packaging tool (`nfpm`) into `./bin`.
-
-**Or take the one CI built.** On GitHub, open the repository's **Actions** tab, choose the
-**CI** workflow, and open the latest run on `main` that passed. Its **drawbridge-deb** artifact is
-a zip of both packages. The package only exists when every CI job passed, including the kernel
-tests, and GitHub keeps an artifact for 90 days. Downloading one needs a GitHub account.
-
-With the `gh` command line, give it the run's ID (the number at the end of the run's address), and
-it saves both packages in the current directory:
-
-```bash
-gh run download <run-id> --repo stuffam/drawbridge --name drawbridge-deb
-```
-
-Then copy the package that matches the host's architecture to the host:
-
-```bash
-scp drawbridge_*_arm64.deb you@<host>:
-```
-
 ## Install
 
-On the host:
+Drawbridge is a Debian package, `drawbridge_<version>_<arch>.deb`. Each release on GitHub has
+one for arm64 and one for amd64, and a `SHA256SUMS` file to check them against.
+
+### Download the package
+
+1. Open the [latest release](https://github.com/stuffam/drawbridge/releases/latest) and download
+   the package that matches the host's architecture, and `SHA256SUMS`, to the host. To download
+   on another computer, copy the two files over with `scp`.
+2. Check the package against the sums, in the folder that has both files:
+
+    ```bash
+    sha256sum --check --ignore-missing SHA256SUMS
+    ```
+
+    It should print `OK` beside the package's name. If it doesn't, download the package again.
+
+### Install it
 
 ```bash
 sudo apt install ./drawbridge_<version>_<arch>.deb
@@ -89,6 +67,14 @@ sudo apt install ./drawbridge_<version>_<arch>.deb
 Keep the `./`: without it, `apt` looks for a package of that name in its repositories. It pulls in
 `nftables`, which Drawbridge needs, and `wireguard-tools`, which it recommends (`wg show` is handy
 for debugging).
+
+If you'd rather have a script do the download, the check, and the install, every release also has
+`install.sh`. Read it, then run it on the host. It asks before it installs anything:
+
+```bash
+curl -fsSLO https://github.com/stuffam/drawbridge/releases/latest/download/install.sh
+sh install.sh
+```
 
 The package's install script runs as root and, on a first install:
 
@@ -144,14 +130,21 @@ instead.
 
 Your browser will warn about the certificate, because Drawbridge made it itself. Open the
 certificate's details, check that its SHA-256 fingerprint matches the one the install printed, and
-continue. You can [serve your own certificate](guides/tls-certificate.md) later to get rid of the warning.
+continue. You can [serve your own certificate](guides/tls-certificate.md) later to get rid of the
+warning.
 
 The web UI answers only your home network and the VPN. A device on another subnet gets no answer,
-and so does the internet. To allow another subnet, see
-[the admin UI's home network].
+and so does the internet. To let in another private network, such as a Tailscale tailnet, give its
+range to the server. This replaces any extra sources you set before, so list them all, separated
+by commas:
 
-Don't put a reverse proxy in front of the UI
-([why]).
+```bash
+sudo drawbridge server set --admin-allow 100.64.0.0/10
+```
+
+Don't put a reverse proxy in front of the UI on the same host. The UI decides who may reach it by
+the address a connection comes from, and a proxy on the host forwards every request from the host
+itself, which is always allowed, so it would put the UI on the internet. Open it directly instead.
 
 Setup has three steps:
 
@@ -163,10 +156,10 @@ Setup has three steps:
    Settings, but a client can't be given a config until it's set.
 3. **DNS for Clients.** A new server hands out Cloudflare's public resolvers (`1.1.1.1` and
    `1.0.0.1`, and the IPv6 pair when the VPN has IPv6), which work anywhere. If the host runs a
-   resolver such as AdGuard Home, Pi-hole, or Unbound that listens on the VPN's addresses, setup
-   offers it as **This server**. Either way, you can change it later in Settings. If you want your
-   own resolver and it isn't found, see
-   [DNS for VPN clients].
+   resolver such as AdGuard Home, Pi-hole, or Unbound that answers on the VPN's addresses, setup
+   offers it as **This server**. If setup doesn't find yours, it isn't answering on those
+   addresses (systemd-resolved, for one, listens only on the host itself), so carry on with the
+   public resolvers. Either way, you can change the choice later in Settings.
 
 Then turn on [two-factor authentication](guides/two-factor.md) if you want a second factor at login.
 
@@ -176,8 +169,8 @@ Then turn on [two-factor authentication](guides/two-factor.md) if you want a sec
 sudo drawbridge doctor
 ```
 
-It runs 13 checks of the host and the network, prints a fix for each problem, and changes nothing.
-The tunnel, forwarding, the firewall, DNS on the VPN addresses, the endpoint, the clock, and the
+It checks the host and the network, prints a fix for each problem, and changes nothing. The
+tunnel, forwarding, the firewall, DNS on the VPN addresses, the endpoint, the clock, and the
 certificate are among them. It exits with status 1 if any check failed. The same checks are on the
 web UI's System page (the pulse icon in the header), and the dashboard shows a banner when one
 warns or fails.
@@ -194,7 +187,7 @@ Two results are normal until your network is ready:
 Install the WireGuard app on a phone (it's in the App Store and Google Play), or on a laptop
 ([wireguard.com/install](https://www.wireguard.com/install/)).
 
-Then add the client, in the web UI (**Clients**, then **Add**) or on the host:
+Then add the client, in the web UI (**Clients**, then **Add Client**) or on the host:
 
 ```bash
 sudo drawbridge client add phone --qr
@@ -222,11 +215,14 @@ If it doesn't connect:
 
 - **No handshake:** the port forward (UDP 51820 to the host) or the endpoint isn't right yet, or
   the connection has no inbound IPv4 (CGNAT). Run `sudo drawbridge doctor`.
-- **A handshake, but nothing loads:** another firewall on the host is dropping forwarded traffic
-  ([host firewalls and Docker]),
-  and `doctor` names the command that fixes it.
-- **Pages load, but names don't resolve:** the DNS the VPN hands out isn't answering
-  ([DNS for VPN clients]).
+- **A handshake, but nothing loads:** another firewall on the host (ufw, firewalld, or Docker, for
+  example) is dropping forwarded traffic, and `doctor` names the command that fixes it.
+- **Pages load, but names don't resolve:** the DNS the VPN hands out isn't answering. Check it
+  under DNS for Clients in Settings.
 - The services' own logs: `journalctl -u drawbridge -u drawbridge-tunnel`.
 
-Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only way back if the host's disk fails.
+## What's next
+
+Make a [backup](guides/backup-restore.md) once you've added the clients you want. It's the only
+way back if the host's disk fails. To install a newer version later, see
+[Upgrade](guides/upgrade.md), and to take Drawbridge off the host, [Remove](guides/remove.md).

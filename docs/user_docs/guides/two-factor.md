@@ -22,7 +22,8 @@ It's off until you turn it on, and it's the only account there is: Drawbridge ha
 
 ## Turn it on
 
-1. Open the Account page and find **Two-Factor Authentication**.
+1. Open the Account page (the person icon in the header, then Settings) and find
+   **Two-Factor Authentication**.
 2. Press **Turn On…** and type your password again. Whoever turns this on decides what the second
    factor is, so a logged-in browser alone can't do it.
 3. Scan the QR code with your app. If it can't scan, type the key shown beside the code into it.
@@ -83,18 +84,17 @@ phone are separate problems. After a reset the new password still needs a code.
 
 - It protects **the login**: the web UI's password step. The password and the code are both
   checked before a session starts, and every failure of either counts toward the same lockout.
-- **Read-only API tokens** (docs/api-tokens.md) aren't asked for a code: a dashboard can't type
+- **[Read-only API tokens](api-tokens.md)** aren't asked for a code: a dashboard can't type
   one. A token can't change anything, and you can revoke it on the Account page. Making a token
   takes your password again, but not a code.
 - **Sessions** are checked once, when they start. Turning 2FA on or off logs out your other
   browsers, so none outlives the change; after that a session lasts as usual, an hour idle or
   twelve hours at most.
-- The command line (`drawbridge ...` as root, through the control socket) doesn't use the web
-  login, so it doesn't ask either. Anyone with a root shell on the host can already read the
-  database and the key.
+- The command line on the host doesn't use the web login, so it doesn't ask for a code either.
+  Anyone with a root shell on the host can already read the database and the key.
 - The host's own secret key seals the TOTP secret in the database, as it does the private keys. A
-  copy of the database alone can't make codes; **a backup holds both**, and is encrypted for that
-  reason (docs/backup-restore.md). Restoring one onto a new host brings 2FA with it: your
+  copy of the database alone can't make codes; **a [backup](backup-restore.md) holds both**, and
+  is encrypted for that reason. Restoring one onto a new host brings 2FA with it: your
   authenticator app keeps working, and the recovery codes you haven't used still do.
 
 ## What the log shows

@@ -7,8 +7,8 @@ clients (with their keys, so their configs keep working), the settings, the admi
 the event and traffic history.
 
 It holds a snapshot of the database **and** the key the database's secrets are encrypted with
-(`/etc/drawbridge/secret.key`), because the key is on the same SD card as the database, and a
-backup without it would be useless after the card fails. So the file is encrypted with a
+(`/etc/drawbridge/secret.key`), because the key is on the same disk as the database, and a
+backup without it would be useless after the disk fails. So the file is encrypted with a
 passphrase you choose, and **the passphrase is the only thing that protects it**. Without it, the
 file can't be opened by you, by anyone, or by the project's developers.
 
@@ -25,8 +25,8 @@ from a script.
 
 - The passphrase needs at least 12 characters. A stolen file can be guessed at offline, with no
   limit on the tries, so a long phrase is worth more than a clever short one.
-- **Keep the file, and the passphrase, somewhere other than the host.** A backup on the SD card
-  that fails isn't one. A password manager holds both well.
+- **Keep the file, and the passphrase, somewhere other than the host.** A backup on the disk that
+  fails isn't one. A password manager holds both well.
 - Making one is in the event log (`Made a backup`), because the file holds every secret.
 - Make one after you add clients. A client added later isn't in an older backup.
 
@@ -44,7 +44,7 @@ included, so a web page that could do it would let a hijacked session take every
 
 ## Restore onto a fresh host
 
-This is what the backup is for: the SD card failed, or you're moving to another Raspberry Pi.
+This is what the backup is for: the host's disk failed, or you're moving to another machine.
 
 1. Install Drawbridge on the new host, as you did the first time. Don't go through the web
    setup: the backup has your admin account.
@@ -85,7 +85,7 @@ What a restore does:
   API tokens are kept, so a dashboard that has one keeps working. If you restored because
   someone else had access, run `sudo drawbridge admin reset-password`, which revokes the
   tokens too.
-- Two-factor authentication (docs/two-factor.md) comes with the backup, if it was on: the secret
+- [Two-factor authentication](two-factor.md) comes with the backup, if it was on: the secret
   is in the database and sealed with the key, so your authenticator app keeps working and the
   recovery codes you hadn't used still do. If you restored because someone else had access, make
   new recovery codes.
@@ -100,11 +100,15 @@ What a restore does:
   warning is about the host's certificate, as it was before. It names the VPN addresses as they
   were when the host made it; if you reach the UI through the VPN's address and the restored VPN has
   other addresses, stop the daemon, `sudo rm -r /var/lib/drawbridge/tls`, and start it for a new
-  one. On a new host, a certificate you installed
-  ([docs/tls-certificate.md](tls-certificate.md)) isn't there either: install it again with
+  one. On a new host, a certificate you
+  [installed yourself](tls-certificate.md) isn't there either: install it again with
   `sudo drawbridge tls install`. (`rm -r` on that directory removes an installed certificate too.)
 
 It needs room for a second copy of the database beside the first while it works.
+
+Drawbridge also keeps copies of its database on the host, and can restore from one in the same
+way: see [Database snapshots](snapshots.md). They don't replace a backup, because a lost disk takes
+them too.
 
 ## When something goes wrong
 
@@ -119,43 +123,6 @@ It needs room for a second copy of the database beside the first while it works.
 
 In every one of these, nothing was changed. If a restore fails while it's moving files (a full
 disk, say), it puts back the ones it moved, and says so.
-
-## Snapshots on the host
-
-Besides a backup you make, Drawbridge keeps copies of its database on the host, in
-`/var/lib/drawbridge/backups/`:
-
-- **Nightly:** the daemon makes one when the newest is a day old, and keeps the newest seven.
-  `--snapshot-interval` changes the interval (0 turns them off) and `--snapshot-keep` the number.
-- **Before an upgrade changes the database:** `pre-migration-v<n>-<time>.db`, where `<n>` is the
-  version the database was at, and the newest three are kept. If it can't be made (a full disk),
-  the upgrade doesn't change the database, and says why.
-
-They're a way back from a bad change or a bad upgrade, **not from a lost card**: they sit on the
-same card as the database, with the key. Keep a backup somewhere else for that. The System page
-lists them, with the time and size of each, and doesn't offer them for download: a snapshot has no
-passphrase, and the database has your password hash in it. A backup is how a copy leaves the host.
-
-To go back to one, stop the daemon and restore it. A snapshot needs no passphrase, and the host's
-own key stays, because it's what the snapshot was sealed with:
-
-```bash
-sudo systemctl stop drawbridge.service
-sudo drawbridge backup restore /var/lib/drawbridge/backups/nightly-20261004-030000.db
-sudo systemctl restart drawbridge-tunnel.service drawbridge.service
-```
-
-It's the same restore as above, with the same checks, and what it replaces is kept as
-`*.before-restore-<time>`. The database is as it was when the snapshot was made, so changes since
-then are gone: a client added after it isn't there. A snapshot from before an upgrade is brought up
-to date when it goes in.
-
-A snapshot that was made under another key (copied from another host, say) is refused, and says
-that the host's key doesn't open it. Use a backup for that.
-
-The snapshots take room: each is about the size of the database, so allow ten times its size
-(`ls -lh /var/lib/drawbridge/drawbridge.db`) for the seven nightly ones and the three from
-upgrades. `sudo drawbridge doctor` checks the free space.
 
 ## Not in a backup
 
