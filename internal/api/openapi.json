@@ -2372,17 +2372,26 @@
         "type": "object",
         "required": [
           "version",
-          "commit"
+          "commit",
+          "date"
         ],
         "properties": {
           "version": {
             "type": "string",
+            "description": "The version with its lowercase v, as its tag is named.",
             "examples": [
               "v0.1.0"
             ]
           },
           "commit": {
             "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "description": "The time of the commit the build was made from, in UTC as RFC 3339. Empty when the build couldn't tell.",
+            "examples": [
+              "2026-10-08T02:15:46Z"
+            ]
           }
         }
       },

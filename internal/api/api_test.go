@@ -54,8 +54,50 @@ func TestVersion(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatal(err)
 	}
-	if body["version"] != version.Version || body["commit"] != version.Commit {
-		t.Fatalf("body %v, want version %q and commit %q", body, version.Version, version.Commit)
+	// The version goes out the way people write it, with the lowercase v (CLAUDE.md, "Conventions"),
+	// though the constant stamped into the binary is bare.
+	if want := "v" + version.Version; body["version"] != want || body["commit"] != version.Commit {
+		t.Fatalf("body %v, want version %q and commit %q", body, want, version.Commit)
+	}
+	// The date is always sent, empty when the build couldn't tell, so a client can rely on the key.
+	if date, ok := body["date"]; !ok || date != version.Date {
+		t.Fatalf("body %v, want date %q", body, version.Date)
+	}
+}
+
+// The OpenAPI document describes what the version route sends: every key it sends is a property of
+// the schema, and a required one.
+func TestVersionSchemaMatchesTheResponse(t *testing.T) {
+	var doc struct {
+		Components struct {
+			Schemas map[string]struct {
+				Required   []string
+				Properties map[string]json.RawMessage
+			}
+		}
+	}
+	if err := json.Unmarshal(openAPIDoc, &doc); err != nil {
+		t.Fatal(err)
+	}
+	schema, ok := doc.Components.Schemas["Version"]
+	if !ok {
+		t.Fatal("openapi.json has no Version schema")
+	}
+	var body map[string]string
+	if err := json.NewDecoder(get(t, New(Options{UI: builtUI}), "/api/version").Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	for key := range body {
+		if _, ok := schema.Properties[key]; !ok {
+			t.Errorf("/api/version sends %q, which the Version schema doesn't describe", key)
+		}
+		required := false
+		for _, r := range schema.Required {
+			required = required || r == key
+		}
+		if !required {
+			t.Errorf("/api/version always sends %q, but the Version schema doesn't require it", key)
+		}
 	}
 }
 

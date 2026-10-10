@@ -184,7 +184,8 @@ func app(ui fs.FS) http.Handler {
 
 func (h *handler) version(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
-		"version": version.Version,
+		"version": "v" + version.Version,
 		"commit":  version.Commit,
+		"date":    version.Date,
 	})
 }

@@ -122,6 +122,7 @@ See [Backup and restore](backup-restore.md).
 
 ## Other commands
 
-- `drawbridge version` prints the version.
+- `drawbridge version` prints the version, then the commit it was built from and that commit's
+  date, such as `drawbridge v0.1.0 (abc1234, 7 Oct 2026)`. The dashboard's footer says the same.
 - `drawbridge serve` and `drawbridge tunnel up|down` are what the two services run. Start and stop
   them with `systemctl`, not by hand.
