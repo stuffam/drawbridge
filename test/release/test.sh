@@ -11,6 +11,7 @@ notes=$root/scripts/release-notes.sh
 release=$root/scripts/changelog-release.sh
 check=$root/scripts/release-check.sh
 docsver=$root/scripts/docs-version.sh
+installurl=$root/scripts/release-install-url.sh
 verify=$root/scripts/release-verify.sh
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -371,6 +372,41 @@ expect "docs-version: --latest of a tag that isn't there" 1 "no tag v3.0.0" in_d
 dgit tag v2.0.0
 expect "docs-version: --latest v2.0.0 once it exists" 0 '^$' in_docs_repo "$docsver" --latest v2.0.0
 expect "docs-version: --latest v1.10.0 loses to v2.0.0" 1 '^$' in_docs_repo "$docsver" --latest v1.10.0
+
+# ---- release-install-url.sh ----
+
+# A final release links to its own version of the docs site, which stays right after `latest` moves.
+# A pre-release has no docs version, so it links to the guide as the tag has it. Neither reads git.
+same "install-url: v0.1.0 is its minor on the site" "https://stuffam.github.io/drawbridge/v0.1/getting-started/" \
+	"$(env GIT_DIR=/nonexistent "$installurl" v0.1.0)"
+same "install-url: v1.10.3 is v1.10 on the site" "https://stuffam.github.io/drawbridge/v1.10/getting-started/" \
+	"$(env GIT_DIR=/nonexistent "$installurl" v1.10.3)"
+same "install-url: a pre-release links to the tag" \
+	"https://github.com/stuffam/drawbridge/blob/v0.1.0-rc.3/docs/user_docs/getting-started.md" \
+	"$(env GIT_DIR=/nonexistent "$installurl" v0.1.0-rc.3)"
+
+# Anything that isn't a version never reaches a URL: a path, shell syntax, a space, and a newline.
+for bad in v1 1.2.0 v1.2 v01.2.0 v1.2.0+build v1.2.0- v1.2.0-rc..1 v1.2.0/../x 'v1.2.0;id' 'v1.2.0 ' '' \
+	$'v1.2.0\nx' $'v1.2.0-rc.1\nx'; do
+	expect "install-url: '$bad' isn't a version" 1 "isn't a version" "$installurl" "$bad"
+done
+expect "install-url: no arguments" 1 "usage" "$installurl"
+"$installurl" >/dev/null 2>&1
+same "install-url: no arguments exits 2" 2 "$?"
+"$installurl" v1.2.0 extra >/dev/null 2>&1
+same "install-url: two arguments exit 2" 2 "$?"
+
+# ---- links in what becomes a release's notes ----
+
+# A published release's notes can't change, so a link to a docs-site address with no version
+# in front (/install/) is dead for good once it ships (docs/releasing.md, step 2). The root, and
+# addresses that start with a version, `latest`, or `dev`, are the ones that work.
+unversioned=$(
+	cd "$root" || exit 1
+	grep -nE 'stuffam\.github\.io/drawbridge/[A-Za-z_]' CHANGELOG.md .github/workflows/*.yml scripts/*.sh |
+		grep -Ev 'drawbridge/(latest|dev)/|drawbridge/v[0-9]' || true
+)
+same "links: nothing the notes come from links to an unversioned docs address" "" "$unversioned"
 
 # ---- release-verify.sh ----
 

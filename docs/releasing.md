@@ -51,6 +51,15 @@ before installing or upgrading (a downgrade isn't supported, a setting that now 
 else, a test that was changed on purpose), then what changed, under Added, Changed, Fixed, and the
 like.
 
+A published release's notes can't change, so a link in them has to stay right. Link to a guide on
+the docs site by its version, `https://stuffam.github.io/drawbridge/v0.1/getting-started/`, where
+`v0.1` is the release's minor. Link to a file that isn't on the site (the requirements, the manual
+checklist, PLAN) by the tag, `https://github.com/stuffam/drawbridge/blob/v0.1.0/docs/PLAN.md`, which
+works once the tag is pushed. A site address with no version in front, such as `/install/`, doesn't
+work, and neither does `/latest/...` before the first final release. The footer that **Draft the
+release** adds does this for the install guide itself (`scripts/release-install-url.sh`), and a test
+fails if the changelog, the workflows, or the scripts link to a site address without a version.
+
 To turn `[Unreleased]` into the release:
 
 1. On GitHub, open **Actions → Prepare release → Run workflow**, on `main`.

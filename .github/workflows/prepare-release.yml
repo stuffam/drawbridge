@@ -72,6 +72,6 @@ jobs:
             echo "### The changelog for $VERSION is on the branch release/$VERSION"
             echo
             echo "[Open the pull request]($url), read the section (it becomes the release's notes), and merge it."
-            echo "Then tag the commit it makes: see [docs/releasing.md](https://stuffam.github.io/drawbridge/releasing/), step 3."
+            echo "Then tag the commit it makes: see [docs/releasing.md]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/main/docs/releasing.md), step 3."
           } >>"$GITHUB_STEP_SUMMARY"
           echo "Open the pull request: $url"
