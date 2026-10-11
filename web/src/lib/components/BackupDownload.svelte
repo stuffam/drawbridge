@@ -8,8 +8,10 @@
 	import { api } from '$lib/api';
 	import { checkPassphrase, MIN_PASSPHRASE } from '$lib/backup';
 	import { saveBlob } from '$lib/download';
+	import { build } from '$lib/build.svelte';
 	import { errorMessage } from '$lib/errors';
 	import { formatAgo, formatBytes, formatTime } from '$lib/format';
+	import { docsUrl } from '$lib/version';
 	import Result from './Result.svelte';
 
 	let { username }: { username: string } = $props();
@@ -71,7 +73,7 @@
 			Restoring one is done from the command line on the host, because it replaces the password too:
 			<a
 				class="font-medium underline"
-				href="https://stuffam.github.io/drawbridge/latest/guides/backup-restore/"
+				href={docsUrl(build.info, 'guides/backup-restore/')}
 				target="_blank"
 				rel="noopener external">how</a
 			>.

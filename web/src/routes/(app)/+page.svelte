@@ -24,13 +24,8 @@
 	import RangeSelect from '$lib/components/RangeSelect.svelte';
 	import SortSelect from '$lib/components/SortSelect.svelte';
 	import StateBadge from '$lib/components/StateBadge.svelte';
-	import {
-		fetchVersion,
-		formatVersion,
-		repoUrl,
-		versionLink,
-		type VersionInfo
-	} from '$lib/version';
+	import { build } from '$lib/build.svelte';
+	import { formatVersion, repoUrl, versionLink } from '$lib/version';
 
 	// How often the dashboard runs the host's checks again.
 	const checksMs = 5 * 60 * 1000;
@@ -42,7 +37,6 @@
 	// The range `traffic` holds, which lags the chosen range until the new range's data arrives.
 	let trafficShown = $state<TrafficRange>(chartRange.value);
 	let bandwidth = $derived(traffic ? buildSeriesData(traffic, trafficShown) : undefined);
-	let version = $state<VersionInfo>();
 	let checks = $state<DiagnosticCheck[]>([]);
 	let error = $state('');
 	let now = $state(Date.now());
@@ -142,12 +136,6 @@
 	// doesn't need the 5s peer-status cadence above; changing the range restarts this poll, for
 	// an immediate refetch.
 	$effect(() => poll(loadTraffic, refreshMs(chartRange.value)));
-	$effect(() => {
-		fetchVersion().then(
-			(v) => (version = v),
-			() => {}
-		);
-	});
 </script>
 
 <svelte:head><title>Dashboard · Drawbridge</title></svelte:head>
@@ -374,7 +362,8 @@
 	</LinkCard>
 </div>
 
-{#if version}
+{#if build.info}
+	{@const version = build.info}
 	{@const link = versionLink(version)}
 	<p class="text-center text-xs text-neutral-400">
 		<a href={repoUrl} target="_blank" rel="noopener external">Drawbridge</a>

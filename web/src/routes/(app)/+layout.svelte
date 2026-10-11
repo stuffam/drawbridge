@@ -3,10 +3,12 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, onUnauthorized } from '$lib/api';
+	import { build, loadBuild } from '$lib/build.svelte';
 	import { live, useLive } from '$lib/live.svelte';
 	import { setPending } from '$lib/pending.svelte';
 	import { poll } from '$lib/poll';
 	import { cycleMode, modeLabels, theme } from '$lib/theme.svelte';
+	import { docsUrl } from '$lib/version';
 	import AddClientModal from '$lib/components/AddClientModal.svelte';
 	import PendingChangeBar from '$lib/components/PendingChangeBar.svelte';
 
@@ -34,6 +36,11 @@
 			await goto(resolve('/login'));
 		}
 	}
+
+	// Which build this is decides which docs the Help icon and the guides' links open.
+	$effect(() => {
+		void loadBuild();
+	});
 
 	// A settings change waiting to be kept shows on every page, so the live feed stays open on
 	// every page; when it can't be had, this asks every few seconds instead.
@@ -76,7 +83,7 @@
 <header class="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
 	<div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3">
 		<a href={resolve('/')} class="text-2xl font-semibold tracking-tight">Drawbridge</a>
-		<nav class="ml-auto flex items-center gap-1" aria-label="Main">
+		<nav class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1" aria-label="Main">
 			<a
 				href={resolve('/clients')}
 				class="group relative flex items-center rounded-md p-2 {current(resolve('/clients'))
@@ -197,6 +204,30 @@
 					/>
 				</svg>
 				{@render tooltip('System')}
+			</a>
+			<!-- The docs open in a tab of their own: the guides that match this build (docsUrl). -->
+			<a
+				href={docsUrl(build.info, 'guides/')}
+				target="_blank"
+				rel="noopener external"
+				class="group relative flex items-center rounded-md p-2 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+				aria-label="Help"
+			>
+				<svg
+					class="size-4"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<circle cx="12" cy="12" r="10" />
+					<path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3" />
+					<path d="M12 17h.01" />
+				</svg>
+				{@render tooltip('Help')}
 			</a>
 			<!-- The icon shows the current mode; a click moves to the next one. -->
 			<button

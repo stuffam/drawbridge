@@ -5,8 +5,10 @@
 	import { onMount } from 'svelte';
 	import { api, type Snapshots } from '$lib/api';
 	import { snapshotLabel } from '$lib/backup';
+	import { build } from '$lib/build.svelte';
 	import { errorMessage } from '$lib/errors';
 	import { formatBytes, formatTime } from '$lib/format';
+	import { docsUrl } from '$lib/version';
 
 	let snaps = $state<Snapshots>();
 	let error = $state('');
@@ -74,7 +76,7 @@
 				<span class="mono whitespace-nowrap">sudo drawbridge backup restore</span> with its path:
 				<a
 					class="font-medium underline"
-					href="https://stuffam.github.io/drawbridge/latest/guides/snapshots/"
+					href={docsUrl(build.info, 'guides/snapshots/')}
 					target="_blank"
 					rel="noopener external">how</a
 				>.

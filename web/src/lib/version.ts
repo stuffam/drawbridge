@@ -11,6 +11,8 @@ export interface VersionInfo {
 	commit: string;
 	/** When that commit was made, as an RFC 3339 time in UTC. Empty when the build couldn't tell. */
 	date: string;
+	/** The start of the documentation that matches this build, ending in a slash. */
+	docs: string;
 }
 
 /**
@@ -47,6 +49,22 @@ export function versionLink(info: VersionInfo): string | undefined {
 	return undefined;
 }
 
+/** What the server's docs address looks like: an entry of the docs site, for a minor version or dev. */
+const docsBase = /^https:\/\/stuffam\.github\.io\/drawbridge\/(?:dev|v\d+\.\d+)\/$/;
+/** The docs of the latest release, where a page is until the server has said, or if it can't. */
+const latestDocs = 'https://stuffam.github.io/drawbridge/latest/';
+
+/**
+ * The address of a page of the documentation (`guides/backup-restore/`) that matches this build:
+ * the docs of its minor version for a release, and the development docs for a pre-release or a
+ * build between releases, which is the server's call (`internal/version.DocsURL`, so a link here
+ * and one in the doctor's hints can't name different versions). The address comes from the server
+ * and goes into a link only if it is an entry of the docs site, in the form the server sends it.
+ */
+export function docsUrl(info: VersionInfo | undefined, page: string): string {
+	return (info !== undefined && docsBase.test(info.docs) ? info.docs : latestDocs) + page;
+}
+
 /** Fetches the server's version information. */
 export async function fetchVersion(fetchFn: typeof fetch = fetch): Promise<VersionInfo> {
 	const res = await fetchFn('/api/version');
@@ -57,13 +75,18 @@ export async function fetchVersion(fetchFn: typeof fetch = fetch): Promise<Versi
 	if (!isVersionInfo(body)) {
 		throw new Error('GET /api/version returned an unexpected body');
 	}
-	return { version: body.version, commit: body.commit, date: body.date };
+	return { version: body.version, commit: body.commit, date: body.date, docs: body.docs };
 }
 
 function isVersionInfo(value: unknown): value is VersionInfo {
 	if (typeof value !== 'object' || value === null) {
 		return false;
 	}
-	const { version, commit, date } = value as Record<string, unknown>;
-	return typeof version === 'string' && typeof commit === 'string' && typeof date === 'string';
+	const { version, commit, date, docs } = value as Record<string, unknown>;
+	return (
+		typeof version === 'string' &&
+		typeof commit === 'string' &&
+		typeof date === 'string' &&
+		typeof docs === 'string'
+	);
 }
