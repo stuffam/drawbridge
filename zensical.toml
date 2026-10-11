@@ -23,6 +23,7 @@ nav = [
   "index.md",
   "getting-started.md",
   { "Guides" = [
+    "guides/index.md",
     { "Client" = [
       "guides/client-configuration.md",
       "guides/client-rotate-key.md",

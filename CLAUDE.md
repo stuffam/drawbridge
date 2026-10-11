@@ -150,7 +150,8 @@ setups.** What exists:
   made on the Account page (docs/user_docs/guides/api-tokens.md).
 - The web UI: setup (account, endpoint, and a DNS step that checks whether the host answers DNS
   on the VPN addresses), login, dashboard, clients (QR codes and downloads), settings (DNS
-  included), logs, and account.
+  included), logs, and account, and a **Help** icon in the header that opens the guides for this
+  build.
 - Kernel integration tests, and browser end-to-end tests.
 
 `docs/PLAN.md` is the specification. It covers:
@@ -290,10 +291,11 @@ a step describes.
   the docs of the running build: its minor version's (`v0.1`) for a release, and `dev` for a
   pre-release or a build between releases, because the site publishes only final releases
   (`scripts/docs-version.sh`; a test runs the two against each other). Another test keeps `docs/`
-  paths out of the doctor's strings and the package's scripts. The web UI, the README, and the
-  scripts, which don't take it from the build, use `latest`:
-  `https://stuffam.github.io/drawbridge/latest/guides/<page>/`, which exists from the first
-  release. The contributor docs link to a user page by its path in the repository.
+  paths out of the doctor's strings and the package's scripts. The web UI takes the same address
+  from the server (`docs` in `GET /api/version`, through `docsUrl` in `web/src/lib/version.ts`),
+  and uses `latest` only until it arrives. The README and the package's scripts, which can't, use
+  `latest`: `https://stuffam.github.io/drawbridge/latest/guides/<page>/`, which exists from the
+  first release. The contributor docs link to a user page by its path in the repository.
 - **Docs are GitHub-flavored Markdown that the site must show the same way.** Zensical's parser,
   Python-Markdown, needs what GitHub doesn't: indent a nested list 4 spaces (not 2), indent a
   paragraph or a fenced block inside a list item 4 spaces per level, and put a blank line before a
@@ -935,10 +937,10 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/MANUAL_CHECKLIST.md` records what has actually run on real hardware.
 - `docs/user_docs/` is the end user's documentation, and the only part of `docs/` the site
   publishes: `index.md` (what Drawbridge is), `getting-started.md` (what to have first, installing
-  a release's package, and setting up after), and `guides/`, one page for each topic: backup and
-  restore, database snapshots, the web UI's TLS certificate, two-factor authentication, read-only
-  API tokens, the Homepage dashboard, upgrading, and removing. A guide that says "Coming soon..."
-  is a placeholder.
+  a release's package, and setting up after), and `guides/`, an index (the web UI's Help icon opens
+  it) and one page for each topic: backup and restore, database snapshots, the web UI's TLS
+  certificate, two-factor authentication, read-only API tokens, the Homepage dashboard, upgrading,
+  and removing. A guide that says "Coming soon..." is a placeholder, and the index says so too.
 - `docs/REQUIREMENTS.md` lists what a host and network need, and the known roadblocks. It's for
   contributors; the user docs say what an end user needs in their own words.
 - `docs/releasing.md` is the maintainer's guide to cutting a release: the changelog pull request
