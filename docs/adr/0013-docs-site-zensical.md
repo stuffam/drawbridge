@@ -95,3 +95,12 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   PLAN.md and the ADRs, are read on GitHub and keep their `# Title`. They aren't published: the
   site is `docs/user_docs/` alone (`docs_dir` in `zensical.toml`), for the end user, and a page
   there covers one topic and links to no file outside it. The rest of `docs/` is for contributors.
+- **Amended 2026-10-10: the app names the docs of its own version.** A build that prints an
+  address now points at the entry of the site that matches it, so an admin reads what they
+  installed and not what a later release says: `internal/version.DocsURL` gives `v0.1` to any
+  `v0.1.x`, and `dev` to a pre-release or a build between releases, because the site publishes only
+  final releases (`scripts/docs-version.sh`). The doctor's hints and `serve`'s newer-database error
+  use it. `TestDocsVersionMatchesWhatTheSitePublishes` runs the script and the function against each
+  other, because a disagreement would be a dead link that nothing reports. The README and the
+  package's scripts keep `latest`, since they don't take the version from the build. The decision
+  stands (one entry for each minor, `latest` on the highest); only who is sent where changes.

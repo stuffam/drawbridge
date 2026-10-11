@@ -204,8 +204,8 @@ func openService(ctx context.Context, dbPath, secretPath string, fake bool, lanP
 	logMigration(log, st)
 	if v := st.NewerSchema(); v > 0 {
 		_ = st.Close()
-		return nil, nil, fmt.Errorf("%w: it's at schema %d and this build knows up to %d; run the Drawbridge that last used it, or restore a backup made by this one (https://stuffam.github.io/drawbridge/latest/guides/backup-restore/)",
-			errDatabaseNewer, v, store.LatestSchema())
+		return nil, nil, fmt.Errorf("%w: it's at schema %d and this build knows up to %d; run the Drawbridge that last used it, or restore a backup made by this one (%s)",
+			errDatabaseNewer, v, store.LatestSchema(), version.DocsURL("guides/backup-restore/"))
 	}
 	if created, err := st.Initialize(ctx); err != nil {
 		_ = st.Close()

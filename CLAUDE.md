@@ -285,8 +285,13 @@ a step describes.
   100 columns.
 - **`docs/user_docs/` is for the end user, and the rest of `docs/` is for contributors.** A user
   page covers one topic, in plain words, and never links to a file outside that directory or names
-  one of the repository's paths: say what the file said, or leave it out. The web UI, the README,
-  and the code that point at a guide use its address on the site,
+  one of the repository's paths: say what the file said, or leave it out. Go code that prints a
+  guide's address (a doctor hint, an error) uses `version.DocsURL("guides/<page>/")`, which names
+  the docs of the running build: its minor version's (`v0.1`) for a release, and `dev` for a
+  pre-release or a build between releases, because the site publishes only final releases
+  (`scripts/docs-version.sh`; a test runs the two against each other). Another test keeps `docs/`
+  paths out of the doctor's strings and the package's scripts. The web UI, the README, and the
+  scripts, which don't take it from the build, use `latest`:
   `https://stuffam.github.io/drawbridge/latest/guides/<page>/`, which exists from the first
   release. The contributor docs link to a user page by its path in the repository.
 - **Docs are GitHub-flavored Markdown that the site must show the same way.** Zensical's parser,

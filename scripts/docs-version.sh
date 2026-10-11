@@ -16,6 +16,10 @@
 # Only a final vMAJOR.MINOR.PATCH publishes: a pre-release such as v0.2.0-rc.1 has no docs of its
 # own, and a tag is a name from the network, so anything else is refused before it can reach mike.
 # --latest runs in the repository, with the tags fetched.
+#
+# The app links to the entry that matches its build with internal/version.DocsURL, which has to
+# agree with what this prints (v0.1 for a final release, and none for anything else, which it sends
+# to dev). TestDocsVersionMatchesWhatTheSitePublishes runs the two against each other.
 set -eu
 
 usage() {

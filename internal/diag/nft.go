@@ -287,11 +287,11 @@ func (e *env) hostFirewall() Check {
 		case "ufw":
 			hint = fmt.Sprintf("sudo ufw route allow in on %s && sudo ufw route allow out on %s", iface, iface)
 		case "docker":
-			hint = fmt.Sprintf("sudo iptables -I DOCKER-USER -i %s -j ACCEPT && sudo iptables -I DOCKER-USER -o %s -j ACCEPT (and ip6tables for IPv6). These rules don't survive a reboot until saved; see docs/REQUIREMENTS.md.", iface, iface)
+			hint = fmt.Sprintf("sudo iptables -I DOCKER-USER -i %s -j ACCEPT && sudo iptables -I DOCKER-USER -o %s -j ACCEPT (and ip6tables for IPv6). These rules don't survive a reboot until saved; see %s.", iface, iface, guide())
 		case "firewalld":
 			hint = fmt.Sprintf("sudo firewall-cmd --permanent --zone=trusted --add-interface=%s && sudo firewall-cmd --reload", iface)
 		default:
-			hint = fmt.Sprintf("Add a rule to that firewall accepting forwarded traffic in and out of %s. See docs/REQUIREMENTS.md.", iface)
+			hint = fmt.Sprintf("Add a rule to that firewall accepting forwarded traffic in and out of %s. See %s.", iface, guide())
 		}
 	}
 	c.Status = Warn

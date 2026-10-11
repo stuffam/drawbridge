@@ -254,7 +254,8 @@ func TestUplink(t *testing.T) {
 		{"both", func(f *fixture) {}, "uplink", Pass, "IPv4 leaves by eth0; IPv6 by eth0.", ""},
 		{"several", func(f *fixture) { f.snap.Uplinks4 = []string{"eth0", "wlan0"} }, "uplink", Pass, "eth0 and wlan0", ""},
 		{"no IPv4 default route", func(f *fixture) { f.snap.Uplinks4 = nil }, "uplink", Fail, "no IPv4 default route", "ip route show default"},
-		{"no IPv6 default route", func(f *fixture) { f.snap.Uplinks6 = nil }, "uplink", Warn, "no IPv6 default route", "accept_ra"},
+		{"no IPv6 default route", func(f *fixture) { f.snap.Uplinks6 = nil }, "uplink", Warn, "no IPv6 default route",
+			"see the accept_ra check below and https://stuffam.github.io/drawbridge/dev/guides/diagnostics/."},
 		{"no IPv6 default route, no IPv6 VPN", func(f *fixture) {
 			f.snap.Uplinks6 = nil
 			f.in.IPv6 = netip.Prefix{}

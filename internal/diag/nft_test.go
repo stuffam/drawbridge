@@ -106,7 +106,7 @@ func TestHostFirewall(t *testing.T) {
 		{"a drop policy that other software configured", func(f *fixture) {
 			f.nft = nftDoc(baseChain("inet", "fw", "forward", "forward", "drop"))
 		}, "host-firewall", Warn, "Forwarded packets are dropped by default by the inet fw forward chain",
-			"accepting forwarded traffic in and out of wg0. See docs/REQUIREMENTS.md"},
+			"accepting forwarded traffic in and out of wg0. See https://stuffam.github.io/drawbridge/dev/guides/diagnostics/"},
 		{"input chains aren't judged", func(f *fixture) {
 			f.nft = nftDoc(baseChain("inet", "fw", "input", "input", "drop"))
 		}, "host-firewall", Pass, "", ""},
@@ -174,7 +174,8 @@ func TestHostFirewall(t *testing.T) {
 		}, "host-firewall", Pass, "", ""},
 		{"Docker on IPv6 too", func(f *fixture) {
 			f.nft = nftDoc(append(dockerRules(), inet(dockerRules())...)...)
-		}, "host-firewall", Warn, "Docker's ip filter FORWARD chain and Docker's ip6 filter FORWARD chain", "DOCKER-USER"},
+		}, "host-firewall", Warn, "Docker's ip filter FORWARD chain and Docker's ip6 filter FORWARD chain",
+			"These rules don't survive a reboot until saved; see https://stuffam.github.io/drawbridge/dev/guides/diagnostics/."},
 		{"Docker allowed for IPv4 but not IPv6", func(f *fixture) {
 			allow := []string{rl("ip", "filter", "DOCKER-USER", iif("wg0"), accept)}
 			f.nft = nftDoc(append(dockerRules(allow...), inet(dockerRules())...)...)

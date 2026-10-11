@@ -1612,3 +1612,8 @@ and the candidate that's tried is `v0.1.0-rc.2`.
 - `[NEXT]` A pre-release publishes no docs: the **Docs** run for the next pre-release, if there is
   one, shows **Build** and **Publish** skipped. (`v0.1.0-rc.2` was published before the workflow
   listened for releases.)
+- `[NEXT]` The addresses the app prints open the guide they name. On an installed `v0.1.0`, the
+  uplink check's hint (a host with no IPv6 default route) and `serve`'s newer-database error name
+  `.../drawbridge/v0.1/guides/...`; on a pre-release or a build between releases they name `dev`;
+  and the line `postinst` prints when it can't check `accept_ra` names the Diagnostic Tools guide
+  under `latest`. Each opens once its docs have published.

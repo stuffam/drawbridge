@@ -1009,7 +1009,9 @@ func TestServeRefusesADatabaseFromANewerBuild(t *testing.T) {
 	if code != exitDatabaseNewer {
 		t.Errorf("serve exited %d, want %d:\n%s", code, exitDatabaseNewer, stderr.String())
 	}
-	for _, want := range []string{"from a newer Drawbridge", "schema " + strconv.Itoa(newer), "knows up to " + strconv.Itoa(store.LatestSchema()), "restore a backup"} {
+	// The guide it points at is the one for this build's version.
+	for _, want := range []string{"from a newer Drawbridge", "schema " + strconv.Itoa(newer), "knows up to " + strconv.Itoa(store.LatestSchema()), "restore a backup",
+		version.DocsURL("guides/backup-restore/")} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Errorf("serve's message doesn't say %q:\n%s", want, stderr.String())
 		}

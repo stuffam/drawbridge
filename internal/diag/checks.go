@@ -122,7 +122,7 @@ func (e *env) uplink() Check {
 		c.Status = Warn
 		c.Detail = fmt.Sprintf("IPv4 leaves by %s, but the host has no IPv6 default route, so VPN clients' IPv6 traffic has nowhere to go.",
 			join(s.Uplinks4))
-		c.Hint = "If the host's IPv6 stopped when Drawbridge was installed, see the accept_ra check below and docs/REQUIREMENTS.md. Otherwise the network may not offer the host IPv6: ip -6 route show default"
+		c.Hint = "If the host's IPv6 stopped when Drawbridge was installed, see the accept_ra check below and " + guide() + ". Otherwise the network may not offer the host IPv6: ip -6 route show default"
 		return c
 	}
 	c.Status = Pass
