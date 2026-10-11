@@ -193,7 +193,10 @@ nothing from the changelog:
   nothing here publishes a release that way.
 
 `scripts/docs-version.sh` decides the version and whether `latest` moves, and ADR 0013 has the
-reasons.
+reasons. The app links to the entry that matches the build (`v0.1` for any `v0.1.x`, and `dev` for a
+pre-release or a build between releases, which have no docs of their own) with
+`internal/version.DocsURL`, the other half of that decision. A test runs the two against each other,
+so a change to the script's rules fails until the function follows.
 
 Deleting a release, or marking it a pre-release, doesn't take its docs down. To fix a mistake, work
 from a clone with the docs tools installed (`pip install -r requirements-docs.txt`, which needs
