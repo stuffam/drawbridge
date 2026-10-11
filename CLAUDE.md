@@ -150,8 +150,8 @@ setups.** What exists:
   made on the Account page (docs/user_docs/guides/api-tokens.md).
 - The web UI: setup (account, endpoint, and a DNS step that checks whether the host answers DNS
   on the VPN addresses), login, dashboard, clients (QR codes and downloads), settings (DNS
-  included), logs, and account, and a **Help** icon in the header that opens the guides for this
-  build.
+  included), logs, and account, a **Help** icon in the header that opens the guides for this build,
+  and a bar that offers a reload when the daemon under an open page has been upgraded.
 - Kernel integration tests, and browser end-to-end tests.
 
 `docs/PLAN.md` is the specification. It covers:
@@ -611,24 +611,25 @@ These are the rules most likely to get silently broken.
   time or the machine into a build. Three things did, and each is fixed where it came from: nfpm
   puts every file's modification time in the package (the Makefile exports `SOURCE_DATE_EPOCH`, the
   commit's time), SvelteKit names each build for the time it was made (`web/vite.config.ts` names it
-  for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are
-  made with `-noserial -notimestamp`; the SBOMs aren't compared). The commit's own time is allowed:
-  the web UI's footer shows `internal/version.Date`, which the Makefile stamps from it (UTC, RFC
-  3339), never from the clock. So is the version a build between releases is named for: the
-  Makefile reads the nearest tag and the commits since it (`0.1.0-rc.2+61`, Debian `0.1.0~rc.2+61`,
-  which sorts after that release and before the next, so a build installed over a release is an
-  upgrade), and `0.0.0-dev` where git reaches no tag (CI's shallow checkouts) or the nearest one
-  isn't a plain `vX.Y.Z[-pre]`: git allows `;` and `$` in a tag's name, which is the pusher's text,
-  and the version reaches shell commands. `release.yml` gives both its builds the tag's version, or
-  `0.0.0-dev` for a dry run, and leaves nothing to git. A tag is never moved and a published
-  release's files are never replaced: a mistake is fixed by the next version, because an older
-  build won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older
-  version over a newer one, never lets a name from the network into a path or URL unchecked, and
-  never reaches `apt-get` before the package's checksum matches; its tests break the script to
-  prove each. A release's files are named for the version (`1.0.0-rc.1`), never the package's
-  Debian version (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release
-  doesn't have. `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and
-  checks it against the downloaded package's `Version`.
+  for the commit, and it must stay a name that changes with the build: an open page polls it and
+  offers a reload when it differs, `NewVersionBar`), and a CycloneDX SBOM carries a serial number
+  and a timestamp (the Go ones are made with `-noserial -notimestamp`; the SBOMs aren't compared).
+  The commit's own time is allowed: the web UI's footer shows `internal/version.Date`, which the
+  Makefile stamps from it (UTC, RFC 3339), never from the clock. So is the version a build between
+  releases is named for: the Makefile reads the nearest tag and the commits since it
+  (`0.1.0-rc.2+61`, Debian `0.1.0~rc.2+61`, which sorts after that release and before the next, so a
+  build installed over a release is an upgrade), and `0.0.0-dev` where git reaches no tag (CI's
+  shallow checkouts) or the nearest one isn't a plain `vX.Y.Z[-pre]`: git allows `;` and `$` in a
+  tag's name, which is the pusher's text, and the version reaches shell commands. `release.yml`
+  gives both its builds the tag's version, or `0.0.0-dev` for a dry run, and leaves nothing to git.
+  A tag is never moved and a published release's files are never replaced: a mistake is fixed by the
+  next version, because an older build won't write a newer database (docs/PLAN.md §11.1).
+  `install.sh` never installs an older version over a newer one, never lets a name from the network
+  into a path or URL unchecked, and never reaches `apt-get` before the package's checksum matches;
+  its tests break the script to prove each. A release's files are named for the version
+  (`1.0.0-rc.1`), never the package's Debian version (`1.0.0~rc.1`): GitHub renames a `~`, so
+  `SHA256SUMS` would list names the release doesn't have. `install.sh` takes the Debian version from
+  the name (the first `-` becomes `~`) and checks it against the downloaded package's `Version`.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,

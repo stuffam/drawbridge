@@ -1485,6 +1485,13 @@ has watched systemd.
   units on `remove`, so installing this build afterward leaves both disabled (a reinstall goes by
   their state, and they're off). `sudo systemctl enable --now drawbridge-tunnel drawbridge` is the
   fix. Only a host that removed a build from before 2026-10-04 and installs this one sees it.
+- `[UNVERIFIED]` **A page that is open during an upgrade:** with the web UI open in a browser on
+  another device, install a package of a different build over the running one. The install restarts
+  the daemon within a second, and the open page keeps its old header until it is reloaded. Within
+  a minute it shows a bar above the header, "A newer version of Drawbridge is available", with a
+  **Reload** button, and Reload brings the new header. Reinstalling the same build (the same commit)
+  shows no bar. Run in Chromium against the fake backend, with the page's answer replaced and with
+  two real builds; not on a real host.
 
 ## 20. Releases (the tenth M5 slice)
 
