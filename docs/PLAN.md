@@ -1658,7 +1658,7 @@ fake). This lets UI and API work happen on macOS or Windows without root.
 drawbridge/                repository root
 ├── cmd/drawbridge/        main.go: subcommands (serve, tunnel, apply, client, admin, …)
 ├── internal/
-│   ├── version/           build-time version and commit (M0)
+│   ├── version/           build-time version, commit and its date; the docs address (M0)
 │   ├── sdnotify/          systemd readiness notification (M0)
 │   ├── webui/             embeds the web app's build from dist/ (M0)
 │   ├── config/            bootstrap TOML config
