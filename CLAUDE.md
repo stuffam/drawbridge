@@ -227,7 +227,8 @@ a step describes.
   software's follow its own project's convention ("Go 1.26", "govulncheck v1.8.0"). Four places
   use a bare string because their own rules require it:
   - The Debian package version, which must start with a digit (`drawbridge_1.0.0_arm64.deb`).
-  - The version constant set at build time.
+  - The version constant set at build time (`make version` shows it): a tag's version, or between
+    releases the nearest tag's and `+N` for the commits since it (`0.1.0-rc.2+61`).
   - The OpenAPI spec's `info.version`.
   - A release's file names (`drawbridge_1.0.0-rc.1_arm64.deb`), which are named for the version
     and not the Debian version, because GitHub renames a `~` (see the release invariant below).
@@ -314,6 +315,7 @@ make spell      # the U.S. English check on every tracked file
 make vuln       # known vulnerabilities the Go code can reach (govulncheck; needs the network)
 make fmt        # format Go (gofmt, goimports) and the web app (Prettier)
 make deb        # web build, arm64 and amd64 binaries, and both .deb files in dist/
+make version    # the version a build here is named for (a tag's, or 0.1.0-rc.2+61 past one)
 make test-integration   # kernel WireGuard end to end (root, IPv6, the wireguard module)
 make test-upgrade       # upgrade from each older build (test/integration/upgrade-from.txt)
 make test-packaging     # the .deb's scripts through real dpkg, fake systemctl (a throwaway Debian)
@@ -605,15 +607,21 @@ These are the rules most likely to get silently broken.
   for the commit), and a CycloneDX SBOM carries a serial number and a timestamp (the Go ones are
   made with `-noserial -notimestamp`; the SBOMs aren't compared). The commit's own time is allowed:
   the web UI's footer shows `internal/version.Date`, which the Makefile stamps from it (UTC, RFC
-  3339), never from the clock. A tag is never moved and a published release's files are never
-  replaced: a mistake is fixed by the next version, because an older build won't write a newer
-  database (docs/PLAN.md §11.1). `install.sh` never installs an older version over a newer one,
-  never lets a name from the network into a path or URL unchecked, and never reaches `apt-get`
-  before the package's checksum matches; its tests break the script to prove each. A release's files
-  are named for the version (`1.0.0-rc.1`), never the package's Debian version (`1.0.0~rc.1`):
-  GitHub renames a `~`, so `SHA256SUMS` would list names the release doesn't have. `install.sh`
-  takes the Debian version from the name (the first `-` becomes `~`) and checks it against the
-  downloaded package's `Version`.
+  3339), never from the clock. So is the version a build between releases is named for: the
+  Makefile reads the nearest tag and the commits since it (`0.1.0-rc.2+61`, Debian `0.1.0~rc.2+61`,
+  which sorts after that release and before the next, so a build installed over a release is an
+  upgrade), and `0.0.0-dev` where git reaches no tag (CI's shallow checkouts) or the nearest one
+  isn't a plain `vX.Y.Z[-pre]`: git allows `;` and `$` in a tag's name, which is the pusher's text,
+  and the version reaches shell commands. `release.yml` gives both its builds the tag's version, or
+  `0.0.0-dev` for a dry run, and leaves nothing to git. A tag is never moved and a published
+  release's files are never replaced: a mistake is fixed by the next version, because an older
+  build won't write a newer database (docs/PLAN.md §11.1). `install.sh` never installs an older
+  version over a newer one, never lets a name from the network into a path or URL unchecked, and
+  never reaches `apt-get` before the package's checksum matches; its tests break the script to
+  prove each. A release's files are named for the version (`1.0.0-rc.1`), never the package's
+  Debian version (`1.0.0~rc.1`): GitHub renames a `~`, so `SHA256SUMS` would list names the release
+  doesn't have. `install.sh` takes the Debian version from the name (the first `-` becomes `~`) and
+  checks it against the downloaded package's `Version`.
 - **Secrets stay secret.** Private keys, PSKs, and the setup token are encrypted at rest (the
   `*_enc` columns) and never logged, except the setup token, which the journal shows until the
   admin account exists (§6.5). Session tokens and API tokens are stored only as SHA-256 hashes,
@@ -723,7 +731,10 @@ building twice with every source file's modification time changed between the bu
   of files until its version name stopped being the build's time (`_app/version.json` held a
   `Date.now()`); named for the commit, 43 files were identical across builds.
 - nfpm v2.47.0 turns the versions `0.1.0`, `1.0.0-rc.1`, and `0.0.0-dev` into the Debian versions
-  `0.1.0`, `1.0.0~rc.1`, and `0.0.0~dev`.
+  `0.1.0`, `1.0.0~rc.1`, and `0.0.0~dev`, and keeps a `+` suffix as it is: `0.1.0-rc.2+61` becomes
+  `0.1.0~rc.2+61`. dpkg in Debian 13 orders (2026-10-10) `0.0.0~dev` < `0.1.0~rc.2` <
+  `0.1.0~rc.2+61` < `0.1.0` < `0.1.0+2` < `0.1.1`. `0.1.0~dev` would still sort below `0.1.0~rc.2`
+  (d before r), which is why a build between releases isn't named for `~dev`.
 - `cyclonedx-gomod` v1.12.0 (`bin` mode, on a stripped binary: the build info survives `-s -w`) has
   no `-reproducible` flag; `-noserial -notimestamp` makes two runs identical. It lists the modules
   (21 here) and the main module at the `-version` given.

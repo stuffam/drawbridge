@@ -3,10 +3,17 @@
 GO  ?= go
 NPM ?= npm
 
-# The build-time version constant is a bare string (CLAUDE.md, "Conventions"): the exact
-# vX.Y.Z tag on HEAD without its "v", or 0.0.0-dev between releases.
-GIT_TAG := $(shell git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null)
-VERSION ?= $(if $(GIT_TAG),$(patsubst v%,%,$(GIT_TAG)),0.0.0-dev)
+# The build-time version constant is a bare string (CLAUDE.md, "Conventions"): the vX.Y.Z tag on
+# HEAD without its "v"; between releases, the nearest tag's version and +N for the N commits since
+# it (0.1.0-rc.2+61); and 0.0.0-dev where git can reach no tag (a shallow clone, an archive). The
+# Debian version, 0.1.0~rc.2+61, sorts after the release it follows and before the next one, so
+# installing such a build over a release is an upgrade (docs/PLAN.md §11.1).
+# A tag's name is text from whoever pushed it, and git allows ; $ ' ( and ) in one, while the
+# version goes into shell commands below. So a tag is used only if it is a plain version, and any
+# other nearest tag leaves the build at 0.0.0-dev.
+GIT_TAG   := $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$$')
+GIT_AHEAD := $(if $(GIT_TAG),$(shell git rev-list --count refs/tags/$(GIT_TAG)..HEAD 2>/dev/null))
+VERSION ?= $(if $(and $(GIT_TAG),$(GIT_AHEAD)),$(patsubst v%,%,$(GIT_TAG))$(if $(filter-out 0,$(GIT_AHEAD)),+$(GIT_AHEAD)),0.0.0-dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(if $(shell git status --porcelain 2>/dev/null),-dirty)
 # The time of that commit, in UTC as RFC 3339 (the web UI's footer names its day in the viewer's time
 # zone). It's the commit's time and never the build's, so the same commit gives the same binary.
@@ -50,6 +57,10 @@ WEB_DEPS := web/node_modules/.package-lock.json
 .PHONY: help
 help: ## Show this help.
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
+
+.PHONY: version
+version: ## Show the version a build here is named for.
+	@echo $(VERSION)
 
 .PHONY: tools
 tools: $(BIN)/golangci-lint $(BIN)/nfpm $(BIN)/misspell $(BIN)/cyclonedx-gomod $(BIN)/govulncheck ## Install the pinned build tools into ./bin.

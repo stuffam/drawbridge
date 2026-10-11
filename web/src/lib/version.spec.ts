@@ -40,6 +40,12 @@ describe('versionLink', () => {
 		expect(versionLink(make('v0.0.0-dev', '4e52c6d'))).toBe(`${repoUrl}/commit/4e52c6d`);
 	});
 
+	it('goes to the commit when the build is some commits past a release, which has no page', () => {
+		expect(versionLink(make('v0.1.0-rc.2+61', '29caacc'))).toBe(`${repoUrl}/commit/29caacc`);
+		expect(versionLink(make('v0.1.0+2', '29caacc'))).toBe(`${repoUrl}/commit/29caacc`);
+		expect(versionLink(make('v0.1.0+2', '29caacc-dirty'))).toBeUndefined();
+	});
+
 	it('goes nowhere when the build has no commit that GitHub would know', () => {
 		expect(versionLink(make('v0.0.0-dev', 'unknown'))).toBeUndefined();
 		expect(versionLink(make('v0.0.0-dev', '4e52c6d-dirty'))).toBeUndefined();

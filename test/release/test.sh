@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests the scripts that decide and check a release (docs/PLAN.md §11.1): changelog-release.sh,
-# release-notes.sh, release-check.sh, docs-version.sh, and release-verify.sh. Each runs against a throwaway git repository and
+# release-notes.sh, release-check.sh, docs-version.sh, and release-verify.sh, and the version the
+# Makefile names a build. Each runs against a throwaway git repository and
 # directory, so nothing here touches the checkout or the host. release-verify.sh needs dpkg-deb
 # (Debian and Ubuntu have it; a laptop usually doesn't), and its cases are skipped without it.
 # `make test-release` runs this.
@@ -408,6 +409,93 @@ unversioned=$(
 )
 same "links: nothing the notes come from links to an unversioned docs address" "" "$unversioned"
 
+# ---- the Makefile's version ----
+
+# A build is named for the nearest version tag, and for how many commits it is past it (docs/PLAN.md
+# §11.1). The Debian version of each name has to sort between the releases around it, so that
+# installing a build over a release is an upgrade to dpkg and apt, not a downgrade.
+if ! command -v make >/dev/null 2>&1; then
+	echo "SKIP: the Makefile's version cases (no make)"
+else
+	vrepo=$work/version-repo
+	mkdir "$vrepo"
+	vgit() { command git -C "$vrepo" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
+	# `print-NAME` shows a Makefile variable, for the Debian version that `make version` doesn't show.
+	cat >"$work/print.mk" <<-'EOF'
+		print-%: ; @echo $($*)
+	EOF
+	mk=(make -s -C "$vrepo" -f "$root/Makefile")
+	# Runs a command as a caller with a clean environment would: without a VERSION, or make's or
+	# git's own variables, which `make test-release` or a shell may have set. Assignments at the
+	# start of the command (VERSION=1.2.3 make ...) are made after those are removed.
+	clean() { env -u VERSION -u MAKEFLAGS -u MFLAGS -u MAKELEVEL -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE "$@"; }
+	build_version() { clean "${mk[@]}" version; }
+	deb_version() { clean "${mk[@]}" -f "$work/print.mk" print-DEB_VERSION; }
+	debs=()
+	# at NAME WANT-VERSION WANT-DEBIAN: the repository's HEAD is built as that version. The Debian
+	# version make gives is remembered, in the order of the history, for the ordering check below.
+	at() {
+		same "version: $1" "$2" "$(build_version)"
+		same "version: $1, as a Debian version" "$3" "$(deb_version)"
+		debs+=("$(deb_version)")
+	}
+
+	vgit init -q -b main
+	vgit commit -q --allow-empty -m "start"
+	at "no tag" 0.0.0-dev 0.0.0~dev
+
+	vgit tag v0.1.0-rc.2
+	at "on a pre-release's tag" 0.1.0-rc.2 0.1.0~rc.2
+
+	for i in 1 2 3; do vgit commit -q --allow-empty -m "after the pre-release $i"; done
+	vgit tag nightly # not a version, so no build is named for it
+	at "past a pre-release's tag" 0.1.0-rc.2+3 0.1.0~rc.2+3
+
+	for i in 4 5 6 7 8 9 10 11 12 13; do vgit commit -q --allow-empty -m "after the pre-release $i"; done
+	at "ten past, which is more than nine" 0.1.0-rc.2+13 0.1.0~rc.2+13
+
+	vgit tag v0.1.0
+	at "on a release's tag" 0.1.0 0.1.0
+
+	vgit commit -q --allow-empty -m "after the release 1"
+	vgit commit -q --allow-empty -m "after the release 2"
+	at "past a release's tag, which is nearer than the pre-release's" 0.1.0+2 0.1.0+2
+
+	vgit tag v0.1.1
+	at "on the next release's tag" 0.1.1 0.1.1
+
+	# VERSION in the environment (as release.yml sets it) or on the command line is the name,
+	# whatever git says.
+	same "version: from the environment" "9.9.9-rc.1" "$(clean VERSION=9.9.9-rc.1 "${mk[@]}" version)"
+	same "version: from the command line" "9.9.9" "$(clean "${mk[@]}" VERSION=9.9.9 version)"
+
+	# What the caller has exported is not the Makefile's business: `make test-release` passes its
+	# own flags down, and a shell may have a VERSION of its own.
+	same "version: a VERSION left in the caller's environment is not read" "0.1.1" \
+		"$(VERSION=leaked MAKEFLAGS=-e build_version)"
+
+	# A tag's name is text from whoever pushed it, and git allows `;`, `$`, and quotes in one. It
+	# must never reach a shell, and a tag that isn't a plain version names no build.
+	vgit commit -q --allow-empty -m "after the next release"
+	vgit tag "v9.9.9;touch\${IFS}INJECTED"
+	same "version: a tag that isn't a plain version names no build" "0.0.0-dev" "$(build_version)"
+	# (A command in a tag's name that did run would be given the rest of the Makefile's command as
+	# an argument, so it leaves a file whose name starts with INJECTED.)
+	same "version: a tag's name is not run as a command" "" "$(find "$vrepo" -maxdepth 1 -name 'INJECTED*')"
+
+	if ! command -v dpkg >/dev/null 2>&1; then
+		echo "SKIP: the Debian versions' order (no dpkg)"
+	else
+		for ((i = 0; i + 1 < ${#debs[@]}; i++)); do
+			if dpkg --compare-versions "${debs[i]}" lt "${debs[i + 1]}"; then
+				pass
+			else
+				fail "version: ${debs[i]} should sort before ${debs[i + 1]}"
+			fi
+		done
+	fi
+fi
+
 # ---- docs.yml ----
 
 # GitHub keeps one run waiting in a concurrency group and replaces it when another arrives. A
@@ -417,6 +505,16 @@ same "links: nothing the notes come from links to an unversioned docs address" "
 group=$(sed -n 's/^ *group: *//p' "$root/.github/workflows/docs.yml")
 expect "docs.yml: a release's publish has a concurrency group of its own" 0 "event_name == 'release'" \
 	printf '%s\n' "$group"
+
+# ---- release.yml ----
+
+# A dry run has no tag, and the Makefile names a build for the nearest tag and the commits since it
+# (`make version`), so the first build, the second, and the check of the files all have to be given
+# the version the tag says, or 0.0.0-dev. The check expects exactly that name, and the second build
+# has to match the first. The two builds each set it for the whole job.
+named="VERSION: \${{ needs.check.outputs.version || '0.0.0-dev' }}"
+same "release.yml: both builds are given the tag's version, and a dry run's is 0.0.0-dev" 2 \
+	"$(grep -cF -- "$named" "$root/.github/workflows/release.yml")"
 
 # ---- release-verify.sh ----
 

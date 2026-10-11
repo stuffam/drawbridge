@@ -1490,6 +1490,16 @@ package does once it's installed (above).
       describe`, so the binary reports `1.0.0` and the package's Debian version is the bare
       string. nfpm turns `-rc.1` into `~rc.1` (checked), so a pre-release sorts before its
       release, as `0.0.0~dev` sorts before `0.0.0`.
+    - A build between releases is named for the nearest tag and the commits since it (`make
+      version` shows it): `0.1.0-rc.2+61`, whose Debian version is `0.1.0~rc.2+61` (nfpm keeps the
+      `+`; checked). That sorts after the release it follows and before the next, so installing
+      such a build over a release is an upgrade to dpkg and apt. It was `0.0.0-dev` until
+      v0.1.0-rc.2 was published, and `0.0.0~dev` sorts below every release, which made the same
+      install a downgrade. Where git reaches no tag (a shallow clone, an archive), or the nearest
+      isn't a plain `vX.Y.Z` with an optional pre-release (git allows `;` and `$` in a tag's name,
+      and the version reaches shell commands), a build is still `0.0.0-dev`. `release.yml` leaves
+      nothing to git: both its builds are given the tag's version, or `0.0.0-dev` for a dry run,
+      which has no tag.
     - A release before v1.0 is an ordinary GitHub release, not a pre-release: the "latest" release
       that `install.sh` reads skips pre-releases, and M5's exit criterion (upgrading from v0.x)
       assumes v0.x releases exist.
