@@ -63,6 +63,11 @@ func TestVersion(t *testing.T) {
 	if date, ok := body["date"]; !ok || date != version.Date {
 		t.Fatalf("body %v, want date %q", body, version.Date)
 	}
+	// The start of the docs that match this build, which the web UI opens its guides under, so a
+	// link in the page and one in the doctor's hints can't name different versions.
+	if docs, ok := body["docs"]; !ok || docs != version.DocsURL("") {
+		t.Fatalf("body %v, want docs %q", body, version.DocsURL(""))
+	}
 }
 
 // The OpenAPI document describes what the version route sends: every key it sends is a property of

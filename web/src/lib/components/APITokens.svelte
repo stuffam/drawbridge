@@ -4,9 +4,11 @@
 	// admin says they have it.
 	import { onMount } from 'svelte';
 	import { api, type APIToken, type NewAPITokenResult } from '$lib/api';
+	import { build } from '$lib/build.svelte';
 	import { errorMessage } from '$lib/errors';
 	import { formatAgo, formatTime } from '$lib/format';
 	import { homepageWidget } from '$lib/tokens';
+	import { docsUrl } from '$lib/version';
 	import CopyButton from './CopyButton.svelte';
 	import Result from './Result.svelte';
 
@@ -102,7 +104,7 @@
 						Homepage has to trust this server's certificate and be allowed in:
 						<a
 							class="font-medium underline"
-							href="https://stuffam.github.io/drawbridge/latest/guides/homepage/"
+							href={docsUrl(build.info, 'guides/homepage/')}
 							target="_blank"
 							rel="noopener external">how, and what its errors mean</a
 						>.

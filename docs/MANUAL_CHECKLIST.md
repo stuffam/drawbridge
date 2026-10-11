@@ -1617,3 +1617,7 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   `.../drawbridge/v0.1/guides/...`; on a pre-release or a build between releases they name `dev`;
   and the line `postinst` prints when it can't check `accept_ra` names the Diagnostic Tools guide
   under `latest`. Each opens once its docs have published.
+- `[NEXT]` The web UI's **Help** icon opens the guides' index for the build in a new tab. On an
+  installed `v0.1.0` it opens `.../drawbridge/v0.1/guides/`, which loads once the **Docs** run has
+  published `v0.1`, and the System page's links to the backup and snapshot guides open under `v0.1`
+  too. On a pre-release or a build between releases it opens `dev`.

@@ -50,6 +50,16 @@ test('the System page runs the host checks, and runs them again on request', asy
 	expect(problems).toEqual([]);
 });
 
+test("the System page's links to guides open the docs for this build", async ({ page }) => {
+	await login(page);
+	await navigate(page, 'System');
+	// Not latest, which is what a link uses until the server says which docs match this build.
+	await expect(page.locator('a[href*="guides/backup-restore/"]')).toHaveAttribute(
+		'href',
+		/^https:\/\/stuffam\.github\.io\/drawbridge\/(dev|v\d+\.\d+)\/guides\/backup-restore\/$/
+	);
+});
+
 test('the System page tells a failure from a warning, and says what to do', async ({ page }) => {
 	const problems = watchConsole(page);
 	await page.route('**/api/system/health', (route) =>

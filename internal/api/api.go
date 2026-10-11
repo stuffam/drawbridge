@@ -187,5 +187,6 @@ func (h *handler) version(w http.ResponseWriter, _ *http.Request) {
 		"version": "v" + version.Version,
 		"commit":  version.Commit,
 		"date":    version.Date,
+		"docs":    version.DocsURL(""),
 	})
 }

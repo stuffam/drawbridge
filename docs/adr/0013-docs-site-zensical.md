@@ -102,5 +102,8 @@ reinterpret GitHub-flavored text: Zensical's starter list also has math (`$...$`
   final releases (`scripts/docs-version.sh`). The doctor's hints and `serve`'s newer-database error
   use it. `TestDocsVersionMatchesWhatTheSitePublishes` runs the script and the function against each
   other, because a disagreement would be a dead link that nothing reports. The README and the
-  package's scripts keep `latest`, since they don't take the version from the build. The decision
-  stands (one entry for each minor, `latest` on the highest); only who is sent where changes.
+  package's scripts keep `latest`, since they don't take the version from the build. The web UI
+  takes the address from the server (`docs` in `GET /api/version`), so a link in the page and one in
+  a hint can't name different versions, and its header has a **Help** icon that opens the guides'
+  index, `guides/index.md`, which the site didn't have until then. The decision stands (one entry
+  for each minor, `latest` on the highest); only who is sent where changes.

@@ -290,6 +290,41 @@ test("the dashboard's footer names the build and links to it on GitHub", async (
 	);
 });
 
+test('the header fits the narrowest phone, and every icon can be reached', async ({ page }) => {
+	await page.setViewportSize({ width: 320, height: 640 });
+	await login(page);
+	const nav = page.getByRole('navigation', { name: 'Main' });
+	await expect(nav.getByRole('link', { name: 'Clients' })).toBeVisible();
+	// Nothing makes the page wider than the screen, and no icon is off either edge of it.
+	expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+	const edges = await nav
+		.locator('a, button')
+		.evaluateAll((els) =>
+			els.map((el) => [el.getBoundingClientRect().left, el.getBoundingClientRect().right])
+		);
+	for (const [left, right] of edges) {
+		expect(left).toBeGreaterThanOrEqual(0);
+		expect(right).toBeLessThanOrEqual(320);
+	}
+	// Five pages, Help, the mode, the account, and Add Client.
+	expect(edges.length).toBe(9);
+});
+
+test("the header's Help icon opens the guides for this build in a new tab", async ({ page }) => {
+	await login(page);
+	const help = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Help' });
+	await expect(help).toBeVisible();
+	// A pre-release and a build between releases (this one) have no docs of their own and read dev;
+	// a release reads its minor version's. Never latest, which is only what the page uses until
+	// the server has said.
+	await expect(help).toHaveAttribute(
+		'href',
+		/^https:\/\/stuffam\.github\.io\/drawbridge\/(dev|v\d+\.\d+)\/guides\/$/
+	);
+	await expect(help).toHaveAttribute('target', '_blank');
+	await expect(help).toHaveAttribute('rel', /\bnoopener\b/);
+});
+
 test("the dashboard's boxes open their pages, and say so when the pointer is over them", async ({
 	page
 }) => {

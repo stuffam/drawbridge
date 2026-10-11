@@ -2373,7 +2373,8 @@
         "required": [
           "version",
           "commit",
-          "date"
+          "date",
+          "docs"
         ],
         "properties": {
           "version": {
@@ -2391,6 +2392,13 @@
             "description": "The time of the commit the build was made from, in UTC as RFC 3339. Empty when the build couldn't tell.",
             "examples": [
               "2026-10-08T02:15:46Z"
+            ]
+          },
+          "docs": {
+            "type": "string",
+            "description": "The address of the documentation that matches this build, ending in a slash; a page is under it, as guides/backup-restore/. A release has the docs of its minor version (v0.1 for v0.1.3). A pre-release, or a build made between releases, has none of its own and gets the development docs (dev).",
+            "examples": [
+              "https://stuffam.github.io/drawbridge/v0.1/"
             ]
           }
         }

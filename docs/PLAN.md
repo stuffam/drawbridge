@@ -1364,6 +1364,13 @@ can be added later (i18n).
 | **Logs** | Events table with filters (category, event, client, time) and CSV export, plus an audit tab |
 | **System** | Diagnostics (built: the checks, run on opening and on request, each failure with its fix), backup/restore, admin account and 2FA, sessions, TLS, retention, about |
 
+The header's icons open the pages, and on a narrow screen they wrap onto a second row, so nothing
+is wider than a 320 px phone. Its **Help** icon is not a page: it opens the guides' index
+(`guides/`, which has a page of its own) on the docs site in a new tab, for the docs that match
+the running build (§11.1). The server says which: `GET /api/version` has a `docs` field, the start
+of that build's docs, and the web UI builds every link to a guide from it, until it arrives
+using `latest`.
+
 Libraries: Tailwind CSS, uPlot for charts (small and fast), and `qrcode` for rendering QR codes
 in the browser.
 
