@@ -20,7 +20,11 @@ const goServer: ProxyOptions = {
 // SvelteKit names each build with the time it was made, and that name ends up in the entry chunks,
 // so two builds of the same source differ in every file that imports one. The commit makes the
 // build a function of its source, which a release's reproducible package needs (docs/PLAN.md
-// §10). The app doesn't read the name; SvelteKit only compares it to spot a new deployment.
+// §10). The name also lets an open page tell that the daemon under it was upgraded: SvelteKit asks
+// for _app/version.json every `pollInterval`, and a name that differs from the page's own makes
+// `updated.current` true, which shows the bar that offers a reload (NewVersionBar). So the name
+// has to change with the build: never make it a constant. Without git it is "unknown", and a page
+// built that way never notices.
 function buildName(): string {
 	try {
 		return execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -44,7 +48,7 @@ export default defineConfig({
 			// A single-page app: the Go server returns 200.html for every path that isn't a
 			// file, and the client-side router takes over (internal/api, internal/webui).
 			adapter: adapter({ fallback: '200.html' }),
-			version: { name: buildName() }
+			version: { name: buildName(), pollInterval: 60_000 }
 		})
 	],
 	server: {
