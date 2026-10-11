@@ -24,7 +24,7 @@ const goServer: ProxyOptions = {
 // for _app/version.json every `pollInterval`, and a name that differs from the page's own makes
 // `updated.current` true, which shows the bar that offers a reload (NewVersionBar). So the name
 // has to change with the build: never make it a constant. Without git it is "unknown", and a page
-// built that way never notices.
+// built that way never notices, so the build says so rather than leaving it to be found out.
 function buildName(): string {
 	try {
 		return execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -32,6 +32,11 @@ function buildName(): string {
 			stdio: ['ignore', 'pipe', 'ignore']
 		}).trim();
 	} catch {
+		// Git is missing, or won't run here (a source archive, or a repository that another user owns).
+		// (Vite reads this file several times in a build, so the line appears more than once.)
+		console.warn(
+			'drawbridge: git could not name this build, so it is called "unknown", and a page built this way will not offer a reload after an upgrade'
+		);
 		return 'unknown';
 	}
 }
