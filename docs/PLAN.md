@@ -1371,6 +1371,12 @@ the running build (§11.1). The server says which: `GET /api/version` has a `doc
 of that build's docs, and the web UI builds every link to a guide from it, until it arrives
 using `latest`.
 
+A page that is open when the daemon is upgraded keeps its old code until it is reloaded, so it asks
+the server once a minute which build it came from (`_app/version.json`, named for the commit,
+`kit.version.pollInterval` in `web/vite.config.ts`), and when that differs shows a bar above the
+header, on every page including the login, with a **Reload** button. It never reloads by itself,
+because that would lose what the person hasn't saved.
+
 Libraries: Tailwind CSS, uPlot for charts (small and fast), and `qrcode` for rendering QR codes
 in the browser.
 

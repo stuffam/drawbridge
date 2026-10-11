@@ -13,6 +13,10 @@ The web UI restarts, and the VPN stays up: the tunnel service isn't restarted, a
 connected stays connected. When the new version changes the database's layout, it saves a snapshot
 beside the database first. A service you turned off with `systemctl disable` stays off.
 
+A browser tab that has the web UI open keeps showing the old version until you reload it. Within a
+minute of the upgrade the tab shows a bar that says a newer version is available, with a **Reload**
+button. It never reloads by itself, so it can't lose a change you haven't saved.
+
 Make a [backup](backup-restore.md) first if you want a copy that's safe off the host.
 
 **Downgrading isn't supported.** An older Drawbridge reads a database that a newer one has changed
