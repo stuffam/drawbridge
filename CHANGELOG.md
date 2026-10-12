@@ -40,8 +40,9 @@ newest release that isn't a pre-release its latest.
 - **Where it has run.** A Raspberry Pi 5 on Debian 13 with NetworkManager, real phones, and a
   laptop. The amd64 package has run on a Debian 13 virtual server (systemd-networkd), not on a
   physical machine you own: a fresh install, an upgrade from v0.1.0-rc.2 with a client pinging
-  all the time (none lost), a backup restored after a purge, and `install.sh`. CI runs the kernel
-  WireGuard tests and the upgrade tests on Ubuntu 24.04 (amd64).
+  all the time (none lost), a backup restored after a purge, `install.sh`, and a phone on cellular
+  connected to it. CI runs the kernel WireGuard tests and the upgrade tests on Ubuntu 24.04
+  (amd64).
 - **A downgrade isn't supported, so make a
   [backup](https://stuffam.github.io/drawbridge/v0.1/guides/backup-restore/) before you upgrade.**
   Once a version has changed the database's layout, an older Drawbridge reads it and never writes
@@ -56,9 +57,10 @@ newest release that isn't a pre-release its latest.
   knows the username can make your login wait, for up to 15 minutes, by guessing wrong. Choose a
   username other than `admin`; `sudo drawbridge admin reset-password` clears the wait. See
   [Troubleshooting](https://stuffam.github.io/drawbridge/v0.1/guides/troubleshooting/).
-- **Some things haven't run on real hardware yet:** changing the listen port or rotating the
-  server's key from a phone behind a NAT, a restore onto a freshly flashed card, a certificate from
-  a public CA, and a week or more of traffic history behind the long chart ranges. The [manual
+- **Some things haven't run on real hardware yet:** changing the listen port or rotating keys from
+  a phone through a home router's port forward (they have run from a phone on cellular against a
+  server with a public address), a restore onto a freshly flashed card, a certificate from a
+  public CA, and a week or more of traffic history behind the long chart ranges. The [manual
   checklist](https://github.com/stuffam/drawbridge/blob/v0.1.0/docs/MANUAL_CHECKLIST.md) lists each
   one and what was seen so far.
 - **One admin, and the same settings for every client.** There's no per-client DNS, MTU, access
