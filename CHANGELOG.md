@@ -127,6 +127,11 @@ newest release that isn't a pre-release its latest.
 ### Fixed
 
 - **The web UI's header overflowed on a very narrow screen** (320 pixels wide). It wraps now.
+- **A change waiting to be kept no longer comes back after it was undone.** When the answer to a
+  settings change reached a page late, because the change had cut the admin's own tunnel (rotating
+  the server's key from a phone), the page showed a bar with a fresh countdown, and a form with the
+  new value, for a change the daemon had already undone. The page now asks the server what is in
+  place.
 
 ---
 

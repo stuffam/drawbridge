@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { api, type SettingsResult } from '$lib/api';
 	import { errorMessage } from '$lib/errors';
-	import { setPending } from '$lib/pending.svelte';
+	import { setPendingFromResponse } from '$lib/pending.svelte';
+	import { settledResult } from '$lib/settled';
 	import Result from './Result.svelte';
 
 	let {
@@ -9,8 +10,12 @@
 		onrotated
 	}: {
 		open?: boolean;
-		/** Called once the new key is in place, with the response (the settings, and the change waiting). */
-		onrotated: (res: SettingsResult) => void;
+		/**
+		 * Called with the response (the settings, and the change waiting) once the server has answered.
+		 * `late` says the answer came after the change's time was up, so the response is what the server
+		 * has now, which may be the old key.
+		 */
+		onrotated: (res: SettingsResult, late: boolean) => void;
 	} = $props();
 
 	let dialog = $state<HTMLDialogElement>();
@@ -40,10 +45,12 @@
 		rotating = true;
 		error = '';
 		try {
-			const res = await api.rotateServerKey();
-			setPending(res.pending_change);
+			const sentAt = Date.now();
+			let res = await api.rotateServerKey();
+			const late = !setPendingFromResponse(res.pending_change, sentAt);
+			if (late) res = await settledResult(res);
 			dialog?.close();
-			onrotated(res);
+			onrotated(res, late);
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {

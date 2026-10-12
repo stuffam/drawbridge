@@ -3,7 +3,8 @@
 	import { api, type Settings, type SettingsPatch, type SettingsResult } from '$lib/api';
 	import { errorMessage } from '$lib/errors';
 	import { onLiveEvent } from '$lib/live.svelte';
-	import { setPending } from '$lib/pending.svelte';
+	import { setPendingFromResponse } from '$lib/pending.svelte';
+	import { lateNote, settledResult } from '$lib/settled';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import AdGuardSettings from '$lib/components/AdGuardSettings.svelte';
 	import DNSFields from '$lib/components/DNSFields.svelte';
@@ -61,12 +62,14 @@
 	 * The server has a new key. Only the key differs, so the form (which may hold edits that
 	 * aren't saved) is left alone.
 	 */
-	function rotated(res: SettingsResult) {
+	function rotated(res: SettingsResult, late: boolean) {
 		saved = res.settings;
 		keyWarning = res.warning ?? '';
-		keyNote = res.pending_change
-			? `The server has a new key, and every client needs its new config. This could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
-			: 'The server has a new key, and every client needs its new config.';
+		keyNote = late
+			? lateNote
+			: res.pending_change
+				? `The server has a new key, and every client needs its new config. This could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
+				: 'The server has a new key, and every client needs its new config.';
 	}
 
 	/** Only the settings that changed, so the server's event log says what happened. */
@@ -94,13 +97,17 @@
 		}
 		busy = true;
 		try {
-			const res = await api.updateServer(p);
+			const sentAt = Date.now();
+			let res = await api.updateServer(p);
+			const late = !setPendingFromResponse(res.pending_change, sentAt);
+			if (late) res = await settledResult(res);
 			fill(res.settings);
 			warning = res.warning ?? '';
-			setPending(res.pending_change);
-			success = res.pending_change
-				? `Saved and applied. This change could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
-				: 'Saved and applied. Clients get the new endpoint, port, MTU, DNS, and keepalive when they download their config again.';
+			success = late
+				? lateNote
+				: res.pending_change
+					? `Saved and applied. This change could lock you out, so it is undone in ${res.pending_change.expires_in} seconds unless you keep it: use the bar at the top of the page.`
+					: 'Saved and applied. Clients get the new endpoint, port, MTU, DNS, and keepalive when they download their config again.';
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {

@@ -191,3 +191,92 @@ test("a kept rotation of the server's key flags the clients that were handed a c
 	cli('client', 'delete', '--yes', 'Key Probe');
 	expect(problems).toEqual([]);
 });
+
+/** Lets the request reach the daemon at once, and holds its answer back until `release()`. */
+async function holdAnswer(page: Page, method: string, pattern: string) {
+	let release!: () => void;
+	const held = new Promise<void>((resolve) => (release = resolve));
+	await page.route(pattern, async (route) => {
+		if (route.request().method() !== method) return route.fallback();
+		const real = await route.fetch();
+		await held;
+		await route.fulfill({ response: real });
+	});
+	return release;
+}
+
+/** The browser logs each refused connection of the feed that `feedDown` blocks on purpose. */
+const notTheFeed = (message: string) => !/net::ERR_FAILED/.test(message);
+
+/**
+ * Takes the live feed down for the page that loads next, as a phone's tunnel does. With the feed up,
+ * the daemon's next status clears a stale bar within a second and the bug hides.
+ */
+async function feedDown(page: Page) {
+	await page.route('**/api/stream', (route) => route.abort());
+}
+
+/** How many times the log says a change was undone for want of being kept. */
+function expiries(): number {
+	return (cli('events', '--limit', '50').match(/server\.settings_expired/g) ?? []).length;
+}
+
+// What a phone sees when the change cuts its tunnel: the request goes out, the tunnel dies, and the
+// answer comes only once it is back, long after the daemon undid the change. The page counted the
+// answer's seconds from its arrival, so it showed a bar, and a form, for a change that was gone.
+const lateNote = /answer came after the time to keep the change ran out/;
+
+test('an answer that arrives after the time is up shows what the server has now, not a bar', async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	await login(page);
+	const before = listenPort();
+	const next = before === 51999 ? 51998 : 51999;
+	await feedDown(page);
+	await page.goto('/settings');
+	const release = await holdAnswer(page, 'PATCH', '**/api/server');
+	const undone = expiries();
+	await page.getByLabel('Listen port (UDP)').fill(String(next));
+	await page.getByRole('button', { name: 'Save Settings' }).click();
+
+	// The daemon has the change, and with nobody to keep it, undoes it ten seconds later.
+	await expect.poll(expiries, { timeout: 25_000 }).toBeGreaterThan(undone);
+	expect(listenPort()).toBe(before);
+
+	release();
+	await expect(page.getByText(lateNote)).toBeVisible();
+	// Looked at once, not retried: a bar that shows for a moment is the bug.
+	expect(await bar(page).count()).toBe(0);
+	await expect(page.getByLabel('Listen port (UDP)')).toHaveValue(String(before));
+	await expect(page.getByText(/could lock you out/)).toHaveCount(0);
+	expect(problems.filter(notTheFeed)).toEqual([]);
+});
+
+test("an answer to rotating the server's key that arrives after the time is up shows the key it has now", async ({
+	page
+}) => {
+	const problems = watchConsole(page);
+	await login(page);
+	await feedDown(page);
+	await page.goto('/settings');
+	const shown = page.getByTestId('server-public-key');
+	const before = serverKey();
+	await expect(shown).toHaveText(before);
+	const release = await holdAnswer(page, 'POST', '**/api/server/rotate-key');
+	const undone = expiries();
+
+	await page.getByRole('button', { name: 'Rotate the Key…' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Rotate the Server Key' });
+	await dialog.getByRole('button', { name: 'Rotate the Key' }).click();
+	await expect.poll(expiries, { timeout: 25_000 }).toBeGreaterThan(undone);
+	expect(serverKey()).toBe(before);
+
+	release();
+	await expect(dialog).toBeHidden();
+	await expect(page.getByText(lateNote)).toBeVisible();
+	expect(await bar(page).count()).toBe(0);
+	await expect(shown).toHaveText(before);
+	await expect(page.getByText(/could lock you out/)).toHaveCount(0);
+	expect(problems.filter(notTheFeed)).toEqual([]);
+});
