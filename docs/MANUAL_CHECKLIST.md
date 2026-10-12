@@ -1228,8 +1228,12 @@ first item), and no phone's clock has been involved.
   stay unrecorded. Aegis, Google Authenticator, 1Password, and Bitwarden haven't been tried.
 - `[VERIFIED 2026-10-12]` Logging out and in asks for the code after the password, and the app's
   code logs in (the maintainer's report, with the same two apps).
-- `[UNVERIFIED]` A second login within the same 30 seconds with the same code is refused, and works
-  with the next code. A wrong code shows the error and stays on the code step.
+- `[VERIFIED 2026-10-12]` Logging in a second time with the same code is refused, and a wrong code
+  is refused, each with a notice (the maintainer's report, with the same two apps). The server
+  sends one sentence for both on purpose, "that code is wrong, or has been used already", so it
+  doesn't tell anyone which codes it has seen. The report didn't quote the notices.
+- `[UNVERIFIED]` After the replay is refused, the next code logs in, and after a wrong code the page
+  stays on the code step.
 - `[UNVERIFIED]` On the reference host, with `systemd-timesyncd` running, the app's codes are
   accepted when the phone's clock is a few seconds fast or slow. With the host's clock set a few
   minutes off (`sudo timedatectl set-ntp false; sudo timedatectl set-time ...`), they're refused.
