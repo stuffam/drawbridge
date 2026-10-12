@@ -25,6 +25,11 @@ test('first-run setup creates the admin account, sets the endpoint, and picks th
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/setup$/);
 
+	// The username starts empty. A login that locks out after failures does so for the account
+	// too, so a username everyone's form fills in for them (it used to be "admin") would be one
+	// anyone on the network could use to make the admin's login wait.
+	await expect(page.getByLabel('Username')).toHaveValue('');
+	await page.getByLabel('Username').fill(admin.username);
 	await page.getByLabel('Setup token').fill('WRONG-TOKEN');
 	await page.getByLabel('Password', { exact: true }).fill(admin.password);
 	await page.getByLabel('Password again').fill(admin.password);

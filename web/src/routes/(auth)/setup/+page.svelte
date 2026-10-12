@@ -12,7 +12,7 @@
 	// picks the DNS they use.
 	let step = $state<1 | 2 | 3>(1);
 	let token = $state('');
-	let username = $state('admin');
+	let username = $state('');
 	let password = $state('');
 	let confirm = $state('');
 	let endpoint = $state('');
@@ -117,6 +117,10 @@
 				maxlength="32"
 				bind:value={username}
 			/>
+			<p class="hint">
+				Letters, digits, and <code>. _ -</code>, up to 32. A name other than "admin" is harder for
+				others on your network to guess.
+			</p>
 		</div>
 		<div>
 			<label class="label" for="password">Password</label>
