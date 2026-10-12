@@ -1001,6 +1001,14 @@ stateDiagram-v2
       admin port from any other source (§5.3). This protects the UI even if the router's IPv6
       firewall lets inbound traffic through to the host.
     - The router forwards only UDP 51820, never the admin port.
+    - **A public uplink subnet is the LAN (known limit, 2026-10-12).** Detection takes the uplink's
+      on-link subnets as they are, so on a host at a hosting provider, whose uplink holds a
+      shared public subnet (a /20 on a virtual server tried that day), every address in it passes
+      both layers. The tool is for a host at home, so detection isn't changed (a global IPv6
+      prefix is a legitimate LAN there, and a rule for IPv4 alone would be a second kind of
+      "home network"). The doctor warns instead ("VPN subnets and the LAN": an IPv4 range of
+      more than four addresses that is neither private, shared address space, nor link-local), and
+      the guides say to limit TCP port 51821 in the provider's firewall.
     - **No reverse proxy in front of the admin UI.** Many hosts also run a reverse proxy (or a
       container publishing ports 80 and 443). If the admin UI were routed through one on the same
       host, requests would reach Drawbridge from the host itself, pass both allowlist layers, and
@@ -1050,7 +1058,8 @@ stateDiagram-v2
     - The tunnel is up, and the kernel module is loaded.
     - Forwarding sysctls set, and `accept_ra` correct.
     - Uplink interface detected.
-    - VPN subnets don't overlap the LAN.
+    - VPN subnets don't overlap the LAN, and the LAN holds no public IPv4 range of more than four
+      addresses (a warning: see §6.5).
     - Drawbridge's own nftables table is loaded.
     - Host firewall and Docker `FORWARD` policy aren't blocking traffic.
     - Clients' DNS servers answer, when they're this server's own VPN addresses.

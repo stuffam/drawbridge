@@ -318,7 +318,73 @@ func TestSubnetOverlap(t *testing.T) {
 			f.snap.LAN = prefixes("10.8.0.0/24", "fd42:4242:4242::/64")
 		}, "subnet-overlap", Fail, "and the VPN's fd42", ""},
 		{"unreadable", func(f *fixture) { f.snapErr = errors.New("boom") }, "subnet-overlap", Skip, "boom", ""},
+		// A host whose uplink has a public subnet (most VPS providers) treats every address in it
+		// as the home network, so the web UI is open to them.
+		{"a public range on the LAN", func(f *fixture) {
+			f.snap.LAN = prefixes("192.168.4.0/22", "203.0.113.0/24")
+		}, "subnet-overlap", Warn, "The LAN includes 203.0.113.0/24, a public range", "provider's firewall"},
+		{"two public ranges", func(f *fixture) {
+			f.snap.LAN = prefixes("203.0.113.0/24", "198.51.100.0/29")
+		}, "subnet-overlap", Warn, "198.51.100.0/29 and 203.0.113.0/24, public ranges", ""},
+		{"a public /29 has room for other hosts", func(f *fixture) {
+			f.snap.LAN = prefixes("203.0.113.0/29")
+		}, "subnet-overlap", Warn, "203.0.113.0/29", ""},
+		{"a public /30 is the host and its router", func(f *fixture) {
+			f.snap.LAN = prefixes("203.0.113.0/30")
+		}, "subnet-overlap", Pass, "don't overlap", ""},
+		{"a public /32 is the host alone", func(f *fixture) {
+			f.snap.LAN = prefixes("203.0.113.7/32")
+		}, "subnet-overlap", Pass, "don't overlap", ""},
+		{"Tailscale's range isn't public", func(f *fixture) {
+			f.snap.LAN = prefixes("100.64.10.0/24")
+		}, "subnet-overlap", Pass, "don't overlap", ""},
+		{"a global IPv6 prefix is the home network", func(f *fixture) {
+			// LAN devices reach the host over the LAN's global prefix (docs/PLAN.md §6.5).
+			f.snap.LAN = prefixes("192.168.4.0/22", "2001:db8:1:2::/64")
+		}, "subnet-overlap", Pass, "don't overlap", ""},
+		{"an IPv6 range isn't looked at, however short", func(f *fixture) {
+			f.snap.LAN = prefixes("192.168.4.0/22", "2001:db8::/28")
+		}, "subnet-overlap", Pass, "don't overlap", ""},
 	})
+}
+
+// An overlap fails the check, and the public range is still said, so fixing one doesn't hide
+// the other.
+func TestSubnetOverlapAndPublicRangeAreBothSaid(t *testing.T) {
+	f := healthy()
+	f.snap.LAN = prefixes("10.8.0.0/24", "203.0.113.0/24")
+	c := f.check(t, "subnet-overlap")
+	if c.Status != Fail {
+		t.Fatalf("status %v, want Fail", c.Status)
+	}
+	for _, want := range []string{"overlaps the LAN's 10.8.0.0/24", "203.0.113.0/24, a public range"} {
+		if !strings.Contains(c.Detail, want) {
+			t.Errorf("detail %q lacks %q", c.Detail, want)
+		}
+	}
+}
+
+// What a passing check says is true of every value that passes. At accept_ra 0 the kernel ignores
+// router advertisements whatever forwarding is, so the host isn't "receiving" them through the
+// kernel: NetworkManager, systemd-networkd, or a static address provides its IPv6.
+func TestAcceptRAPassDoesNotClaimTheHostReceivesAdvertisements(t *testing.T) {
+	for _, ra := range []string{"0", "1", "2"} {
+		f := healthy()
+		f.files["proc/sys/net/ipv6/conf/eth0/accept_ra"] = file(ra + "\n")
+		if ra == "1" {
+			f.files["proc/sys/net/ipv6/conf/eth0/forwarding"] = file("0\n")
+		}
+		c := f.check(t, "accept-ra")
+		if c.Status != Pass {
+			t.Fatalf("accept_ra %s: status %v, want Pass", ra, c.Status)
+		}
+		if strings.Contains(c.Detail, "keeps receiving") {
+			t.Errorf("accept_ra %s: %q says the host keeps receiving advertisements", ra, c.Detail)
+		}
+		if !strings.Contains(c.Detail, "accept_ra "+ra) || !strings.Contains(c.Detail, "accept_ra 1 with IPv6 forwarding on") {
+			t.Errorf("accept_ra %s: %q should name the value and the combination that fails", ra, c.Detail)
+		}
+	}
 }
 
 func TestFirewallTable(t *testing.T) {

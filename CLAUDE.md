@@ -482,6 +482,11 @@ These are the rules most likely to get silently broken.
   Tailscale, say), which both layers read. Each prefix is validated to lie in a private range,
   100.64.0.0/10, or fc00::/7, so no setting can admit a public source.
 
+  The LAN is the uplink's on-link subnets as they are, so on a host whose uplink has a public
+  IPv4 subnet (a virtual server at a hosting provider) every address in it counts. That is
+  accepted and not detected away: the doctor's "VPN subnets and the LAN" check warns
+  (`publicLAN`), and the guides say to limit TCP port 51821 in the provider's firewall.
+
   Only the TCP connection's address counts. Never trust `X-Forwarded-For` or similar headers.
   Never serve the UI through a reverse proxy on the same host: its requests arrive from the host
   itself and would pass both layers (§6.5).

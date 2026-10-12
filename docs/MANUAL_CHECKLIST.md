@@ -432,6 +432,15 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   the table loaded, no other firewall dropping forwarded traffic, both VPN addresses answering DNS,
   the endpoint's A and AAAA records, `systemd-timesyncd` synchronized, free disk space, and the
   admin's own certificate.
+- `[UNVERIFIED]` On a host whose uplink has a public IPv4 subnet (a virtual server at a hosting
+  provider), **VPN subnets and the LAN** warns that the LAN includes the range, in `drawbridge
+  doctor`, on the System page, and in the dashboard's banner, and limiting TCP 51821 to one
+  address in the provider's firewall is what closes it. Seen so far: on 2026-10-12 a
+  Debian 13 amd64 virtual server had a public /20 on its uplink, and the build before this check
+  passed it (`VPN subnets and the LAN: PASS`). The check fires in `TestDoctorFollowsTheKernel`,
+  where the server namespace's LAN is `192.0.2.0/24` read from the kernel's routes. It has not
+  run on a real provider's server, and whether a neighbor in that range reaches the web UI has not
+  been tried (that needs a second server in the same range).
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
   same order, with the same results as `sudo drawbridge doctor`, and **Run Again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show

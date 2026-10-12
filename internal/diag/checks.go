@@ -188,9 +188,22 @@ func (e *env) acceptRA() Check {
 			quoteIface(bad[0]))
 	default:
 		c.Status = Pass
-		c.Detail = capitalize(join(found)) + ": the host keeps receiving router advertisements with forwarding on."
+		// True of every value that passes. At accept_ra 0 the kernel ignores advertisements whatever
+		// forwarding is, and NetworkManager, systemd-networkd, or a static address provides the
+		// host's IPv6, so "the host keeps receiving advertisements" isn't something to claim.
+		c.Detail = capitalize(join(found)) + ": the combination that costs a host its own IPv6 (accept_ra 1 with IPv6 forwarding on) isn't present."
 	}
 	return c
+}
+
+// publicLAN reports whether p is an IPv4 range of public addresses with room for hosts besides
+// this one and its router (a /30 holds just those two). Drawbridge counts the subnets on the
+// uplink as the home network (docs/adr/0011), so on a host with a public subnet there, which is
+// what a server at a hosting provider has, every address in the range counts, and the web UI is
+// open to it. IPv6 isn't looked at: devices on a home LAN reach the host over the LAN's global
+// prefix, so a global prefix on the uplink is expected.
+func publicLAN(p netip.Prefix) bool {
+	return p.Addr().Is4() && p.Bits() <= 29 && isPublic(p.Addr())
 }
 
 func (e *env) subnetOverlap() Check {
@@ -198,6 +211,26 @@ func (e *env) subnetOverlap() Check {
 	if e.snapErr != nil {
 		c.Status, c.Detail = Skip, fmt.Sprintf("Couldn't read the LAN's subnets: %v.", e.snapErr)
 		return c
+	}
+	var public []netip.Prefix
+	for _, l := range e.snap.LAN {
+		if publicLAN(l) {
+			public = append(public, l)
+		}
+	}
+	slices.SortFunc(public, func(a, b netip.Prefix) int { return a.Addr().Compare(b.Addr()) })
+	var openNote, openHint string
+	if len(public) > 0 {
+		names := make([]string, len(public))
+		for i, p := range public {
+			names[i] = p.String()
+		}
+		what, them := "a public range", "it"
+		if len(public) > 1 {
+			what, them = "public ranges", "them"
+		}
+		openNote = fmt.Sprintf("The LAN includes %s, %s, so every host in %s counts as your home network and can reach the web UI.", join(names), what, them)
+		openHint = "Drawbridge takes the subnets on the uplink for your home network, and this host's has a public one, as a server at a hosting provider does. Limit TCP port 51821 to your own address in your provider's firewall, or don't run the web UI on this host. See " + guide() + "."
 	}
 	var clashes []string
 	for _, vpn := range []netip.Prefix{e.in.IPv4, e.in.IPv6} {
@@ -211,6 +244,10 @@ func (e *env) subnetOverlap() Check {
 		}
 	}
 	if len(clashes) == 0 {
+		if openNote != "" {
+			c.Status, c.Detail, c.Hint = Warn, openNote, openHint
+			return c
+		}
 		c.Status = Pass
 		c.Detail = "The VPN's subnets don't overlap the LAN's."
 		return c
@@ -218,6 +255,10 @@ func (e *env) subnetOverlap() Check {
 	c.Status = Fail
 	c.Detail = capitalize(join(clashes)) + ", so a client can't tell which network an address is on."
 	c.Hint = "Drawbridge can't change the VPN's subnet after setup yet. Move the LAN to another subnet on the router, or ask for the feature in the project's issue tracker."
+	if openNote != "" {
+		c.Detail += " " + openNote
+		c.Hint += " " + openHint
+	}
 	return c
 }
 

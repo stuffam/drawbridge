@@ -16,6 +16,12 @@ A device anywhere else gets no answer. If the tunnel is down, the firewall rules
 and the app answers `403`, "the Drawbridge admin UI is only reachable from the home network and
 the VPN".
 
+Drawbridge takes your home network to be the subnets of the host's network connections, so on a
+server at a hosting provider, whose connection usually has a public subnet shared with other
+customers, everyone in that range counts and can reach the web UI. The
+[doctor](diagnostics.md) warns when it sees this. Limit TCP port 51821 to your own address in the
+provider's firewall, or run Drawbridge on a host at home.
+
 Your browser warns about the certificate the first time, because Drawbridge made it itself. See
 [TLS certificate](tls-certificate.md) to use your own instead.
 
