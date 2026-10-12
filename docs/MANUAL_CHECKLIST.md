@@ -1234,22 +1234,32 @@ no real browser trust store, and no ACME client has been involved.
 
 TOTP two-factor authentication, the Account page's **Two-Factor Authentication** section, the
 login's second step, and `drawbridge admin disable-2fa` (docs/PLAN.md §6.5,
-docs/user_docs/guides/two-factor.md). Nothing here has run on the reference platform, so nothing is
-`[VERIFIED]` yet. What has run, away from it: the Go tests check the codes against the RFC 4226 and
+docs/user_docs/guides/two-factor.md). Almost nothing here has run on the reference platform, so
+almost nothing is `[VERIFIED]` yet; the two items that are say who saw them. What has run, away
+from it: the Go tests check the codes against the RFC 4226 and
 RFC 6238 test vectors, and the security rules (a code is good once, a right password forgives no
 failures, a wrong code is limited like a wrong password) with a mutation check of each; the browser
 tests turn it on, log in with codes and recovery codes, make new codes, turn it off, and use `admin
 disable-2fa` against the real daemon (the fake backend), with a code generator written separately
-from the server's. No real authenticator app has scanned the QR code, and no phone's clock has been
-involved.
+from the server's. Two real authenticator apps have been set up from the QR code and the key (the
+first item), and no phone's clock has been involved.
 
-- `[UNVERIFIED]` With a real authenticator app on a phone (try two of Aegis, Google Authenticator,
-  1Password, and Bitwarden), scanning the QR code adds an entry for Drawbridge with the account `admin`, and
-  the six-digit code it shows turns 2FA on. Typing the key shown beside the QR code into an app that
-  can't scan gives the same codes.
-- `[UNVERIFIED]` Logging out and in asks for the code after the password, and the app's code logs
-  in. A second login within the same 30 seconds with the same code is refused, and works with the
-  next code. A wrong code shows the error and stays on the code step.
+- `[VERIFIED 2026-10-12]` With a real authenticator app on a phone, scanning the QR code adds an
+  entry for Drawbridge, and the six-digit code it shows turns 2FA on. Typing the key shown beside
+  the QR code into an app gives the same codes. The maintainer reported that it worked as expected
+  both ways, in two apps (the iOS Passwords app and Codebook from Zetetic), and that each time the
+  page offered the recovery codes for download. The report didn't say which host it was or what
+  account name the entries showed (the page makes the account's own username the name), so those
+  stay unrecorded. Aegis, Google Authenticator, 1Password, and Bitwarden haven't been tried.
+- `[VERIFIED 2026-10-12]` Logging out and in asks for the code after the password, and the app's
+  code logs in (the maintainer's report, with the same two apps).
+- `[VERIFIED 2026-10-12]` Logging in a second time with the same code is refused, and a wrong code
+  is refused, each with the notice "that code is wrong, or has been used already". The maintainer
+  reported the first and then, on a virtual server at a hosting provider, quoted what the page
+  says for both. The server sends that one sentence for both on purpose, so it doesn't tell
+  anyone which codes it has seen.
+- `[UNVERIFIED]` After the replay is refused, the next code logs in, and after a wrong code the page
+  stays on the code step.
 - `[UNVERIFIED]` On the reference host, with `systemd-timesyncd` running, the app's codes are
   accepted when the phone's clock is a few seconds fast or slow. With the host's clock set a few
   minutes off (`sudo timedatectl set-ntp false; sudo timedatectl set-time ...`), they're refused.
