@@ -432,15 +432,31 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   the table loaded, no other firewall dropping forwarded traffic, both VPN addresses answering DNS,
   the endpoint's A and AAAA records, `systemd-timesyncd` synchronized, free disk space, and the
   admin's own certificate.
-- `[UNVERIFIED]` On a host whose uplink has a public IPv4 subnet (a virtual server at a hosting
-  provider), **VPN subnets and the LAN** warns that the LAN includes the range, in `drawbridge
-  doctor`, on the System page, and in the dashboard's banner, and limiting TCP 51821 to one
-  address in the provider's firewall is what closes it. Seen so far: on 2026-10-12 a
-  Debian 13 amd64 virtual server had a public /20 on its uplink, and the build before this check
-  passed it (`VPN subnets and the LAN: PASS`). The check fires in `TestDoctorFollowsTheKernel`,
-  where the server namespace's LAN is `192.0.2.0/24` read from the kernel's routes. It has not
-  run on a real provider's server, and whether a neighbor in that range reaches the web UI has not
-  been tried (that needs a second server in the same range).
+- `[VERIFIED 2026-10-12]` On a host whose uplink has a public IPv4 subnet (a Debian 13 amd64
+  virtual server at a hosting provider, with a public /20 on its uplink), `drawbridge doctor`
+  shows **VPN subnets and the LAN** as a warning that names the public range, and not the private
+  /16 beside it. The hint names the guide for the build, and the page it points to on the docs site
+  has the matching text. The build before this check passed the same kind of host
+  (`VPN subnets and the LAN: PASS`). The maintainer ran the doctor and pasted its output. The check
+  also fires in `TestDoctorFollowsTheKernel`, where the server namespace's LAN is `192.0.2.0/24`
+  read from the kernel's routes.
+- `[VERIFIED 2026-10-12]` On that host the nftables set `admin_allowed4` lists the public /20 and
+  the private /16, beside the VPN's subnet, loopback, and link-local: the firewall admits every
+  address in the range, which is what the warning says.
+- `[VERIFIED 2026-10-12]` The admin UI is not reachable from the internet on a host with a public
+  address, by each layer. From a second virtual server in a different public range, with the
+  provider's firewall letting its address through to TCP 51821, the connection timed out while
+  Drawbridge's table was loaded (nftables dropped it), and the app answered `403` once the tunnel
+  was stopped and the table was gone. The `403` shows the packets arrived, so the timeout was
+  Drawbridge's. The maintainer ran the `curl` from the second server and pasted its output.
+- `[UNVERIFIED]` A host in the **same** public range reaches the web UI. Drawbridge admits it (the
+  range is in the set above), but whether the provider delivers packets between its customers in
+  one range has not been tried. It needs a second server whose address lies in the first's range.
+  Five more servers were made to find one, and none shared it: the provider
+  spreads new servers over many unrelated blocks, so this is a lottery that doesn't pay. Their
+  public subnets were /20s and /24s, and the new check warns on either (a rule read, not run).
+- `[UNVERIFIED]` The System page and the dashboard's banner show the warning, and limiting TCP
+  51821 to one address in the provider's firewall closes it (the maintainer ran the doctor only).
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
   same order, with the same results as `sudo drawbridge doctor`, and **Run Again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
@@ -1564,10 +1580,32 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   mode 0600. `backup create`, `apt-get purge` (state, `wg0`, and the table gone), a reinstall, and
   `backup restore` bring back byte-identical client rows and the same secret key and server key,
   and the client handshakes again after the units restart.
-- `[UNVERIFIED]` The same on an amd64 host (the package has only run in CI on that architecture, never
-  on a real machine). Checked without running it: the draft's amd64 package has an x86-64 binary,
-  the same file list as the arm64 one, and byte-identical shared files. Docker Desktop on a Mac
-  here has no emulation to run it.
+- `[VERIFIED 2026-10-12]` The same on an amd64 host, with a build from `main` between releases
+  (`0.1.0~rc.2+78`, made by `make deb`, not a release's draft): a Debian 13 amd64 virtual server at
+  a hosting provider (kernel 6.12.111, systemd 257, systemd-networkd), the first real amd64 machine
+  the package has run on. Run with `amd64-vm-check.sh` as root; its log was read afterward.
+    - The install pulled in nftables and wireguard-tools. The package, its binary, and the version
+      are amd64 and `0.1.0~rc.2+78`. Both units were active and enabled under their real x86_64
+      syscall filter, and both scored 1.8 OK in `systemd-analyze security`, as on arm64.
+      `wg0`, the table, and both forwarding sysctls were there, and the doctor passed everything
+      but the unset endpoint.
+    - A client in a network namespace on the host: a handshake, pings of the server over IPv4 and
+      IPv6, the web UI through the tunnel over both, and a ping out through the host to the
+      internet (NAT44). NAT66 passed on the rc.2 install of the same host, and its line is
+      missing from the log of this build's first run.
+    - A paused client got no answer and came back on resume. A backup, a purge (the state, `wg0`,
+      and the table gone), a reinstall, and `backup restore` gave the same server key, port, and
+      client config, and the old config made a new handshake. After the daemon's timers had run, the
+      units' journal had no refusal or blocked syscall.
+    - The published `install.sh --version v0.1.0-rc.2` chose the amd64 package and its checksum
+      matched (the first run of `install.sh` on a real amd64 host). The build then went over it
+      with the client pinging every 0.2 s: 0 of 200 lost, the tunnel unit not restarted, `wg0` not
+      recreated, the daemon restarted onto the new build, and the client's config unchanged.
+    - Not done: the web UI in a browser over an SSH tunnel, and a phone.
+- `[NEXT]` The same with the draft of `v0.1.0`'s own amd64 package, installed from the draft's
+  files, once there is a tag. The package above came from `main`, not from a release. (The draft
+  of `v0.1.0-rc.2` was only inspected: an x86-64 binary, the same file list as the arm64 package,
+  and byte-identical shared files.)
 - `[VERIFIED 2026-10-07]` With `v0.1.0-rc.2` published (2026-10-08 02:54 UTC, a pre-release,
   immutable), `sh install.sh --version v0.1.0-rc.2`, on a host without Drawbridge, downloads it from
   GitHub, checks it, and installs it, with the setup token at the end. The maintainer ran it on a
