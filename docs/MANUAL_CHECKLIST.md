@@ -432,15 +432,29 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   the table loaded, no other firewall dropping forwarded traffic, both VPN addresses answering DNS,
   the endpoint's A and AAAA records, `systemd-timesyncd` synchronized, free disk space, and the
   admin's own certificate.
-- `[UNVERIFIED]` On a host whose uplink has a public IPv4 subnet (a virtual server at a hosting
-  provider), **VPN subnets and the LAN** warns that the LAN includes the range, in `drawbridge
-  doctor`, on the System page, and in the dashboard's banner, and limiting TCP 51821 to one
-  address in the provider's firewall is what closes it. Seen so far: on 2026-10-12 a
-  Debian 13 amd64 virtual server had a public /20 on its uplink, and the build before this check
-  passed it (`VPN subnets and the LAN: PASS`). The check fires in `TestDoctorFollowsTheKernel`,
-  where the server namespace's LAN is `192.0.2.0/24` read from the kernel's routes. It has not
-  run on a real provider's server, and whether a neighbor in that range reaches the web UI has not
-  been tried (that needs a second server in the same range).
+- `[VERIFIED 2026-10-12]` On a host whose uplink has a public IPv4 subnet (a Debian 13 amd64
+  virtual server at a hosting provider, with a public /20 on its uplink), `drawbridge doctor`
+  shows **VPN subnets and the LAN** as a warning that names the public range, and not the private
+  /16 beside it. The hint names the guide for the build, and the page it points to on the docs site
+  has the matching text. The build before this check passed the same kind of host
+  (`VPN subnets and the LAN: PASS`). The maintainer ran the doctor and pasted its output. The check
+  also fires in `TestDoctorFollowsTheKernel`, where the server namespace's LAN is `192.0.2.0/24`
+  read from the kernel's routes.
+- `[VERIFIED 2026-10-12]` On that host the nftables set `admin_allowed4` lists the public /20 and
+  the private /16, beside the VPN's subnet, loopback, and link-local: the firewall admits every
+  address in the range, which is what the warning says.
+- `[VERIFIED 2026-10-12]` The admin UI is not reachable from the internet on a host with a public
+  address, by each layer. From a second virtual server in a different public range, with the
+  provider's firewall letting its address through to TCP 51821, the connection timed out while
+  Drawbridge's table was loaded (nftables dropped it), and the app answered `403` once the tunnel
+  was stopped and the table was gone. The `403` shows the packets arrived, so the timeout was
+  Drawbridge's. The maintainer ran the `curl` from the second server and pasted its output.
+- `[UNVERIFIED]` A host in the **same** public range reaches the web UI. Drawbridge admits it (the
+  range is in the set above), but whether the provider delivers packets between its customers in
+  one range has not been tried. It needs a second server whose address lies in the first's range;
+  the one tried was in another.
+- `[UNVERIFIED]` The System page and the dashboard's banner show the warning, and limiting TCP
+  51821 to one address in the provider's firewall closes it (the maintainer ran the doctor only).
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
   same order, with the same results as `sudo drawbridge doctor`, and **Run Again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
