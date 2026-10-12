@@ -1229,9 +1229,10 @@ first item), and no phone's clock has been involved.
 - `[VERIFIED 2026-10-12]` Logging out and in asks for the code after the password, and the app's
   code logs in (the maintainer's report, with the same two apps).
 - `[VERIFIED 2026-10-12]` Logging in a second time with the same code is refused, and a wrong code
-  is refused, each with a notice (the maintainer's report, with the same two apps). The server
-  sends one sentence for both on purpose, "that code is wrong, or has been used already", so it
-  doesn't tell anyone which codes it has seen. The report didn't quote the notices.
+  is refused, each with the notice "that code is wrong, or has been used already". The maintainer
+  reported the first and then, on a virtual server at a hosting provider, quoted what the page
+  says for both. The server sends that one sentence for both on purpose, so it doesn't tell
+  anyone which codes it has seen.
 - `[UNVERIFIED]` After the replay is refused, the next code logs in, and after a wrong code the page
   stays on the code step.
 - `[UNVERIFIED]` On the reference host, with `systemd-timesyncd` running, the app's codes are
