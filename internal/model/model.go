@@ -218,8 +218,13 @@ func (s Settings) Validate() error {
 		errs = append(errs, errors.New("at most 8 DNS servers"))
 	}
 	for _, a := range s.DNS {
-		if !a.IsValid() || a.Zone() != "" || a.IsUnspecified() {
+		switch why := notOneHost(a); {
+		case !a.IsValid() || a.Zone() != "" || a.IsUnspecified():
 			errs = append(errs, fmt.Errorf("DNS server %s isn't a usable address", a))
+		case a.IsLoopback():
+			errs = append(errs, fmt.Errorf("DNS server %s is a loopback address: a client would ask itself", a))
+		case why != "":
+			errs = append(errs, fmt.Errorf("DNS server %s is %s", a, why))
 		}
 	}
 	if s.Keepalive < 0 || s.Keepalive > 3600 {
@@ -269,6 +274,35 @@ func NormalizePrefixes(in []netip.Prefix) []netip.Prefix {
 	return out
 }
 
+// UniqueAddrs removes repeats, keeping the first of each in its place: the resolver listed first is
+// the one a client tries first. An address that isn't one stays, so Validate can refuse it.
+func UniqueAddrs(in []netip.Addr) []netip.Addr {
+	out := make([]netip.Addr, 0, len(in))
+	for _, a := range in {
+		if !a.IsValid() || !slices.Contains(out, a) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// notOneHost says what is wrong with an address that names no single host a client can reach, or
+// returns "" when it's fine. A multicast or broadcast address reaches everyone or no one, and
+// ::ffff:a.b.c.d is an IPv4 address spelled the IPv6 way, which the allowlist, the login limiter,
+// and the doctor all unmap before they use it, so it's asked for as IPv4. Loopback is the callers'
+// own business, since it means one thing for an endpoint and another for a resolver.
+func notOneHost(a netip.Addr) string {
+	switch {
+	case a.Is4In6():
+		return fmt.Sprintf("an IPv4 address written the IPv6 way (write %s)", a.Unmap())
+	case a.IsMulticast():
+		return "a multicast address"
+	case a == netip.AddrFrom4([4]byte{255, 255, 255, 255}):
+		return "the broadcast address"
+	}
+	return ""
+}
+
 // inAnyRange reports whether p lies wholly inside one of the ranges.
 func inAnyRange(p netip.Prefix, ranges []netip.Prefix) bool {
 	for _, r := range ranges {
@@ -288,6 +322,9 @@ func validateHost(host string) error {
 	if a, err := netip.ParseAddr(host); err == nil {
 		if a.Zone() != "" || a.IsUnspecified() || a.IsLoopback() {
 			return fmt.Errorf("endpoint %s isn't an address clients can reach", host)
+		}
+		if why := notOneHost(a); why != "" {
+			return fmt.Errorf("endpoint %s is %s, not an address clients can reach", host, why)
 		}
 		return nil
 	}

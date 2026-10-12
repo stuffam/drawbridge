@@ -116,13 +116,68 @@ func TestValidateRejectsBadSettings(t *testing.T) {
 	}
 }
 
+// A client can't ask a resolver that isn't one host's address. The checks above only refused the
+// ones that were no address at all, so the rest reached every client's config and the doctor passed
+// them: it tests only the server's own addresses.
+func TestValidateRefusesDNSServersNoClientCanAsk(t *testing.T) {
+	for _, bad := range []string{
+		"255.255.255.255", // the broadcast address
+		"224.0.0.251",     // multicast
+		"ff02::1",         // multicast
+		"127.0.0.1",       // a client would ask itself
+		"::1",             // the same
+		"::ffff:1.1.1.1",  // IPv4 written the IPv6 way
+		"::ffff:10.8.0.1", // the same, for a private address
+	} {
+		s := newSettings(t)
+		s.DNS = []netip.Addr{netip.MustParseAddr(bad)}
+		err := s.Validate()
+		if err == nil || !IsInvalid(err) {
+			t.Errorf("DNS %s: err %v, want a validation error", bad, err)
+			continue
+		}
+		if !strings.Contains(err.Error(), bad) {
+			t.Errorf("DNS %s: the error %q doesn't name it", bad, err)
+		}
+	}
+	// Everything a real setup uses stays: the public resolvers, the server's own addresses, a
+	// resolver elsewhere on the LAN or the tailnet, and a unique-local IPv6 one.
+	for _, ok := range []string{"1.1.1.1", "2606:4700:4700::1111", "10.8.0.1", "fd00:10:8::1", "192.168.4.2", "100.64.10.2", "9.9.9.9"} {
+		s := newSettings(t)
+		s.DNS = []netip.Addr{netip.MustParseAddr(ok)}
+		if err := s.Validate(); err != nil {
+			t.Errorf("DNS %s: %v", ok, err)
+		}
+	}
+}
+
+func TestUniqueAddrsKeepsTheFirstOfEachInOrder(t *testing.T) {
+	a := netip.MustParseAddr
+	got := UniqueAddrs([]netip.Addr{a("1.1.1.1"), a("1.0.0.1"), a("1.1.1.1"), a("2606:4700:4700::1111"), a("1.0.0.1")})
+	want := []netip.Addr{a("1.1.1.1"), a("1.0.0.1"), a("2606:4700:4700::1111")}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	// The resolver listed first is the one a client tries first, so the order is the admin's.
+	// An address that is no address stays, for Validate to refuse.
+	got = UniqueAddrs([]netip.Addr{a("9.9.9.9"), {}, a("1.1.1.1")})
+	if len(got) != 3 || got[1].IsValid() {
+		t.Errorf("got %v, want the invalid entry kept in place", got)
+	}
+	if got := UniqueAddrs(nil); len(got) != 0 {
+		t.Errorf("nil gave %v", got)
+	}
+}
+
 func TestValidateHost(t *testing.T) {
-	for _, ok := range []string{"vpn.example.com", "vpn.example.com.", "server", "203.0.113.5", "2001:db8::1", "xn--bcher-kva.example"} {
+	for _, ok := range []string{"vpn.example.com", "vpn.example.com.", "server", "203.0.113.5", "2001:db8::1", "xn--bcher-kva.example", "192.168.4.10"} {
 		if err := ValidateHost(ok); err != nil {
 			t.Errorf("%s: %v", ok, err)
 		}
 	}
-	for _, bad := range []string{"", ".", "-vpn.example.com", "vpn..example.com", "vpn_example.com", "fe80::1%eth0", "::", strings.Repeat("a", 64) + ".com"} {
+	for _, bad := range []string{"", ".", "-vpn.example.com", "vpn..example.com", "vpn_example.com", "fe80::1%eth0", "::", strings.Repeat("a", 64) + ".com",
+		// Not one host's address: a client that connects to it reaches no one.
+		"255.255.255.255", "224.0.0.251", "ff02::1", "::ffff:203.0.113.5"} {
 		if err := ValidateHost(bad); err == nil {
 			t.Errorf("%q accepted", bad)
 		}

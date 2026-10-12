@@ -792,6 +792,34 @@ func TestDNSCheckAndChoice(t *testing.T) {
 	}
 }
 
+// The settings route says why it won't take a resolver or an endpoint that reaches no one host,
+// and keeps what it had.
+func TestSettingsRefuseAddressesNoClientCanReach(t *testing.T) {
+	svc := newService(t)
+	srv := newServer(t, svc)
+	b, _ := loggedIn(t, svc, srv)
+
+	var before views.SettingsView
+	b.expect(http.StatusOK, "GET", "/api/server", nil).decode(t, &before)
+
+	dns := []netip.Addr{netip.MustParseAddr("255.255.255.255")}
+	res := b.expect(http.StatusBadRequest, "PATCH", "/api/server", views.SettingsPatch{DNS: &dns})
+	if !strings.Contains(res.errorText(), "255.255.255.255 is the broadcast address") {
+		t.Fatalf("error %q", res.errorText())
+	}
+	host := "::ffff:203.0.113.5"
+	res = b.expect(http.StatusBadRequest, "PATCH", "/api/server", views.SettingsPatch{EndpointHost: &host})
+	if !strings.Contains(res.errorText(), "IPv4 address written the IPv6 way") {
+		t.Fatalf("error %q", res.errorText())
+	}
+
+	var after views.SettingsView
+	b.expect(http.StatusOK, "GET", "/api/server", nil).decode(t, &after)
+	if !slices.Equal(after.DNS, before.DNS) || after.EndpointHost != before.EndpointHost {
+		t.Fatalf("settings changed: DNS %v then %v, endpoint %q then %q", before.DNS, after.DNS, before.EndpointHost, after.EndpointHost)
+	}
+}
+
 func TestEventsFilterByKindAndTime(t *testing.T) {
 	svc := newService(t)
 	srv := newServer(t, svc)
