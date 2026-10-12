@@ -1578,10 +1578,32 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   mode 0600. `backup create`, `apt-get purge` (state, `wg0`, and the table gone), a reinstall, and
   `backup restore` bring back byte-identical client rows and the same secret key and server key,
   and the client handshakes again after the units restart.
-- `[UNVERIFIED]` The same on an amd64 host (the package has only run in CI on that architecture, never
-  on a real machine). Checked without running it: the draft's amd64 package has an x86-64 binary,
-  the same file list as the arm64 one, and byte-identical shared files. Docker Desktop on a Mac
-  here has no emulation to run it.
+- `[VERIFIED 2026-10-12]` The same on an amd64 host, with a build from `main` between releases
+  (`0.1.0~rc.2+78`, made by `make deb`, not a release's draft): a Debian 13 amd64 virtual server at
+  a hosting provider (kernel 6.12.111, systemd 257, systemd-networkd), the first real amd64 machine
+  the package has run on. Run with `amd64-vm-check.sh` as root; its log was read afterward.
+    - The install pulled in nftables and wireguard-tools. The package, its binary, and the version
+      are amd64 and `0.1.0~rc.2+78`. Both units were active and enabled under their real x86_64
+      syscall filter, and both scored 1.8 OK in `systemd-analyze security`, as on arm64.
+      `wg0`, the table, and both forwarding sysctls were there, and the doctor passed everything
+      but the unset endpoint.
+    - A client in a network namespace on the host: a handshake, pings of the server over IPv4 and
+      IPv6, the web UI through the tunnel over both, and a ping out through the host to the
+      internet (NAT44). NAT66 passed on the rc.2 install of the same host, and its line is
+      missing from the log of this build's first run.
+    - A paused client got no answer and came back on resume. A backup, a purge (the state, `wg0`,
+      and the table gone), a reinstall, and `backup restore` gave the same server key, port, and
+      client config, and the old config made a new handshake. After the daemon's timers had run, the
+      units' journal had no refusal or blocked syscall.
+    - The published `install.sh --version v0.1.0-rc.2` chose the amd64 package and its checksum
+      matched (the first run of `install.sh` on a real amd64 host). The build then went over it
+      with the client pinging every 0.2 s: 0 of 200 lost, the tunnel unit not restarted, `wg0` not
+      recreated, the daemon restarted onto the new build, and the client's config unchanged.
+    - Not done: the web UI in a browser over an SSH tunnel, and a phone.
+- `[NEXT]` The same with the draft of `v0.1.0`'s own amd64 package, installed from the draft's
+  files, once there is a tag. The package above came from `main`, not from a release. (The draft
+  of `v0.1.0-rc.2` was only inspected: an x86-64 binary, the same file list as the arm64 package,
+  and byte-identical shared files.)
 - `[VERIFIED 2026-10-07]` With `v0.1.0-rc.2` published (2026-10-08 02:54 UTC, a pre-release,
   immutable), `sh install.sh --version v0.1.0-rc.2`, on a host without Drawbridge, downloads it from
   GitHub, checks it, and installs it, with the setup token at the end. The maintainer ran it on a
