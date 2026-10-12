@@ -452,7 +452,7 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
 - `[UNVERIFIED]` A host in the **same** public range reaches the web UI. Drawbridge admits it (the
   range is in the set above), but whether the provider delivers packets between its customers in
   one range has not been tried. It needs a second server whose address lies in the first's range.
-  Five more servers were made in the same region to find one, and none shared it: the provider
+  Five more servers were made to find one, and none shared it: the provider
   spreads new servers over many unrelated blocks, so this is a lottery that doesn't pay. Their
   public subnets were /20s and /24s, and the new check warns on either (a rule read, not run).
 - `[UNVERIFIED]` The System page and the dashboard's banner show the warning, and limiting TCP
