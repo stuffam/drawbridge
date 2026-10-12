@@ -455,8 +455,14 @@ checks of docs/PLAN.md §6.6. The daemon reads the host: the kernel's sysctls, i
   Five more servers were made to find one, and none shared it: the provider
   spreads new servers over many unrelated blocks, so this is a lottery that doesn't pay. Their
   public subnets were /20s and /24s, and the new check warns on either (a rule read, not run).
-- `[UNVERIFIED]` The System page and the dashboard's banner show the warning, and limiting TCP
-  51821 to one address in the provider's firewall closes it (the maintainer ran the doctor only).
+- `[VERIFIED 2026-10-12]` On a second virtual server (build `0.1.0~rc.2+88`) the dashboard's banner
+  says "1 check needs attention", names **VPN subnets and the LAN** and the public range, and
+  links to the System page, whose Diagnostics shows the same warning ("1 warning, 12 passed") with
+  its fix text and no banner of its own, as designed. The maintainer sent screenshots. That the
+  fix text's guide address is plain text there, not a link, was noticed and left.
+- `[UNVERIFIED]` Limiting TCP 51821 to one address in the provider's firewall, and nothing else,
+  closes the exposure. (With no rule for the port the probes timed out, which is the provider's
+  firewall doing it; the item above separates that from Drawbridge's own layers.)
 - `[UNVERIFIED]` The System page (the pulse icon in the header) lists the same 13 checks, in the
   same order, with the same results as `sudo drawbridge doctor`, and **Run Again** gives a fresh
   set. With nobody connected, `sudo sysctl -w net.ipv4.ip_forward=0` makes the next run show
@@ -869,23 +875,30 @@ was viewed.
   on or off does not (the firewall isn't in the config). Only the DNS change was tried on the real
   server. The badge and the tile were seen in the browser only after a key rotation, not after a
   change like these (§15).
-- `[UNVERIFIED]` **With a real phone:** import a config in the WireGuard app, change the MTU, and
-  the badge appears; scan the new QR code, the badge goes, and the app shows the new MTU.
-- `[UNVERIFIED]` **Rotating keys:** on a connected phone, "Rotate Keys" on its page (the popup asks
-  first; Cancel changes nothing) cuts it off within a handshake interval, shows the new QR code at
-  once, and the old config never connects again. Scanning the new code reconnects it. The event
-  log has `Rotated a client's keys` from the admin and the new public key, and no secret. The
+- `[VERIFIED 2026-10-12]` **With a real phone:** with the phone on cellular and connected to a
+  virtual server at a hosting provider (a public address, no home router; build
+  `0.1.0~rc.2+88`), the MTU was changed in Settings, the phone's client showed **Config outdated**,
+  and the badge went when the new QR code was scanned. The maintainer reported it, without
+  screenshots.
+- `[UNVERIFIED]` After that scan, the WireGuard app shows the new MTU.
+- `[VERIFIED 2026-10-12]` **Rotating keys:** on a connected phone, "Rotate Keys" on its page (the
+  popup asks first; Cancel changes nothing) cuts it off within a handshake interval, shows the new
+  QR code at once, and the old config never connects again. Scanning the new code reconnects it. The
+  event log has `Rotated a client's keys` from the admin and the new public key, and no secret. The
   client's session closes with a `Disconnected` event, then a new one opens. Seen on the Pi, on the
-  server's side, with a throwaway client connected from a network namespace: its WireGuard
-  interface is created in the host's namespace (so its UDP socket stays there), then moved into the
-  client's, and its endpoint is `127.0.0.1:51820`, so nothing is added to the host's network.
+  server's side, with a throwaway client connected from a network namespace: its WireGuard interface
+  is created in the host's namespace (so its UDP socket stays there), then moved into the client's,
+  and its endpoint is `127.0.0.1:51820`, so nothing is added to the host's network.
   `client rotate-keys NAME --yes` cut it off at once (it pinged the server's VPN addresses fine just
-  before; the old config got no answer in four tries over 16 s, and the server's new peer never
-  had a handshake from it). `client.keys_rotated` and a `client.disconnected` with the session's
-  duration and bytes were logged in the same second. The event holds the new public key, and
-  neither the old nor the new private key is in the journal or the event log. The new config (from
-  `client config`) pinged over IPv4 and IPv6 and opened a new session 2 s later. Not run: the
-  popup, the QR code on the page, and a phone.
+  before; the old config got no answer in four tries over 16 s, and the server's new peer never had
+  a handshake from it). `client.keys_rotated` and a `client.disconnected` with the session's
+  duration and bytes were logged in the same second. The event holds the new public key, and neither
+  the old nor the new private key is in the journal or the event log. The new config (from
+  `client config`) pinged over IPv4 and IPv6 and opened a new session 2 s later. On 2026-10-12 the
+  maintainer ran it with a phone on cellular, connected to a virtual server with a public address
+  (build `0.1.0~rc.2+88`): **Rotate Keys** on the phone's client, pressed from another device, cut
+  the phone off, the old config didn't reconnect, and the new QR code did. That is their report
+  ("verified"), without timings, the event log, or `wg show`. The popup's Cancel wasn't reported.
 - `[VERIFIED 2026-10-05]` `sudo drawbridge client rotate-keys NAME` asks `[y/N]` on a terminal,
   refuses without `--yes` when its input isn't one, and prints the commands for the new QR code and
   config. On a pseudo-terminal, `n` printed "Keys not rotated." and exited 1 with the key
@@ -915,14 +928,18 @@ back without being touched. `apply --dry-run` listed a drifted MTU and left it a
 fixed it. And the browser tests drive the Keep, Undo Now, and not-kept paths against the daemon with
 the fake backend and a 10-second window.
 
-- `[UNVERIFIED]` **From a phone on the VPN, the case it is for:** connect the phone to the VPN,
-  open the web UI through it, and change the listen port in Settings. The UI answers once and then
-  stops (the phone's tunnel is dead: it still sends to the old port), and the router forwards only
-  the old port. Within a minute the daemon puts the port back, the tunnel comes back by itself
+- `[VERIFIED 2026-10-12]` **From a phone on the VPN, the case it is for:** connect the phone to the
+  VPN, open the web UI through it, and change the listen port in Settings. The UI answers once and
+  then stops (the phone's tunnel is dead: it still sends to the old port), and the router forwards
+  only the old port. Within a minute the daemon puts the port back, the tunnel comes back by itself
   (WireGuard retries within about 15 seconds), and the Settings page shows the old port. The event
-  log has `Changed server settings` (with `waiting to be kept: 1m0s`) and then `Undid a settings
-  change (not kept in time)`, from Drawbridge. The next item ran the same change with a throwaway
-  client in place of a phone; a real phone, and the router, still haven't.
+  log has `Changed server settings` (with `waiting to be kept: 1m0s`) and then
+  `Undid a settings change (not kept in time)`, from Drawbridge. The next item ran the same change
+  with a throwaway client in place of a phone. On 2026-10-12 a real phone did it, on cellular,
+  against a virtual server with a public address (build `0.1.0~rc.2+88`; the provider's firewall
+  allowed only UDP 51820, which stood in for the router's single forward): the page froze almost at
+  once, about 10 s after the daemon's undo at 60 s it answered again with nothing toggled by hand,
+  and Settings showed the old port. A router's own port forward hasn't been tried.
 - `[VERIFIED 2026-10-06]` **The listen port itself, with a throwaway client standing in for the
   phone.** The real server's port moved from 51820 to 51999 (nothing else listens there) with
   `sudo drawbridge server set --port 51999 --safe`, four times, with a fresh tar of the state
@@ -1091,19 +1108,27 @@ daemon with the fake backend.
   answered again within 0.09 to 0.62 s. The log has `server.key_rotated`, and then
   `server.settings_expired` (from `drawbridge (system)`) or `server.settings_undone`. This had no
   phone and no router, so the next item stays `[UNVERIFIED]`.
-- `[UNVERIFIED]` **A real phone, and Keep from the bar:** with the web UI open through the VPN on a
-  phone, rotate the key. The UI stops answering (the phone's tunnel is dead). Within a minute the
-  daemon puts the old key back, the tunnel comes back by itself, and the phone's old config works
-  again without being touched. Keep a rotation from the bar, and `sudo wg show` has the new public
-  key; the phone stays off until it imports its new config (the client's page shows **Config
-  outdated**, and its QR code is the new one). Seen so far, with the throwaway and no phone: from
-  the command line (`server confirm`), the new key was in the kernel past the minute, the
-  throwaway's old config stayed off, and its new config connected (the items below). From the bar,
-  on 2026-10-06 the maintainer pressed **Keep Changes** 30 s after a rotation (the log has
+- `[VERIFIED 2026-10-12]` **A real phone, and Keep from the bar:** with the web UI open through the
+  VPN on a phone, rotate the key. The UI stops answering (the phone's tunnel is dead). Within a
+  minute the daemon puts the old key back, the tunnel comes back by itself, and the phone's old
+  config works again without being touched. Keep a rotation from the bar, and `sudo wg show` has the
+  new public key; the phone stays off until it imports its new config (the client's page shows
+  **Config outdated**, and its QR code is the new one). Seen so far, with the throwaway and no
+  phone: from the command line (`server confirm`), the new key was in the kernel past the minute,
+  the throwaway's old config stayed off, and its new config connected (the items below). From the
+  bar, on 2026-10-06 the maintainer pressed **Keep Changes** 30 s after a rotation (the log has
   `server.settings_kept` from their web session): the new key was in the kernel past the minute and
   stayed until the original was restored 3 min 52 s after the rotation, and the maintainer saw the
-  page of the real client that had been handed a config say **Config outdated**. Not seen: a phone,
-  and the new QR code.
+  page of the real client that had been handed a config say **Config outdated**. On 2026-10-12 a
+  real phone did both halves, on cellular, against a virtual server with a public address (build
+  `0.1.0~rc.2+88`): a rotation nobody kept froze the page, and about 10 s after the daemon put the
+  old key back at 60 s it answered again with nothing toggled by hand (the same timing as the port);
+  then, with a rotation kept from another device, the phone stayed off and the client's page showed
+  **Config outdated** until the new QR code was scanned, which reconnected it. That is the
+  maintainer's report, without `wg show` output. The first half also found a bug: once the page
+  answered, a bar for the rotation appeared with a fresh 60 s countdown, for about 10 s, though the
+  change was already undone (the answer had waited for the tunnel; fixed afterward by counting the
+  countdown from when the request was sent).
 - `[VERIFIED 2026-10-06]` After a kept rotation, `sudo drawbridge client list` shows the clients
   that had been handed a config as outdated, and a client that was never handed a config isn't
   flagged. Importing each new config clears its flag. Run on the real server, kept with `server
@@ -1611,7 +1636,11 @@ and the candidate that's tried is `v0.1.0-rc.2`.
       matched (the first run of `install.sh` on a real amd64 host). The build then went over it
       with the client pinging every 0.2 s: 0 of 200 lost, the tunnel unit not restarted, `wg0` not
       recreated, the daemon restarted onto the new build, and the client's config unchanged.
-    - Not done: the web UI in a browser over an SSH tunnel, and a phone.
+    - Also run on that server (the maintainer's report, 2026-10-12): the web UI in a browser over
+      an SSH tunnel (logged in as admin, the System page with its Diagnostics, the dashboard); a
+      phone on cellular connected, with `wg show wg0` listing it at its carrier's address and the
+      web UI loading on it through the VPN; and a probe of TCP 51821 from a home laptop that
+      timed out, with the port open and closed in the provider's firewall.
 - `[NEXT]` The same with the draft of `v0.1.0`'s own amd64 package, installed from the draft's
   files, once there is a tag. The package above came from `main`, not from a release. (The draft
   of `v0.1.0-rc.2` was only inspected: an x86-64 binary, the same file list as the arm64 package,
