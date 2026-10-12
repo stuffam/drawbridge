@@ -65,12 +65,16 @@ func TestDoctorFollowsTheKernel(t *testing.T) {
 		"Drawbridge's firewall table": "PASS",
 		"Host firewall":               "PASS",
 		"TLS certificate":             "PASS",
+		// The server's LAN here is 192.0.2.0/24, which is no private range, so it is what a
+		// hosting provider's subnet looks like to the doctor: read from the kernel's routes.
+		"VPN subnets and the LAN": "WARN",
 	} {
 		if st[name] != want {
 			t.Errorf("%s: %s, want %s\n%s", name, st[name], want, out)
 		}
 	}
-	if flat := flatten(out); code != 1 || !strings.Contains(flat, "accept_ra = 2") || !strings.Contains(flat, "1 failed") {
+	if flat := flatten(out); code != 1 || !strings.Contains(flat, "accept_ra = 2") || !strings.Contains(flat, "1 failed") ||
+		!strings.Contains(flat, "The LAN includes 192.0.2.0/24, a public range") {
 		t.Errorf("exit %d; want 1 with the accept_ra fix and one failure:\n%s", code, out)
 	}
 

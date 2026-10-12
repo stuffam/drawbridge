@@ -19,13 +19,17 @@ func TestHintsLinkTheGuideOfThisBuild(t *testing.T) {
 
 	f := healthy()
 	f.snap.Uplinks6 = nil // the uplink warns, and its hint names the guide
+	g := healthy()
+	g.snap.LAN = prefixes("203.0.113.0/24") // so does a public range on the LAN
 	for _, tt := range []struct{ version, want string }{
 		{"0.1.3", "https://stuffam.github.io/drawbridge/v0.1/guides/diagnostics/"},
 		{"0.1.0-rc.2+67", "https://stuffam.github.io/drawbridge/dev/guides/diagnostics/"},
 	} {
 		version.Version = tt.version
-		if hint := f.check(t, "uplink").Hint; !strings.Contains(hint, tt.want) {
-			t.Errorf("with version %q, the hint %q doesn't name %s", tt.version, hint, tt.want)
+		for id, fx := range map[string]*fixture{"uplink": f, "subnet-overlap": g} {
+			if hint := fx.check(t, id).Hint; !strings.Contains(hint, tt.want) {
+				t.Errorf("%s, with version %q: the hint %q doesn't name %s", id, tt.version, hint, tt.want)
+			}
 		}
 	}
 }
