@@ -149,8 +149,9 @@ itself, which is always allowed, so it would put the UI on the internet. Open it
 Setup has three steps:
 
 1. **Create the admin account.** Enter the setup token, then choose a username and a password of
-   at least 10 characters. Use a password you don't use anywhere else: this account can add a
-   device to your network.
+   at least 10 characters. Pick a username of your own rather than `admin`: anyone on your network
+   who knows it can make your login wait by guessing wrong. Use a password you don't use anywhere
+   else: this account can add a device to your network.
 2. **Where clients connect.** Enter the endpoint, the name or public IP address your clients
    connect to (for example `vpn.example.com`). You can leave it empty and set it later in
    Settings, but a client can't be given a config until it's set.
