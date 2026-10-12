@@ -1630,7 +1630,7 @@ each client's config, so they apply while the client is connected to the VPN. Se
 </tr>
 <tr>
 <td><strong>Other servers</strong></td>
-<td>The addresses you type, IPv4 or IPv6, separated by commas or spaces.</td>
+<td>The addresses you type, IPv4 or IPv6, separated by commas or spaces, up to 8. A repeat is dropped. Drawbridge refuses an address no client could ask: a loopback, multicast, or broadcast address, or an IPv4 address written the IPv6 way (<code>::ffff:1.1.1.1</code>; write it as <code>1.1.1.1</code>).</td>
 </tr>
 <tr>
 <td><strong>None</strong></td>

@@ -1682,7 +1682,9 @@ them (see <a href="../cli-tools/">CLI tools</a>).</p>
 <p>Where clients connect.</p>
 <ul>
 <li><strong>Public address</strong> is a domain name (keep its record current with dynamic DNS if your public
-  address changes) or a public IP address, such as <code>vpn.example.com</code>.</li>
+  address changes) or a public IP address, such as <code>vpn.example.com</code>. Drawbridge refuses a
+  loopback, multicast, or broadcast address, and an IPv4 address written the IPv6 way
+  (<code>::ffff:203.0.113.5</code>; write it as <code>203.0.113.5</code>).</li>
 <li><strong>Public port</strong> is the port in clients' configs. <code>0</code> means the listen port below. Set it only if
   your router forwards a different port to the host.</li>
 </ul>
