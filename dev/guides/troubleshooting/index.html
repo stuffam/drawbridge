@@ -1693,7 +1693,7 @@
 </tr>
 <tr>
 <td><strong>Codes are refused, or logins say to wait.</strong></td>
-<td>Wrong passwords and codes are limited: five free tries, then a wait that grows to 15 minutes. The wait ends by itself, and <code>reset-password</code> or <code>disable-2fa</code> lifts it. A code that is always wrong can mean the host's clock is off; the <strong>Clock</strong> check shows it.</td>
+<td>Wrong passwords and codes are limited, for the account and for each address: five free tries, then a wait that grows to 15 minutes, and the right password waits too. Anyone on your network who knows the username can make your login wait by guessing wrong, so choose a username other people can't guess. The wait ends by itself, and <code>sudo systemctl restart drawbridge</code>, <code>reset-password</code>, or <code>disable-2fa</code> lifts it at once. It affects only the web login: the <code>drawbridge</code> commands on the host and the VPN carry on. A code that is always wrong can mean the host's clock is off; the <strong>Clock</strong> check shows it.</td>
 </tr>
 </tbody>
 </table>
