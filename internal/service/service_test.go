@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/netip"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -471,6 +472,40 @@ func TestAdminAllowedIsValidatedNormalizedAndRecorded(t *testing.T) {
 	}
 	if got, _ := s.Settings(ctx); len(got.AdminAllowed) != 0 {
 		t.Fatalf("got %v", got.AdminAllowed)
+	}
+}
+
+// A resolver listed twice is harmless, so it's saved once, with the first still first (a client
+// tries them in order). One no client can ask is refused before anything is saved or recorded.
+func TestDNSServersAreCollapsedAndValidated(t *testing.T) {
+	ctx := web(context.Background(), "admin")
+	s, _ := newTestService(t)
+	a := netip.MustParseAddr
+
+	twice := []netip.Addr{a("9.9.9.9"), a("1.1.1.1"), a("9.9.9.9")}
+	updated, _, err := s.UpdateSettings(ctx, SettingsPatch{DNS: &twice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []netip.Addr{a("9.9.9.9"), a("1.1.1.1")}; !slices.Equal(updated.DNS, want) {
+		t.Fatalf("saved %v, want %v", updated.DNS, want)
+	}
+	events, _ := s.Events(ctx, store.EventFilter{})
+	if got := events[0].Data["dns"]; !strings.HasSuffix(got, "→ [9.9.9.9 1.1.1.1]") {
+		t.Fatalf("the event says %q, want what was saved", got)
+	}
+
+	for _, bad := range []string{"255.255.255.255", "224.0.0.251", "ff02::1", "127.0.0.1", "::ffff:1.1.1.1"} {
+		dns := []netip.Addr{a("1.1.1.1"), a(bad)}
+		if _, _, err := s.UpdateSettings(ctx, SettingsPatch{DNS: &dns}); !model.IsInvalid(err) {
+			t.Errorf("%s: err %v, want a validation error", bad, err)
+		}
+	}
+	if got, _ := s.Settings(ctx); !slices.Equal(got.DNS, updated.DNS) {
+		t.Fatalf("a refused patch left %v", got.DNS)
+	}
+	if again, _ := s.Events(ctx, store.EventFilter{}); len(again) != len(events) {
+		t.Fatal("a refused patch was recorded")
 	}
 }
 

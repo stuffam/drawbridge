@@ -12,7 +12,7 @@ each client's config, so they apply while the client is connected to the VPN. Se
 |---|---|
 | **Public resolvers** | Cloudflare's `1.1.1.1` and `1.0.0.1`, and its two IPv6 addresses when the VPN has IPv6. This is the default. It works anywhere, and Cloudflare sees the names your clients look up. |
 | **This server** | The server's own VPN addresses (`10.8.0.1` on a default setup, and its IPv6 counterpart). It works only if a DNS resolver on the host listens on them. |
-| **Other servers** | The addresses you type, IPv4 or IPv6, separated by commas or spaces. |
+| **Other servers** | The addresses you type, IPv4 or IPv6, separated by commas or spaces, up to 8. A repeat is dropped. Drawbridge refuses an address no client could ask: a loopback, multicast, or broadcast address, or an IPv4 address written the IPv6 way (`::ffff:1.1.1.1`; write it as `1.1.1.1`). |
 | **None** | Nothing is given, so each client keeps using its own DNS. Its lookups may leak outside the tunnel. |
 
 On the command line, `--dns` takes the addresses, `server`, or `none`:

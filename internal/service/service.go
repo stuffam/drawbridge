@@ -180,7 +180,7 @@ func (s *Service) UpdateSettings(ctx context.Context, p SettingsPatch) (model.Se
 				st.DNS = append(st.DNS, srv.IPv6)
 			}
 		} else if p.DNS != nil {
-			st.DNS = *p.DNS
+			st.DNS = model.UniqueAddrs(*p.DNS)
 		}
 		if p.Keepalive != nil {
 			st.Keepalive = *p.Keepalive
