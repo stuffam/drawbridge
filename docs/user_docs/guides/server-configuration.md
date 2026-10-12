@@ -12,7 +12,9 @@ them (see [CLI tools](cli-tools.md)).
 Where clients connect.
 
 - **Public address** is a domain name (keep its record current with dynamic DNS if your public
-  address changes) or a public IP address, such as `vpn.example.com`.
+  address changes) or a public IP address, such as `vpn.example.com`. Drawbridge refuses a
+  loopback, multicast, or broadcast address, and an IPv4 address written the IPv6 way
+  (`::ffff:203.0.113.5`; write it as `203.0.113.5`).
 - **Public port** is the port in clients' configs. `0` means the listen port below. Set it only if
   your router forwards a different port to the host.
 
