@@ -41,3 +41,10 @@ directly on TCP 51821, never behind a reverse proxy, and forwarded-for headers a
   a packet that arrived on the WAN interface with a forged source inside such a prefix would pass,
   so it relies on the router dropping private sources from the WAN. Scoping such prefixes to the
   `tailscale0` interface in the `input` chain would close that gap, and can follow if it matters.
+- **Amended 2026-10-12: a public subnet on the uplink.** The LAN is the uplink's on-link subnets
+  as they are, so on a host at a hosting provider, whose uplink holds a public subnet shared with
+  other customers (a /20 on the virtual server that showed it), every address in that range passes
+  both layers. Detection is not changed: the tool is for a host at home, and a global IPv6 prefix
+  is a legitimate LAN there. `drawbridge doctor` warns instead, for an IPv4 range of more than
+  four addresses that is neither private, shared address space (`100.64.0.0/10`), nor link-local,
+  and the guides say to limit TCP port 51821 in the provider's firewall.

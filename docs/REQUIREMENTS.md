@@ -137,6 +137,14 @@ private network, such as a Tailscale tailnet, add it with `drawbridge server set
 (private ranges, `100.64.0.0/10`, and `fc00::/7` only, so no setting can expose the UI to the
 internet).
 
+A host whose uplink has a public IPv4 subnet, such as a virtual server at a hosting provider, is
+not what this is for: the detected "home network" is then that whole public range, and every
+customer in it passes both layers. A virtual server seen on 2026-10-12 had a public /20 on its
+uplink and passed the doctor before the check below existed. `drawbridge doctor` now warns
+("VPN subnets and the LAN") for an IPv4 range of more than four addresses, and limiting TCP port
+51821 in the provider's firewall closes it. IPv6 is not checked: devices on a home LAN reach the
+host over the LAN's global prefix, so one is expected there.
+
 ### The host's clock has to be right
 
 TLS certificates, WireGuard's handshakes, and two-factor authentication's codes

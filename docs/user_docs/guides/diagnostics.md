@@ -93,7 +93,12 @@ They run in this order: the tunnel first, then the host under it, then what's ar
   has the exact command. It's skipped when IPv6 is off or the host has no default route.
 - **VPN subnets and the LAN.** Fails when a VPN subnet overlaps a subnet on your home network, so
   a client can't tell which network an address is on. The VPN's subnet can't be changed after
-  setup yet, so move your home network to another subnet on the router.
+  setup yet, so move your home network to another subnet on the router. It warns when the host's
+  network connection has a public IPv4 subnet, as a server at a hosting provider does:
+  Drawbridge takes the subnets on that connection for your home network, so every host in the
+  range can reach the web UI. Limit TCP port 51821 to your own address in the provider's
+  firewall, or run Drawbridge on a host at home. It doesn't warn about IPv6 (devices at home reach
+  the host over the network's global prefix) or about a public subnet of only a few addresses.
 - **Drawbridge's firewall table.** Fails when the tunnel is up and Drawbridge's `inet drawbridge`
   nftables table isn't loaded. Clients then aren't NATed, and the web UI isn't restricted to your
   home network and the VPN. The daemon reloads the table within 30 seconds; if it doesn't,
