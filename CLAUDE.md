@@ -267,8 +267,9 @@ a step describes.
   `formatDay`, `formatTime`, and `formatChartTime` in `web/src/lib/format.ts`, never
   `toLocaleString` or its relatives, which follow the browser's locale (am and pm, month first).
 - **Web UI copy and behavior.**
-  - Headings and buttons are in Title Case ("Add Client", "Change Password"). The docs site is in
-    sentence case.
+  - Headings and buttons are in Title Case ("Add Client", "Change Password"). The docs site uses
+    Title Case for a page's title and its H2 headings, and sentence case for H3 and below. In both,
+    "a", "an", and "the" stay lowercase unless they start the heading.
   - A number and its unit stay together through `white-space: nowrap` on the element that shows
     them, not a non-breaking space in the string (`formatBytes` returns a plain space).
   - A change waits for the server: show a pending state and update when it confirms, because the
