@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/web-ui-access/">
       
       
-        <link rel="prev" href="../pi-hole/">
+        <link rel="prev" href="../server-configuration/">
       
       
-        <link rel="next" href="../troubleshooting/">
+        <link rel="next" href="../rotate-server-key/">
       
       
         
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -678,17 +678,41 @@
                   
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Web UI Access
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -696,6 +720,58 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-access-the-web-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Who Can Access the Web UI
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#letting-in-another-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Letting in Another Network
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reverse-proxies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reverse Proxies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -708,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -743,6 +819,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -804,109 +907,6 @@
   
 
       </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#who-can-reach-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Who can reach it
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#let-in-another-network" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Let in another network
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#dont-put-a-reverse-proxy-in-front-of-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Don't put a reverse proxy in front of it
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1000,33 +1000,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -1054,14 +1027,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../tls-certificate/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Logs
+  TLS Certificate
 
     
   </span>
@@ -1135,14 +1108,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tls-certificate/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  TLS Certificate
+  Logs
 
     
   </span>
@@ -1197,6 +1170,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1444,10 +1444,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#who-can-reach-it" class="md-nav__link">
+  <a href="#who-can-access-the-web-ui" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Who can reach it
+        Who Can Access the Web UI
       </span>
     </span>
   </a>
@@ -1455,10 +1455,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#let-in-another-network" class="md-nav__link">
+  <a href="#letting-in-another-network" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Let in another network
+        Letting in Another Network
       </span>
     </span>
   </a>
@@ -1466,10 +1466,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dont-put-a-reverse-proxy-in-front-of-it" class="md-nav__link">
+  <a href="#reverse-proxies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Don't put a reverse proxy in front of it
+        Reverse Proxies
       </span>
     </span>
   </a>
@@ -1611,9 +1611,10 @@
 <p>The web UI is at <code>https://&lt;host&gt;:51821</code>. It's reachable only from your home network and the VPN,
 never from the internet. The host's firewall drops other connections, and the app refuses them
 too, so a mistake in one doesn't open it.</p>
-<h2 id="who-can-reach-it">Who can reach it<a class="headerlink" href="#who-can-reach-it" title="Permanent link">&para;</a></h2>
+<h2 id="who-can-access-the-web-ui">Who Can Access the Web UI<a class="headerlink" href="#who-can-access-the-web-ui" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Your home network:</strong> the subnets of the host's network connections that have a default route.</li>
+<li><strong>Your home or local network:</strong> the subnets of the host's network connections that have a
+  default route.</li>
 <li><strong>The host itself.</strong></li>
 <li><strong>Devices connected to the VPN.</strong></li>
 </ul>
@@ -1627,7 +1628,7 @@ customers, everyone in that range counts and can reach the web UI. The
 provider's firewall, or run Drawbridge on a host at home.</p>
 <p>Your browser warns about the certificate the first time, because Drawbridge made it itself. See
 <a href="../tls-certificate/">TLS certificate</a> to use your own instead.</p>
-<h2 id="let-in-another-network">Let in another network<a class="headerlink" href="#let-in-another-network" title="Permanent link">&para;</a></h2>
+<h2 id="letting-in-another-network">Letting in Another Network<a class="headerlink" href="#letting-in-another-network" title="Permanent link">&para;</a></h2>
 <p>A device on another network, such as a Tailscale network, or Homepage running in Docker on the
 host, is refused until you add its range:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>server<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--admin-allow<span class="w"> </span><span class="m">100</span>.64.0.0/10
@@ -1642,7 +1643,7 @@ host, is refused until you add its range:</p>
   <code>sudo drawbridge server confirm</code>.</li>
 </ul>
 <p>The same rule applies to a dashboard that uses an <a href="../api-tokens/">API token</a>.</p>
-<h2 id="dont-put-a-reverse-proxy-in-front-of-it">Don't put a reverse proxy in front of it<a class="headerlink" href="#dont-put-a-reverse-proxy-in-front-of-it" title="Permanent link">&para;</a></h2>
+<h2 id="reverse-proxies">Reverse Proxies<a class="headerlink" href="#reverse-proxies" title="Permanent link">&para;</a></h2>
 <p>The web UI decides who may reach it by the address a connection comes from. A reverse proxy on the
 same host (nginx, Caddy, Traefik, or a container that publishes ports 80 and 443) sends every
 request from the host itself, which is always allowed, so it would put the web UI on the internet.
@@ -1689,7 +1690,7 @@ Open it directly at <code>https://&lt;host&gt;:51821</code> instead.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../pi-hole/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Pi-hole">
+          <a href="../server-configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Server Configuration">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1699,20 +1700,20 @@ Open it directly at <code>https://&lt;host&gt;:51821</code> instead.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Pi-hole
+                Server Configuration
               </div>
             </div>
           </a>
         
         
           
-          <a href="../troubleshooting/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
+          <a href="../rotate-server-key/" class="md-footer__link md-footer__link--next" aria-label="Next: Rotate the Server Key">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Troubleshooting
+                Rotate the Server Key
               </div>
             </div>
             <div class="md-footer__button md-icon">

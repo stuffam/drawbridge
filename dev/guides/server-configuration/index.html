@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/server-configuration/">
       
       
-        <link rel="prev" href="../client-rotate-key/">
+        <link rel="prev" href="../rotate-client-keys/">
       
       
-        <link rel="next" href="../addressing/">
+        <link rel="next" href="../web-ui-access/">
       
       
         
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -734,7 +734,7 @@
   <a href="#when-clients-get-a-change" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        When clients get a change
+        When Clients Get a Change
       </span>
     </span>
   </a>
@@ -745,7 +745,7 @@
   <a href="#changes-that-could-lock-you-out" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Changes that could lock you out
+        Changes That Could Lock You Out
       </span>
     </span>
   </a>
@@ -790,14 +790,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+      <a href="../web-ui-access/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -817,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -852,6 +852,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -906,33 +933,6 @@
     
   
   Pi-hole
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-ui-access/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
 
     
   </span>
@@ -1033,33 +1033,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -1087,14 +1060,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../tls-certificate/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Logs
+  TLS Certificate
 
     
   </span>
@@ -1168,14 +1141,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tls-certificate/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  TLS Certificate
+  Logs
 
     
   </span>
@@ -1230,6 +1203,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1502,7 +1502,7 @@
   <a href="#when-clients-get-a-change" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        When clients get a change
+        When Clients Get a Change
       </span>
     </span>
   </a>
@@ -1513,7 +1513,7 @@
   <a href="#changes-that-could-lock-you-out" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Changes that could lock you out
+        Changes That Could Lock You Out
       </span>
     </span>
   </a>
@@ -1700,17 +1700,18 @@ them (see <a href="../cli-tools/">CLI tools</a>).</p>
 <li><strong>Client isolation</strong> is on by default. Clients can't reach each other through the tunnel.
   Turning it off lets them, and it applies at once.</li>
 </ul>
-<h2 id="when-clients-get-a-change">When clients get a change<a class="headerlink" href="#when-clients-get-a-change" title="Permanent link">&para;</a></h2>
+<h2 id="when-clients-get-a-change">When Clients Get a Change<a class="headerlink" href="#when-clients-get-a-change" title="Permanent link">&para;</a></h2>
 <p>The endpoint, ports, MTU, DNS, and keepalive are part of each client's config. A client keeps what
 it has until you give it the new config, so after one of them changes the clients that were handed
-a config show as <strong>outdated</strong>. See <a href="../client-configuration/#when-a-config-is-outdated">Clients</a>.
-Client isolation is the exception, because it's enforced on the server.</p>
-<h2 id="changes-that-could-lock-you-out">Changes that could lock you out<a class="headerlink" href="#changes-that-could-lock-you-out" title="Permanent link">&para;</a></h2>
+a config show as <strong>outdated</strong>. See
+<a href="../client-configuration/#when-a-client-config-is-outdated">Client configuration</a>. Client isolation
+is the exception, because it's enforced on the server.</p>
+<h2 id="changes-that-could-lock-you-out">Changes That Could Lock You Out<a class="headerlink" href="#changes-that-could-lock-you-out" title="Permanent link">&para;</a></h2>
 <p>A change that could cut you off from the web UI applies at once and is undone after a minute
-unless you keep it. Changing the listen port is one, and <a href="../server-rotate-key/">rotating the server
-key</a> is the other. While one waits, a bar at the top of every page counts
-down and offers <strong>Keep Changes</strong> and <strong>Undo Now</strong>. Other changes to the settings are refused
-until you choose.</p>
+unless you keep it. Changing the listen port is one, and
+<a href="../rotate-server-key/">rotating the server key</a> is the other. While one waits, a bar at the top of
+every page counts down and offers <strong>Keep Changes</strong> and <strong>Undo Now</strong>. Other changes to the settings
+are refused until you choose.</p>
 <p>The change is held in the database, so if Drawbridge restarts or the host reboots first, it's
 undone. On the command line, a change applies at once unless you add <code>--safe</code>, and <code>server
 confirm</code> and <code>server revert</code> do what the bar's buttons do.</p>
@@ -1763,7 +1764,7 @@ does the optional <a href="../adguard-home/">AdGuard Home</a> connection.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../client-rotate-key/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rotate Client Keys">
+          <a href="../rotate-client-keys/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rotate Client Keys">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1780,13 +1781,13 @@ does the optional <a href="../adguard-home/">AdGuard Home</a> connection.</p>
         
         
           
-          <a href="../addressing/" class="md-footer__link md-footer__link--next" aria-label="Next: Addressing">
+          <a href="../web-ui-access/" class="md-footer__link md-footer__link--next" aria-label="Next: Web UI Access">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Addressing
+                Web UI Access
               </div>
             </div>
             <div class="md-footer__button md-icon">

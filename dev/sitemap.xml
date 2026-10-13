@@ -28,9 +28,6 @@
         <loc>https://stuffam.github.io/drawbridge/dev/guides/client-configuration/</loc>
       </url>
       <url>
-        <loc>https://stuffam.github.io/drawbridge/dev/guides/client-rotate-key/</loc>
-      </url>
-      <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/diagnostics/</loc>
       </url>
       <url>
@@ -49,10 +46,13 @@
         <loc>https://stuffam.github.io/drawbridge/dev/guides/remove/</loc>
       </url>
       <url>
-        <loc>https://stuffam.github.io/drawbridge/dev/guides/server-configuration/</loc>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/rotate-client-keys/</loc>
       </url>
       <url>
-        <loc>https://stuffam.github.io/drawbridge/dev/guides/server-rotate-key/</loc>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/rotate-server-key/</loc>
+      </url>
+      <url>
+        <loc>https://stuffam.github.io/drawbridge/dev/guides/server-configuration/</loc>
       </url>
       <url>
         <loc>https://stuffam.github.io/drawbridge/dev/guides/snapshots/</loc>

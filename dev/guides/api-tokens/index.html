@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/api-tokens/">
       
       
-        <link rel="prev" href="../remove/">
+        <link rel="prev" href="../troubleshooting/">
       
       
         <link rel="next" href="../homepage/">
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -679,14 +679,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+      <a href="../web-ui-access/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -706,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -741,6 +741,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -795,33 +822,6 @@
     
   
   Pi-hole
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-ui-access/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
 
     
   </span>
@@ -922,33 +922,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -976,14 +949,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../tls-certificate/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Logs
+  TLS Certificate
 
     
   </span>
@@ -1057,14 +1030,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tls-certificate/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  TLS Certificate
+  Logs
 
     
   </span>
@@ -1119,6 +1092,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1271,7 +1271,7 @@
   <a href="#what-a-token-can-read" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What a token can read
+        What a Token Can Read
       </span>
     </span>
   </a>
@@ -1279,10 +1279,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#make-one" class="md-nav__link">
+  <a href="#making-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Make one
+        Making a Token
       </span>
     </span>
   </a>
@@ -1290,10 +1290,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#try-it" class="md-nav__link">
+  <a href="#testing-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Try it
+        Testing a Token
       </span>
     </span>
   </a>
@@ -1301,10 +1301,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#revoke-and-replace" class="md-nav__link">
+  <a href="#revoking-and-replacing-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Revoke, and replace
+        Revoking and Replacing a Token
       </span>
     </span>
   </a>
@@ -1458,7 +1458,7 @@
   <a href="#what-a-token-can-read" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What a token can read
+        What a Token Can Read
       </span>
     </span>
   </a>
@@ -1466,10 +1466,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#make-one" class="md-nav__link">
+  <a href="#making-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Make one
+        Making a Token
       </span>
     </span>
   </a>
@@ -1477,10 +1477,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#try-it" class="md-nav__link">
+  <a href="#testing-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Try it
+        Testing a Token
       </span>
     </span>
   </a>
@@ -1488,10 +1488,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#revoke-and-replace" class="md-nav__link">
+  <a href="#revoking-and-replacing-a-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Revoke, and replace
+        Revoking and Replacing a Token
       </span>
     </span>
   </a>
@@ -1627,7 +1627,7 @@
 <p>A dashboard such as <a href="../homepage/">Homepage</a> can't log in to Drawbridge: it can send a header, but
 it can't fill in a form, keep a cookie, or send the <code>X-Drawbridge</code> header. An API token is a
 credential for that. It's read-only, it shows a few numbers, and you can revoke it.</p>
-<h2 id="what-a-token-can-read">What a token can read<a class="headerlink" href="#what-a-token-can-read" title="Permanent link">&para;</a></h2>
+<h2 id="what-a-token-can-read">What a Token Can Read<a class="headerlink" href="#what-a-token-can-read" title="Permanent link">&para;</a></h2>
 <p>A token works on these <code>GET</code> routes and no others:</p>
 <table>
 <thead>
@@ -1665,7 +1665,7 @@ event log, or the settings. It can't change anything, and it can't make, list, o
 Those routes need a login.</p>
 <p>The client names, addresses, and endpoints in <code>/api/clients</code> are still information about your
 household. Treat a token like a password you've written in another program's config file.</p>
-<h2 id="make-one">Make one<a class="headerlink" href="#make-one" title="Permanent link">&para;</a></h2>
+<h2 id="making-a-token">Making a Token<a class="headerlink" href="#making-a-token" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Open the Account page (the person icon in the header, then Settings) and find <strong>API Tokens</strong>.</li>
 <li>Give the token a name, such as <code>Homepage</code>, so you know which to revoke later.</li>
@@ -1679,15 +1679,15 @@ household. Treat a token like a password you've written in another program's con
 <p>If you've turned on <a href="../two-factor/">two-factor authentication</a>, a token still works without a
 code: a dashboard can't type one. That's why a token is read-only. Making a token asks for your
 password again, as it always did, but not for a code.</p>
-<h2 id="try-it">Try it<a class="headerlink" href="#try-it" title="Permanent link">&para;</a></h2>
+<h2 id="testing-a-token">Testing a Token<a class="headerlink" href="#testing-a-token" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Authorization: Bearer dbt_…'</span><span class="w"> </span>https://your-host:51821/api/server/status
 </span></code></pre></div>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"tunnel_up"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">"clients"</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nt">"paused"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">"online"</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nt">"outdated"</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">"receive_bytes"</span><span class="p">:</span><span class="mi">734003200</span><span class="p">,</span><span class="nt">"send_bytes"</span><span class="p">:</span><span class="mi">125829120</span><span class="p">}</span>
 </span></code></pre></div>
 <p><code>-k</code> tells <code>curl</code> to skip the certificate check, which is fine for a quick look: Drawbridge's own
 certificate is self-signed. A program that keeps using the token should check the certificate
-instead; <a href="../homepage/#when-homepage-cant-reach-it">the Homepage page</a> shows how.</p>
-<h2 id="revoke-and-replace">Revoke, and replace<a class="headerlink" href="#revoke-and-replace" title="Permanent link">&para;</a></h2>
+instead; <a href="../homepage/#troubleshooting">the Homepage page</a> shows how.</p>
+<h2 id="revoking-and-replacing-a-token">Revoking and Replacing a Token<a class="headerlink" href="#revoking-and-replacing-a-token" title="Permanent link">&para;</a></h2>
 <p>On the Account page, <strong>Revoke</strong> ends a token at once, and anything using it gets <code>401</code>. To replace
 one: make the new token, put it in the dashboard, then revoke the old one.</p>
 <p>Each token shows when it was last used, to the hour. A token that was never used, or hasn't been
@@ -1741,7 +1741,7 @@ for months, is one to revoke.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../remove/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Remove">
+          <a href="../troubleshooting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Troubleshooting">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1751,7 +1751,7 @@ for months, is one to revoke.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Remove
+                Troubleshooting
               </div>
             </div>
           </a>

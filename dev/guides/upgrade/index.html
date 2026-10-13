@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/upgrade/">
       
       
-        <link rel="prev" href="../tls-certificate/">
+        <link rel="prev" href="../logs/">
       
       
         <link rel="next" href="../remove/">
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -679,14 +679,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+      <a href="../web-ui-access/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -706,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -741,6 +741,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -795,33 +822,6 @@
     
   
   Pi-hole
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-ui-access/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
 
     
   </span>
@@ -924,33 +924,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -978,14 +951,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../tls-certificate/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Logs
+  TLS Certificate
 
     
   </span>
@@ -1059,14 +1032,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tls-certificate/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  TLS Certificate
+  Logs
 
     
   </span>
@@ -1129,6 +1102,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1463,7 +1463,7 @@
     
     
       <li class="md-path__item">
-        <a href="../troubleshooting/" class="md-path__link">
+        <a href="../diagnostics/" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1497,7 +1497,7 @@
   <h1>Upgrade</h1>
 
 <p>Get the newer package the way you got the first one (see
-<a href="../../getting-started/#install">Getting Started</a>), and install it over the old one:</p>
+<a href="../../getting-started/#installing-drawbridge">Getting Started</a>), and install it over the old one:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>./drawbridge_&lt;new-version&gt;_&lt;arch&gt;.deb
 </span></code></pre></div>
 <p>The web UI restarts, and the VPN stays up: the tunnel service isn't restarted, and a client that's
@@ -1553,7 +1553,7 @@ journal says why) and the VPN keeps running. Install the newer version again, or
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../tls-certificate/" class="md-footer__link md-footer__link--prev" aria-label="Previous: TLS Certificate">
+          <a href="../logs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Logs">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1563,7 +1563,7 @@ journal says why) and the VPN keeps running. Install the newer version again, or
                 Previous
               </span>
               <div class="md-ellipsis">
-                TLS Certificate
+                Logs
               </div>
             </div>
           </a>

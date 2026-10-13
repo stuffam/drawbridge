@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/tls-certificate/">
       
       
-        <link rel="prev" href="../snapshots/">
+        <link rel="prev" href="../diagnostics/">
       
       
-        <link rel="next" href="../upgrade/">
+        <link rel="next" href="../backup-restore/">
       
       
         
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -679,14 +679,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+      <a href="../web-ui-access/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -706,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -741,6 +741,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -795,33 +822,6 @@
     
   
   Pi-hole
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-ui-access/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
 
     
   </span>
@@ -924,33 +924,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -959,87 +932,6 @@
     
   
   Diagnostic Tools
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Logs
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../backup-restore/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Backup & Restore
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../snapshots/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Database Snapshots
 
     
   </span>
@@ -1117,7 +1009,7 @@
   <a href="#what-you-need" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What you need
+        What You Need
       </span>
     </span>
   </a>
@@ -1125,10 +1017,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-it" class="md-nav__link">
+  <a href="#installing-a-certificate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Install it
+        Installing a Certificate
       </span>
     </span>
   </a>
@@ -1136,10 +1028,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#renewing-it" class="md-nav__link">
+  <a href="#renewing-the-certificate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Renewing it
+        Renewing the Certificate
       </span>
     </span>
   </a>
@@ -1150,7 +1042,7 @@
   <a href="#going-back" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Going back
+        Going Back
       </span>
     </span>
   </a>
@@ -1161,7 +1053,7 @@
   <a href="#where-its-kept" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Where it's kept
+        Where It's Kept
       </span>
     </span>
   </a>
@@ -1172,6 +1064,87 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backup-restore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backup & Restore
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Database Snapshots
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logs
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1219,6 +1192,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1469,7 +1469,7 @@
   <a href="#what-you-need" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What you need
+        What You Need
       </span>
     </span>
   </a>
@@ -1477,10 +1477,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-it" class="md-nav__link">
+  <a href="#installing-a-certificate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Install it
+        Installing a Certificate
       </span>
     </span>
   </a>
@@ -1488,10 +1488,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#renewing-it" class="md-nav__link">
+  <a href="#renewing-the-certificate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Renewing it
+        Renewing the Certificate
       </span>
     </span>
   </a>
@@ -1502,7 +1502,7 @@
   <a href="#going-back" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Going back
+        Going Back
       </span>
     </span>
   </a>
@@ -1513,7 +1513,7 @@
   <a href="#where-its-kept" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Where it's kept
+        Where It's Kept
       </span>
     </span>
   </a>
@@ -1621,7 +1621,7 @@
     
     
       <li class="md-path__item">
-        <a href="../troubleshooting/" class="md-path__link">
+        <a href="../diagnostics/" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1660,7 +1660,7 @@ can't tell it from a forgery and warns until you trust it. <code>sudo drawbridge
 certificate's SHA-256 fingerprint, so you can check that the warning is about this certificate.</p>
 <p>If you'd rather not click through a warning, give Drawbridge a certificate your devices already
 trust. This guide is for that.</p>
-<h2 id="what-you-need">What you need<a class="headerlink" href="#what-you-need" title="Permanent link">&para;</a></h2>
+<h2 id="what-you-need">What You Need<a class="headerlink" href="#what-you-need" title="Permanent link">&para;</a></h2>
 <ul>
 <li>A certificate and its private key, as PEM text. The certificate file should be the <strong>full
   chain</strong>: the server's own certificate first, then the intermediates (Let's Encrypt's
@@ -1681,7 +1681,7 @@ trust. This guide is for that.</p>
 <p>The names the certificate covers matter: a browser warns if the address in its bar isn't one of
 them. Drawbridge tells you which names a certificate covers and warns if it covers none of the
 host's own (its hostname, its <code>.local</code> name, its addresses) or the endpoint you set.</p>
-<h2 id="install-it">Install it<a class="headerlink" href="#install-it" title="Permanent link">&para;</a></h2>
+<h2 id="installing-a-certificate">Installing a Certificate<a class="headerlink" href="#installing-a-certificate" title="Permanent link">&para;</a></h2>
 <p>From the host:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>tls<span class="w"> </span>install<span class="w"> </span>--cert<span class="w"> </span>fullchain.pem<span class="w"> </span>--key<span class="w"> </span>privkey.pem
 </span></code></pre></div>
@@ -1693,7 +1693,7 @@ reason. Once installed, <strong>the next connection uses it</strong>: nothing re
 it from keeps the old certificate until you reload it.</p>
 <p><code>sudo drawbridge tls show</code> prints what's in use: where it came from, its names, issuer, dates, and
 fingerprint.</p>
-<h2 id="renewing-it">Renewing it<a class="headerlink" href="#renewing-it" title="Permanent link">&para;</a></h2>
+<h2 id="renewing-the-certificate">Renewing the Certificate<a class="headerlink" href="#renewing-the-certificate" title="Permanent link">&para;</a></h2>
 <p><strong>Nothing renews an installed certificate</strong>, and Drawbridge won't swap in the self-signed one on
 its own when yours runs out. The System page's checks (and <code>sudo drawbridge doctor</code>) warn 30 days
 before it expires and fail when it has.</p>
@@ -1705,12 +1705,12 @@ renewed files:</p>
 <p>(certbot sets <code>RENEWED_LINEAGE</code> to the certificate's directory and runs hooks as root. Other
 clients have their own way to run a command after renewing.) Run <code>sudo drawbridge tls show</code>
 afterward to see the new expiry.</p>
-<h2 id="going-back">Going back<a class="headerlink" href="#going-back" title="Permanent link">&para;</a></h2>
+<h2 id="going-back">Going Back<a class="headerlink" href="#going-back" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>tls<span class="w"> </span>reset
 </span></code></pre></div>
 <p>or <strong>Use the Self-Signed Certificate</strong> on the System page. The installed certificate and its key
 are forgotten, and the self-signed one serves again (a new one is made if it had run out).</p>
-<h2 id="where-its-kept">Where it's kept<a class="headerlink" href="#where-its-kept" title="Permanent link">&para;</a></h2>
+<h2 id="where-its-kept">Where It's Kept<a class="headerlink" href="#where-its-kept" title="Permanent link">&para;</a></h2>
 <p>The chain and the key are saved in one file, <code>/var/lib/drawbridge/tls/uploaded.pem</code>, readable only
 by the <code>drawbridge</code> user. The key isn't encrypted there, like the self-signed key beside it,
 because the web server needs it at startup. It is never shown in the UI, the event log, or the
@@ -1762,7 +1762,7 @@ reset</code> clears the file; then install again.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../snapshots/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Database Snapshots">
+          <a href="../diagnostics/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Diagnostic Tools">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1772,20 +1772,20 @@ reset</code> clears the file; then install again.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Database Snapshots
+                Diagnostic Tools
               </div>
             </div>
           </a>
         
         
           
-          <a href="../upgrade/" class="md-footer__link md-footer__link--next" aria-label="Next: Upgrade">
+          <a href="../backup-restore/" class="md-footer__link md-footer__link--next" aria-label="Next: Backup &amp; Restore">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Upgrade
+                Backup & Restore
               </div>
             </div>
             <div class="md-footer__button md-icon">

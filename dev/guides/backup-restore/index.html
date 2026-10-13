@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://stuffam.github.io/drawbridge/dev/guides/backup-restore/">
       
       
-        <link rel="prev" href="../logs/">
+        <link rel="prev" href="../tls-certificate/">
       
       
         <link rel="next" href="../snapshots/">
@@ -491,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-  Client
+  Clients
 
     
   </span>
@@ -507,7 +507,7 @@
               <span class="md-nav__icon md-icon"></span>
               
   
-  Client
+  Clients
 
             </label>
             <ul class="md-nav__list" data-md-scrollfix>
@@ -526,7 +526,7 @@
   <span class="md-ellipsis">
     
   
-  Clients
+  Client Configuration
 
     
   </span>
@@ -546,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client-rotate-key/" class="md-nav__link">
+      <a href="../rotate-client-keys/" class="md-nav__link">
         
   
   
@@ -679,14 +679,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../addressing/" class="md-nav__link">
+      <a href="../web-ui-access/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Addressing
+  Web UI Access
 
     
   </span>
@@ -706,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../server-rotate-key/" class="md-nav__link">
+      <a href="../rotate-server-key/" class="md-nav__link">
         
   
   
@@ -741,6 +741,33 @@
     
   
   DNS Settings
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addressing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Addressing
 
     
   </span>
@@ -795,33 +822,6 @@
     
   
   Pi-hole
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../web-ui-access/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Web UI Access
 
     
   </span>
@@ -924,33 +924,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Troubleshooting
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../diagnostics/" class="md-nav__link">
         
   
@@ -978,14 +951,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logs/" class="md-nav__link">
+      <a href="../tls-certificate/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Logs
+  TLS Certificate
 
     
   </span>
@@ -1060,10 +1033,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#make-one" class="md-nav__link">
+  <a href="#making-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Make one
+        Making a Backup
       </span>
     </span>
   </a>
@@ -1071,10 +1044,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#restore-onto-a-fresh-host" class="md-nav__link">
+  <a href="#restoring-from-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Restore onto a fresh host
+        Restoring from a Backup
       </span>
     </span>
   </a>
@@ -1082,10 +1055,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-something-goes-wrong" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        When something goes wrong
+        Troubleshooting
       </span>
     </span>
   </a>
@@ -1096,7 +1069,7 @@
   <a href="#not-in-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Not in a backup
+        Not in a Backup
       </span>
     </span>
   </a>
@@ -1146,14 +1119,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tls-certificate/" class="md-nav__link">
+      <a href="../logs/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  TLS Certificate
+  Logs
 
     
   </span>
@@ -1208,6 +1181,33 @@
     
   
   Remove
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
 
     
   </span>
@@ -1455,10 +1455,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#make-one" class="md-nav__link">
+  <a href="#making-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Make one
+        Making a Backup
       </span>
     </span>
   </a>
@@ -1466,10 +1466,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#restore-onto-a-fresh-host" class="md-nav__link">
+  <a href="#restoring-from-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Restore onto a fresh host
+        Restoring from a Backup
       </span>
     </span>
   </a>
@@ -1477,10 +1477,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-something-goes-wrong" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        When something goes wrong
+        Troubleshooting
       </span>
     </span>
   </a>
@@ -1491,7 +1491,7 @@
   <a href="#not-in-a-backup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Not in a backup
+        Not in a Backup
       </span>
     </span>
   </a>
@@ -1599,7 +1599,7 @@
     
     
       <li class="md-path__item">
-        <a href="../troubleshooting/" class="md-path__link">
+        <a href="../diagnostics/" class="md-path__link">
           
   
   <span class="md-ellipsis">
@@ -1640,7 +1640,7 @@ the event and traffic history.</p>
 backup without it would be useless after the disk fails. So the file is encrypted with a
 passphrase you choose, and <strong>the passphrase is the only thing that protects it</strong>. Without it, the
 file can't be opened by you, by anyone, or by the project's developers.</p>
-<h2 id="make-one">Make one<a class="headerlink" href="#make-one" title="Permanent link">&para;</a></h2>
+<h2 id="making-a-backup">Making a Backup<a class="headerlink" href="#making-a-backup" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>drawbridge<span class="w"> </span>backup<span class="w"> </span>create
 </span></code></pre></div>
 <p>It asks for a passphrase twice, with nothing shown, and writes
@@ -1665,7 +1665,7 @@ made in full before the download starts, so a failure is an error on the page, a
 that stops partway.</p>
 <p>Restoring is only on the command line, on purpose: it replaces the database, your password
 included, so a web page that could do it would let a hijacked session take everything.</p>
-<h2 id="restore-onto-a-fresh-host">Restore onto a fresh host<a class="headerlink" href="#restore-onto-a-fresh-host" title="Permanent link">&para;</a></h2>
+<h2 id="restoring-from-a-backup">Restoring from a Backup<a class="headerlink" href="#restoring-from-a-backup" title="Permanent link">&para;</a></h2>
 <p>This is what the backup is for: the host's disk failed, or you're moving to another machine.</p>
 <ol>
 <li>Install Drawbridge on the new host, as you did the first time. Don't go through the web
@@ -1728,7 +1728,7 @@ says so and the host is as it was.</p>
 <p>Drawbridge also keeps copies of its database on the host, and can restore from one in the same
 way: see <a href="../snapshots/">Database snapshots</a>. They don't replace a backup, because a lost disk takes
 them too.</p>
-<h2 id="when-something-goes-wrong">When something goes wrong<a class="headerlink" href="#when-something-goes-wrong" title="Permanent link">&para;</a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1765,7 +1765,7 @@ them too.</p>
 </table>
 <p>In every one of these, nothing was changed. If a restore fails while it's moving files (a full
 disk, say), it puts back the ones it moved, and says so.</p>
-<h2 id="not-in-a-backup">Not in a backup<a class="headerlink" href="#not-in-a-backup" title="Permanent link">&para;</a></h2>
+<h2 id="not-in-a-backup">Not in a Backup<a class="headerlink" href="#not-in-a-backup" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The web UI's certificate (above), and the log in the journal (the event log is in the backup).</li>
 <li>Anything outside Drawbridge: the router's port forward, your DNS records, and AdGuard Home
@@ -1816,7 +1816,7 @@ disk, say), it puts back the ones it moved, and says so.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../logs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Logs">
+          <a href="../tls-certificate/" class="md-footer__link md-footer__link--prev" aria-label="Previous: TLS Certificate">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1826,7 +1826,7 @@ disk, say), it puts back the ones it moved, and says so.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Logs
+                TLS Certificate
               </div>
             </div>
           </a>
