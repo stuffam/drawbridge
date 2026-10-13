@@ -1,11 +1,11 @@
 ---
-title: Clients
+title: Client Configuration
 ---
 
 A client is a phone, laptop, or other device that connects to your VPN. Each one has its own keys
 and its own addresses, and a config that holds them.
 
-## Add a client
+## Adding a Client
 
 Open **Clients** in the web UI and press **+ Add Client**, or run this on the host:
 
@@ -17,7 +17,7 @@ A name is up to 64 letters, digits, spaces, and `.` `_` `'` `-`. Drawbridge give
 own addresses (IPv6 as well as IPv4, when the VPN has IPv6) and its own keys. It can't give a
 client a config until the [endpoint is set](server-configuration.md).
 
-## Connect a device
+## Connecting a Device
 
 Open the client's page. **Connect a Device** offers the config two ways:
 
@@ -28,7 +28,7 @@ The config holds the client's private key, so every time it's shown or downloade
 the [log](logs.md). On the host, `client qr NAME` shows the QR code and `client config NAME`
 prints the config.
 
-## Pause, rename, and delete
+## Pausing, Renaming, and Deleting a Client
 
 - **Pause** takes the client out of the tunnel, so it can't connect until you **Resume** it. It
   keeps its keys and addresses.
@@ -36,7 +36,7 @@ prints the config.
 - **Delete** removes the client for good. Its config stops working at once, and its traffic
   history goes with it. It can't be undone.
 
-## When a config is outdated
+## When a Client Config Is Outdated
 
 A config holds the endpoint, port, MTU, DNS servers, and keepalive, the server's public key, and
 the client's own keys. If one of them changes after you handed out a config, the client shows as
@@ -45,7 +45,7 @@ the new config it keeps using the old one, which stops working after some change
 or port, or a rotated key). Show the QR code or download the config again, and import it on the
 device, and the flag clears.
 
-## What you can see about a client
+## What Can Be Seen about a Client
 
 - **The Clients page** lists every client with its state. Search by name or address, and use the
   dashboard's tiles to see only the online, paused, or outdated ones. A client is online if it

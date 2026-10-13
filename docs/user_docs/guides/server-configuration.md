@@ -30,20 +30,21 @@ Where clients connect.
 - **Client isolation** is on by default. Clients can't reach each other through the tunnel.
   Turning it off lets them, and it applies at once.
 
-## When clients get a change
+## When Clients Get a Change
 
 The endpoint, ports, MTU, DNS, and keepalive are part of each client's config. A client keeps what
 it has until you give it the new config, so after one of them changes the clients that were handed
-a config show as **outdated**. See [Clients](client-configuration.md#when-a-config-is-outdated).
-Client isolation is the exception, because it's enforced on the server.
+a config show as **outdated**. See
+[Client configuration](client-configuration.md#when-a-client-config-is-outdated). Client isolation
+is the exception, because it's enforced on the server.
 
-## Changes that could lock you out
+## Changes That Could Lock You Out
 
 A change that could cut you off from the web UI applies at once and is undone after a minute
-unless you keep it. Changing the listen port is one, and [rotating the server
-key](server-rotate-key.md) is the other. While one waits, a bar at the top of every page counts
-down and offers **Keep Changes** and **Undo Now**. Other changes to the settings are refused
-until you choose.
+unless you keep it. Changing the listen port is one, and
+[rotating the server key](rotate-server-key.md) is the other. While one waits, a bar at the top of
+every page counts down and offers **Keep Changes** and **Undo Now**. Other changes to the settings
+are refused until you choose.
 
 The change is held in the database, so if Drawbridge restarts or the host reboots first, it's
 undone. On the command line, a change applies at once unless you add `--safe`, and `server

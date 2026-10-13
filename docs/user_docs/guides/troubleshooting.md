@@ -12,7 +12,7 @@ It is the same as the Diagnostics card on the web UI's System page. See
 [Diagnostic tools](diagnostics.md). The services' own logs are
 `sudo journalctl -u drawbridge -u drawbridge-tunnel`.
 
-## A client can't connect
+## When a Client Can't Connect
 
 | What you see | What to try |
 |---|---|
@@ -20,9 +20,9 @@ It is the same as the Diagnostics card on the web UI's System page. See
 | **It works on mobile data but not on your home Wi-Fi.** | Many routers don't send a connection to their own public address back inside, so a phone at home can't test the port forward. Test from outside, with Wi-Fi off. |
 | **A handshake, but nothing loads.** | Another firewall on the host (ufw, firewalld, or Docker, for example) is dropping forwarded traffic, or forwarding is off. The **Host firewall**, **Forwarding sysctls**, and **Uplink** checks say which, and give the fix. |
 | **Pages load, but names don't resolve.** | The DNS the VPN hands out isn't answering. See [DNS settings](dns-settings.md), and the **DNS for clients** check. |
-| **It stopped working after you changed a setting or rotated a key.** | The device needs the new config: show the QR code or download it again, and import it. See [Clients](client-configuration.md#when-a-config-is-outdated). |
+| **It stopped working after you changed a setting or rotated a key.** | The device needs the new config: show the QR code or download it again, and import it. See [Client configuration](client-configuration.md#when-a-client-config-is-outdated). |
 
-## The web UI
+## Web UI
 
 | What you see | What to try |
 |---|---|
@@ -31,7 +31,7 @@ It is the same as the Diagnostics card on the web UI's System page. See
 | **A setting you changed went back.** | A change that could lock you out is undone after a minute unless you press **Keep Changes**, and it's undone if Drawbridge restarts first. See [Server configuration](server-configuration.md#changes-that-could-lock-you-out). |
 | **The web UI won't start after you installed an older version.** | An older Drawbridge doesn't open a database that a newer one changed. Install the newer version again, or restore a backup made by the older one. See [Upgrade](upgrade.md). |
 
-## Signing in
+## Signing In
 
 | What you see | What to try |
 |---|---|

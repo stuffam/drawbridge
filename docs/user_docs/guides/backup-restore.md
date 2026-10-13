@@ -12,7 +12,7 @@ backup without it would be useless after the disk fails. So the file is encrypte
 passphrase you choose, and **the passphrase is the only thing that protects it**. Without it, the
 file can't be opened by you, by anyone, or by the project's developers.
 
-## Make one
+## Making a Backup
 
 ```bash
 sudo drawbridge backup create
@@ -42,7 +42,7 @@ that stops partway.
 Restoring is only on the command line, on purpose: it replaces the database, your password
 included, so a web page that could do it would let a hijacked session take everything.
 
-## Restore onto a fresh host
+## Restoring from a Backup
 
 This is what the backup is for: the host's disk failed, or you're moving to another machine.
 
@@ -110,7 +110,7 @@ Drawbridge also keeps copies of its database on the host, and can restore from o
 way: see [Database snapshots](snapshots.md). They don't replace a backup, because a lost disk takes
 them too.
 
-## When something goes wrong
+## Troubleshooting
 
 | It says | Meaning |
 |---|---|
@@ -124,7 +124,7 @@ them too.
 In every one of these, nothing was changed. If a restore fails while it's moving files (a full
 disk, say), it puts back the ones it moved, and says so.
 
-## Not in a backup
+## Not in a Backup
 
 - The web UI's certificate (above), and the log in the journal (the event log is in the backup).
 - Anything outside Drawbridge: the router's port forward, your DNS records, and AdGuard Home

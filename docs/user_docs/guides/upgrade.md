@@ -3,7 +3,7 @@ title: Upgrade
 ---
 
 Get the newer package the way you got the first one (see
-[Getting Started](../getting-started.md#install)), and install it over the old one:
+[Getting Started](../getting-started.md#installing-drawbridge)), and install it over the old one:
 
 ```bash
 sudo apt install ./drawbridge_<new-version>_<arch>.deb

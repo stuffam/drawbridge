@@ -6,7 +6,7 @@ Clients ask a DNS server to turn names into addresses. The ones you choose here 
 each client's config, so they apply while the client is connected to the VPN. Set them in
 **Settings**, under **DNS for Clients**, or on the host with `sudo drawbridge server set --dns`.
 
-## The four choices
+## Four Choices
 
 | Choice | What clients use |
 |---|---|
@@ -22,7 +22,7 @@ sudo drawbridge server set --dns 9.9.9.9,149.112.112.112
 sudo drawbridge server set --dns server
 ```
 
-## Use a resolver on the host
+## Using the Host as the Resolver
 
 A resolver such as AdGuard Home, Pi-hole, Unbound, or dnsmasq can answer for your clients, so
 that, say, an ad blocker works over the VPN too. Pick **This server**, then press **Check This
@@ -40,11 +40,11 @@ If the check finds nothing on a host that runs a resolver:
   access settings don't allow the VPN's subnets.
 - **systemd-resolved doesn't count.** It listens only on `127.0.0.53`.
 
-## After you change it
+## After Changing DNS Servers
 
 DNS is part of each client's config, so the clients that were handed a config show as
 **outdated**. Give each one its config again. See
-[Clients](client-configuration.md#when-a-config-is-outdated).
+[Client configuration](client-configuration.md#when-a-client-config-is-outdated).
 
 If names stop resolving, [Diagnostic tools](diagnostics.md) has a **DNS for clients** check. To
 let Drawbridge also name your clients in AdGuard Home, see [AdGuard Home](adguard-home.md).

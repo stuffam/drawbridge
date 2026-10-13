@@ -11,7 +11,7 @@ talk to it. This is optional, and everything else works without it. It adds two 
 Connecting to AdGuard Home doesn't make your clients use it. To do that, choose **This server**
 in [DNS settings](dns-settings.md).
 
-## Connect it
+## Connecting AdGuard Home
 
 You need AdGuard Home running and reachable from the host, and an account on it. An account made
 for Drawbridge is best (`AdGuardHome.yaml` can list several users).
@@ -29,7 +29,7 @@ for Drawbridge is best (`AdGuardHome.yaml` can list several users).
 5. Turn on **Use AdGuard Home**, and **Name clients in AdGuard Home** if you want the names. Then
    press **Save Connection**.
 
-## What name sync does
+## What Name Sync Does
 
 Drawbridge adds each client to AdGuard Home under its name and its VPN addresses. It keeps them up
 to date as you add, rename, and delete clients, and looks again every few minutes. The card says
@@ -41,7 +41,7 @@ when it last synced and how many clients have their name there.
 - If a client can't be named, such as when its name is already on another entry, the card lists it
   and says why. Settle it in AdGuard Home, then press **Sync Now**.
 
-## Recent DNS queries
+## Recent DNS Queries
 
 A client's page shows what it looked up lately, from AdGuard Home's query log, with what AdGuard
 Home did with each one (blocked, an error, or the address). A link opens the same queries in
@@ -50,14 +50,14 @@ AdGuard Home.
 The query log has to be on, and AdGuard Home must not hide the end of clients' addresses in it, or
 a client's list stays empty. **Test Connection** tells you if either is so.
 
-## If AdGuard Home refuses the login
+## If AdGuard Home Refuses the Login
 
 Five wrong logins make AdGuard Home block the host's address for 15 minutes, and during the block
 even the right password is refused. So after a refusal Drawbridge stops asking until you change the
 connection, or **Test Connection** or **Sync Now** shows it works. Check the password before you
 press them again.
 
-## Remove it
+## Removing AdGuard Home
 
 **Remove…** makes Drawbridge forget the address and the password. The names it already added stay
 in AdGuard Home until you delete them there.

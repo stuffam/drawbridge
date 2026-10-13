@@ -6,9 +6,10 @@ The web UI is at `https://<host>:51821`. It's reachable only from your home netw
 never from the internet. The host's firewall drops other connections, and the app refuses them
 too, so a mistake in one doesn't open it.
 
-## Who can reach it
+## Who Can Access the Web UI
 
-- **Your home network:** the subnets of the host's network connections that have a default route.
+- **Your home or local network:** the subnets of the host's network connections that have a
+  default route.
 - **The host itself.**
 - **Devices connected to the VPN.**
 
@@ -25,7 +26,7 @@ provider's firewall, or run Drawbridge on a host at home.
 Your browser warns about the certificate the first time, because Drawbridge made it itself. See
 [TLS certificate](tls-certificate.md) to use your own instead.
 
-## Let in another network
+## Letting in Another Network
 
 A device on another network, such as a Tailscale network, or Homepage running in Docker on the
 host, is refused until you add its range:
@@ -44,7 +45,7 @@ sudo drawbridge server set --admin-allow 100.64.0.0/10
 
 The same rule applies to a dashboard that uses an [API token](api-tokens.md).
 
-## Don't put a reverse proxy in front of it
+## Reverse Proxies
 
 The web UI decides who may reach it by the address a connection comes from. A reverse proxy on the
 same host (nginx, Caddy, Traefik, or a container that publishes ports 80 and 443) sends every

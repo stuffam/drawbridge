@@ -17,7 +17,7 @@ The System page lists the snapshots, with the time and size of each, and doesn't
 download: a snapshot has no passphrase, and the database has your password hash in it. A backup is
 how a copy leaves the host.
 
-## Go back to one
+## Restoring from a Snapshot
 
 Stop the daemon and restore it. A snapshot needs no passphrase, and the host's own key stays,
 because it's what the snapshot was sealed with:
@@ -36,7 +36,7 @@ to date when it goes in.
 A snapshot that was made under another key (copied from another host, say) is refused, and says
 that the host's key doesn't open it. Use a backup for that.
 
-## Disk space
+## Disk Space
 
 The snapshots take room: each is about the size of the database, so allow ten times its size
 (`ls -lh /var/lib/drawbridge/drawbridge.db`) for the seven nightly ones and the three from

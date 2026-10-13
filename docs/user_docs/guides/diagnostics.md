@@ -8,14 +8,24 @@ nothing is changed, and it's safe to run them at any time.
 
 The same checks show up in three places:
 
-- **The System page** in the web UI (the pulse icon in the header), in the **Diagnostics** card.
 - **The dashboard**, which shows a banner when a check warns or fails.
+- **The System page** in the web UI (the pulse icon in the header), in the **Diagnostics** card.
 - **The command line**, with `sudo drawbridge doctor`.
 
 Run them after you install, after you change your router or network, and whenever a client can't
 connect.
 
-## On the System page
+## On the Dashboard
+
+When a check warns or fails, the dashboard shows a banner such as "2 checks need attention". It
+lists each check's name and what it found, and links to the System page for the fixes. The banner
+is red if any check failed, and amber if they are all warnings.
+
+The dashboard asks for the results when it opens, every five minutes while it's showing, and
+whenever the settings change. It leaves out two things it already says itself, from fresher data:
+the tunnel check, and an endpoint that isn't set.
+
+## On the System Page
 
 The Diagnostics card runs the checks when you open the page, and again when you press **Run
 Again**. A check can take a few seconds, because it asks DNS. The list stays up while it runs, and
@@ -32,17 +42,7 @@ for a warning or a failure, a **Fix:** line. The result is one of four:
 | Failed | Clients or the admin are affected now. |
 | Skipped | The check couldn't run, or doesn't apply to this host. It isn't a pass, so the summary names it. |
 
-## On the dashboard
-
-When a check warns or fails, the dashboard shows a banner such as "2 checks need attention". It
-lists each check's name and what it found, and links to the System page for the fixes. The banner
-is red if any check failed, and amber if they are all warnings.
-
-The dashboard asks for the results when it opens, every five minutes while it's showing, and
-whenever the settings change. It leaves out two things it already says itself, from fresher data:
-the tunnel check, and an endpoint that isn't set.
-
-## On the command line
+## On the Command Line
 
 ```bash
 sudo drawbridge doctor
@@ -69,7 +69,7 @@ The exit status is 1 if any check failed, and 0 otherwise: warnings don't count.
 that. The checks run inside the daemon, so if `doctor` can't reach it, it says so and exits with
 status 1.
 
-## The checks
+## What Is Checked
 
 They run in this order: the tunnel first, then the host under it, then what's around the host.
 

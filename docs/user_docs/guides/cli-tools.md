@@ -7,7 +7,7 @@ daemon, the same one behind the web UI, so the two always agree: a client you ad
 line shows up in the web UI, and the other way around. This page lists the commands. The guides
 cover the bigger jobs in full.
 
-## Running commands
+## Running Commands
 
 - Run the commands as root (`sudo`) or as a member of the `drawbridge` group. They reach the daemon
   through a socket that only those two can open.
@@ -37,7 +37,7 @@ cover the bigger jobs in full.
 Printing a config or a QR code counts as handing it out, so the client shows as `current`
 afterward. A client whose config has changed since shows as `outdated`.
 
-## Server settings
+## Server Settings
 
 `server show` prints the settings, and any change that is waiting to be kept. `server set` changes
 them. Changes apply to the tunnel right away. A client's config picks up a new endpoint, port, MTU,
@@ -74,12 +74,12 @@ The daemon does what `apply` does every 30 seconds and after every change, so `a
 you don't want to wait, or after you changed something by hand with `wg` or `nft`. It never starts
 a stopped tunnel: use `sudo systemctl start drawbridge-tunnel` for that.
 
-## Checking the host
+## Checking the Host
 
 `sudo drawbridge doctor` checks the host and its network and prints a fix for each problem. It
 exits with status 1 if any check failed. See [Diagnostic tools](diagnostics.md).
 
-## The event log
+## Event Log
 
 ```bash
 sudo drawbridge events
@@ -90,7 +90,7 @@ drift the daemon corrected. Each line has the time, the event, who did it and fr
 client it was about, and the details. `--client NAME` shows only the events about one client, and
 `--limit N` shows up to N events, from 1 to 500. It shows 50 by default.
 
-## The web UI's TLS certificate
+## TLS Certificate for Web UI
 
 | Command | What it does |
 |---|---|
@@ -109,7 +109,7 @@ See [TLS certificate](tls-certificate.md).
 
 See [Backup and restore](backup-restore.md).
 
-## The admin account
+## Admin Account
 
 | Command | What it does |
 |---|---|
@@ -120,7 +120,7 @@ See [Backup and restore](backup-restore.md).
 
 `admin create` and `admin reset-password` print the new password once. Log in, then change it.
 
-## Other commands
+## Other Commands
 
 - `drawbridge version` prints the version, then the commit it was built from and that commit's
   date, such as `drawbridge v0.1.0 (abc1234, 7 Oct 2026)`. The dashboard's footer says the same.
