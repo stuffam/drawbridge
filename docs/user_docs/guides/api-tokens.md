@@ -6,7 +6,7 @@ A dashboard such as [Homepage](homepage.md) can't log in to Drawbridge: it can s
 it can't fill in a form, keep a cookie, or send the `X-Drawbridge` header. An API token is a
 credential for that. It's read-only, it shows a few numbers, and you can revoke it.
 
-## What a token can read
+## What a Token Can Read
 
 A token works on these `GET` routes and no others:
 
@@ -26,7 +26,7 @@ Those routes need a login.
 The client names, addresses, and endpoints in `/api/clients` are still information about your
 household. Treat a token like a password you've written in another program's config file.
 
-## Make one
+## Making a Token
 
 1. Open the Account page (the person icon in the header, then Settings) and find **API Tokens**.
 2. Give the token a name, such as `Homepage`, so you know which to revoke later.
@@ -42,7 +42,7 @@ If you've turned on [two-factor authentication](two-factor.md), a token still wo
 code: a dashboard can't type one. That's why a token is read-only. Making a token asks for your
 password again, as it always did, but not for a code.
 
-## Try it
+## Testing a Token
 
 ```bash
 curl -k -H 'Authorization: Bearer dbt_…' https://your-host:51821/api/server/status
@@ -54,9 +54,9 @@ curl -k -H 'Authorization: Bearer dbt_…' https://your-host:51821/api/server/st
 
 `-k` tells `curl` to skip the certificate check, which is fine for a quick look: Drawbridge's own
 certificate is self-signed. A program that keeps using the token should check the certificate
-instead; [the Homepage page](homepage.md#when-homepage-cant-reach-it) shows how.
+instead; [the Homepage page](homepage.md#troubleshooting) shows how.
 
-## Revoke, and replace
+## Revoking and Replacing a Token
 
 On the Account page, **Revoke** ends a token at once, and anything using it gets `401`. To replace
 one: make the new token, put it in the dashboard, then revoke the old one.

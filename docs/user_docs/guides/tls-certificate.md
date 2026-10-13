@@ -10,7 +10,7 @@ certificate's SHA-256 fingerprint, so you can check that the warning is about th
 If you'd rather not click through a warning, give Drawbridge a certificate your devices already
 trust. This guide is for that.
 
-## What you need
+## What You Need
 
 - A certificate and its private key, as PEM text. The certificate file should be the **full
   chain**: the server's own certificate first, then the intermediates (Let's Encrypt's
@@ -30,7 +30,7 @@ The names the certificate covers matter: a browser warns if the address in its b
 them. Drawbridge tells you which names a certificate covers and warns if it covers none of the
 host's own (its hostname, its `.local` name, its addresses) or the endpoint you set.
 
-## Install it
+## Installing a Certificate
 
 From the host:
 
@@ -49,7 +49,7 @@ it from keeps the old certificate until you reload it.
 `sudo drawbridge tls show` prints what's in use: where it came from, its names, issuer, dates, and
 fingerprint.
 
-## Renewing it
+## Renewing the Certificate
 
 **Nothing renews an installed certificate**, and Drawbridge won't swap in the self-signed one on
 its own when yours runs out. The System page's checks (and `sudo drawbridge doctor`) warn 30 days
@@ -67,7 +67,7 @@ sudo certbot renew --deploy-hook 'drawbridge tls install \
 clients have their own way to run a command after renewing.) Run `sudo drawbridge tls show`
 afterward to see the new expiry.
 
-## Going back
+## Going Back
 
 ```bash
 sudo drawbridge tls reset
@@ -76,7 +76,7 @@ sudo drawbridge tls reset
 or **Use the Self-Signed Certificate** on the System page. The installed certificate and its key
 are forgotten, and the self-signed one serves again (a new one is made if it had run out).
 
-## Where it's kept
+## Where It's Kept
 
 The chain and the key are saved in one file, `/var/lib/drawbridge/tls/uploaded.pem`, readable only
 by the `drawbridge` user. The key isn't encrypted there, like the self-signed key beside it,

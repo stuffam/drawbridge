@@ -6,13 +6,12 @@ hide:
 
 This takes you from a bare Debian-family host to a phone connected to your VPN. The steps:
 
-1. [Get the host and your network ready.](#before-you-start)
-2. [Install Drawbridge.](#install)
-3. [Set it up in your browser.](#set-it-up-in-your-browser)
-4. [Check the host.](#check-the-host)
-5. [Connect a first client.](#connect-a-first-client)
+1. [Before You Start](#before-you-start)
+2. [Install Drawbridge](#installing-drawbridge)
+3. [Post-Install](#post-install)
+4. [What's Next](#whats-next)
 
-## Before you start
+## Before You Start
 
 Check that you have these:
 
@@ -40,7 +39,7 @@ Check that you have these:
 You can install first and do the router afterward. The VPN won't work from outside until the port
 forward is in, and `drawbridge doctor` says what's still missing.
 
-## Install
+## Installing Drawbridge
 
 Drawbridge is a Debian package, `drawbridge_<version>_<arch>.deb`. Each release on GitHub has
 one for arm64 and one for amd64, and a `SHA256SUMS` file to check them against.
@@ -58,7 +57,7 @@ one for arm64 and one for amd64, and a `SHA256SUMS` file to check them against.
 
     It should print `OK` beside the package's name. If it doesn't, download the package again.
 
-### Install it
+### Install the package
 
 ```bash
 sudo apt install ./drawbridge_<version>_<arch>.deb
@@ -106,7 +105,7 @@ The token and fingerprint are yours alone (the ones above are examples). If you 
 `sudo drawbridge admin setup-token`: it shows them until the admin account exists, and then says
 that setup is done. They're in `journalctl -u drawbridge` too.
 
-### Where everything went
+### Where everything installed
 
 | Path | What |
 | --- | --- |
@@ -122,7 +121,9 @@ that setup is done. They're in `journalctl -u drawbridge` too.
 The firewall rules are in their own nftables table, `inet drawbridge`. Drawbridge never touches
 another table.
 
-## Set it up in your browser
+## Post-Install
+
+### Setting up Drawbridge in your browser
 
 From a computer or phone on your home network, open the address the install printed,
 `https://<host>:51821`. If the host's name doesn't resolve on your network, use its LAN address
@@ -164,7 +165,7 @@ Setup has three steps:
 
 Then turn on [two-factor authentication](guides/two-factor.md) if you want a second factor at login.
 
-## Check the host
+### Checking the host
 
 ```bash
 sudo drawbridge doctor
@@ -183,7 +184,7 @@ Two results are normal until your network is ready:
 - **Clock** warns on a host that keeps time with chrony or ntpd, because the check recognizes only
   `systemd-timesyncd`.
 
-## Connect a first client
+### Connecting a first client
 
 Install the WireGuard app on a phone (it's in the App Store and Google Play), or on a laptop
 ([wireguard.com/install](https://www.wireguard.com/install/)).
@@ -215,9 +216,10 @@ shows your home network's public address, and your IPv6 address if the VPN has o
 If it doesn't connect, see [Troubleshooting](guides/troubleshooting.md), which starts with
 `sudo drawbridge doctor`.
 
-## What's next
+## What's Next
 
-Add the rest of your devices (see [Clients](guides/client-configuration.md)), then make a
+Add the rest of your devices (see
+[Client configuration](guides/client-configuration.md)), then make a
 [backup](guides/backup-restore.md). It's the only way back if the host's disk fails. To install a
 newer version later, see [Upgrade](guides/upgrade.md), and to take Drawbridge off the host,
 [Remove](guides/remove.md).

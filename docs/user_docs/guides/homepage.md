@@ -6,9 +6,9 @@ title: Homepage Dashboard
 many clients are online. It can't log in to Drawbridge, so it uses a
 [read-only API token](api-tokens.md). Make a token first, then set up the widget below.
 
-## The widget
+## Homepage Widget
 
-In Homepage's `services.yaml`, under the service that should show it:
+In Homepage's `services.yaml` under the service that should show it:
 
 ```yaml
 widget:
@@ -27,7 +27,7 @@ widget:
 
 The Account page shows this with the real address and the new token filled in, to copy.
 
-## Traffic totals
+## Traffic Totals
 
 Homepage shows a value; it can't add up a list. So there are two routes that return the sums.
 
@@ -83,7 +83,7 @@ The reply is one object:
 For more than one range, use a widget for each. The reply is one object, not a list, so
 `dynamic-list` doesn't apply to it.
 
-## When Homepage can't reach it
+## Troubleshooting
 
 Three things can stop it, and each gives a different message in Homepage's log.
 

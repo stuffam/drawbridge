@@ -7,13 +7,13 @@ key pair. Every client's config holds the old public key, so **every client stop
 once**, and a device can't connect again until you import its new config. Do this only if the
 server's key may have leaked, not to tidy up.
 
-## Before you start
+## Before You Start
 
 - **Do it from your home network, not through the VPN.** You would be cut off, and the change is
   undone after a minute unless you keep it. See below.
 - **Have each device to hand.** You will give every client its config again.
 
-## Rotate the key
+## Rotating the Key
 
 1. Open **Settings**, find **Server Key**, and press **Rotate the Key…**, then confirm.
 2. The change applies at once, and a bar at the top of the page counts down a minute. Press **Keep
@@ -32,10 +32,10 @@ sudo drawbridge server confirm
 It asks before it changes anything; `--yes` skips the question. Without `--safe` the command keeps
 the new key at once. Run it from the host's own terminal, not over the VPN.
 
-## After the rotation
+## After Rotation
 
 - Every client that had been handed a config shows as **outdated** until you hand it the new one.
 - The log records that the server's key was rotated, with the new public key and never the
   private one.
 
-To change one client's keys instead, see [Rotate client keys](client-rotate-key.md).
+To change one client's keys instead, see [Rotate client keys](rotate-client-keys.md).

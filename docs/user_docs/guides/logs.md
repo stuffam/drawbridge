@@ -7,7 +7,7 @@ problems it corrected. Each entry says what happened, when, who did it (you in t
 command line, or Drawbridge itself), which client it was about, and the details. It never records
 a password, a private key, or a code.
 
-## On the Logs page
+## On the Logs Page
 
 Open **Logs** in the header. New entries appear as they happen, and the filters narrow the list:
 
@@ -24,7 +24,7 @@ phone moving from Wi-Fi to mobile data.
 
 A client's own page has an **Activity** list with just its entries.
 
-## On the command line
+## On the Command Line
 
 ```bash
 sudo drawbridge events
@@ -33,7 +33,7 @@ sudo drawbridge events
 It shows the newest entries first, 50 by default. `--limit N` shows up to 500, and `--client NAME`
 shows one client's.
 
-## In the system journal
+## In the System Journal
 
 Under systemd, every entry is also written to the system journal, with its parts as fields you can
 filter on. This shows what happened to one client:

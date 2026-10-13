@@ -24,28 +24,28 @@ nav = [
   "getting-started.md",
   { "Guides" = [
     "guides/index.md",
-    { "Client" = [
+    { "Clients" = [
       "guides/client-configuration.md",
-      "guides/client-rotate-key.md",
+      "guides/rotate-client-keys.md",
     ] },
     { "Server" = [
       "guides/server-configuration.md",
-      "guides/addressing.md",
-      "guides/server-rotate-key.md",
+      "guides/web-ui-access.md",
+      "guides/rotate-server-key.md",
       "guides/dns-settings.md",
+      "guides/addressing.md",
       "guides/adguard-home.md",
       "guides/pi-hole.md",
-      "guides/web-ui-access.md",
     ] },
     { "System" = [
-      "guides/troubleshooting.md",
       "guides/diagnostics.md",
-      "guides/logs.md",
+      "guides/tls-certificate.md",
       "guides/backup-restore.md",
       "guides/snapshots.md",
-      "guides/tls-certificate.md",
+      "guides/logs.md",
       "guides/upgrade.md",
-      "guides/remove.md"
+      "guides/remove.md",
+      "guides/troubleshooting.md",
     ] },
     { "Other Settings & Tools" = [
       "guides/api-tokens.md",

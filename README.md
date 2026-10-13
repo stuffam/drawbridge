@@ -35,7 +35,7 @@ make deb                # dist/drawbridge_<version>_arm64.deb and _amd64.deb
 
 `make help` lists every target. To install a build on a host, run `sudo apt install
 ./dist/drawbridge_<version>_<arch>.deb`, and carry on with [Getting
-started](https://stuffam.github.io/drawbridge/latest/getting-started/#set-it-up-in-your-browser).
+started](https://stuffam.github.io/drawbridge/latest/getting-started/#setting-up-drawbridge-in-your-browser).
 
 ## License
 

@@ -7,10 +7,10 @@ working **at once**: the device is out of the tunnel until you import the new on
 device is lost or its config may have leaked, and you want to keep the client's name and
 addresses.
 
-If you only want a device cut off,
-[pause or delete](client-configuration.md#pause-rename-and-delete) the client instead.
+If you only want a device cut off, [pause or
+delete](client-configuration.md#pausing-renaming-and-deleting-a-client) the client instead.
 
-## Rotate the keys
+## Rotating the Keys
 
 1. Open the client's page and press **Rotate Keys**, then confirm.
 2. The new config's QR code appears. Scan it with the WireGuard app, or press **Download .conf**
@@ -25,11 +25,11 @@ sudo drawbridge client rotate-keys phone
 It asks before it changes anything; `--yes` skips the question. Then show the new config with
 `drawbridge client qr phone`.
 
-## What to expect
+## What to Expect
 
 - The device can't connect until you import the new config.
 - The client shows as **outdated** until you have shown or downloaded the new config.
 - The log records that the keys were rotated.
 
 This changes one client. To change the key every client uses to reach the server, see
-[Rotate the server key](server-rotate-key.md).
+[Rotate the server key](rotate-server-key.md).
