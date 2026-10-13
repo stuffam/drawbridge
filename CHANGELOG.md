@@ -17,6 +17,10 @@ between sections, aren't part of a release's notes.
 
 ## [Unreleased]
 
+---
+
+## [v0.1.0] — 2026-10-13
+
 The first release of Drawbridge, a self-hosted web manager for a WireGuard VPN server. It is
 v0.1.0-rc.2, which was tried on two Raspberry Pis, with what review and further testing turned
 up: guides for every part of it, a Help icon that opens the ones for your version, a bar that
@@ -209,5 +213,6 @@ now named for the version (`drawbridge_0.1.0-rc.2_arm64.deb`), and the package's
 
 ---
 
-[Unreleased]: https://github.com/stuffam/drawbridge/compare/v0.1.0-rc.2...main
+[Unreleased]: https://github.com/stuffam/drawbridge/compare/v0.1.0...main
+[v0.1.0]: https://github.com/stuffam/drawbridge/compare/v0.1.0-rc.2...v0.1.0
 [v0.1.0-rc.2]: https://github.com/stuffam/drawbridge/releases/tag/v0.1.0-rc.2
