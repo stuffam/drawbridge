@@ -22,6 +22,18 @@ Drawbridge needs from the host and your network, and the setups where it needs a
 example, a host that configures IPv6 with ifupdown, or a router that won't forward UDP 51820), read
 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
+## How It Fits Together
+
+![A diagram of Drawbridge on its host. VPN clients reach the wg0 interface through the router's UDP
+51820 forward, and their traffic leaves through the host's own nftables table. The admin's browser
+and a dashboard reach the daemon over HTTPS on TCP 51821, and the command line talks to it over a
+Unix socket. The daemon keeps its state under /var/lib/drawbridge and /etc/drawbridge, and changes
+only wg0 and its own firewall table.](docs/diagrams/stack.svg)
+
+What runs on the host, who talks to it, and where its files are. Open the image to see it at full
+size. It's drawn by [docs/diagrams/stack.py](docs/diagrams/stack.py): to change it, change the
+script and run `make diagrams`.
+
 ## Building
 
 You need Go 1.26 or later, Node.js 24 (npm 11), and `make`.

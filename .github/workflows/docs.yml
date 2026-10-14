@@ -5,6 +5,9 @@ name: Docs
 # Every pull request that touches it is built strictly, so a broken link or a list that the site
 # shows differently from GitHub fails there. Nothing is published from a pull request, and the
 # build job below is the gate for everything that is: publishing only follows a build that passed.
+# The build also runs the docs tests, one of which checks that the README's diagram
+# (docs/diagrams/stack.svg) is what its script draws, so a change to either runs this workflow too.
+# On main that publishes `dev` again, unchanged, which is harmless.
 #
 # Publishing commits a version's built site to the gh-pages branch, and GitHub serves that branch at
 # https://stuffam.github.io/drawbridge/ with a version selector:
@@ -24,6 +27,7 @@ on:
     branches: [main]
     paths:
       - docs/user_docs/**
+      - docs/diagrams/**
       - zensical.toml
       - requirements-docs.txt
       - test/docs/**
@@ -31,6 +35,7 @@ on:
   pull_request:
     paths:
       - docs/user_docs/**
+      - docs/diagrams/**
       - zensical.toml
       - requirements-docs.txt
       - test/docs/**

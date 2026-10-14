@@ -334,6 +334,7 @@ make test-install       # scripts/install.sh against a fake release page (a Debi
 make lint-shell         # shellcheck on those scripts (skipped where it isn't installed)
 make docs               # the docs site: its tests, a strict build into site/, the list check
 make docs-serve         # preview the docs site at http://localhost:8000
+make diagrams           # draw docs/diagrams/stack.svg (the README's diagram) again from stack.py
 make test-e2e   # the web app in Chromium against `serve --backend fake` (Playwright)
 ```
 
@@ -361,7 +362,8 @@ docker run --rm -v "$PWD":/work:ro -e DRAWBRIDGE_PACKAGING_TEST=1 debian:13-slim
 
 `make docs` and `make docs-serve` make their own virtualenv (`.venv-docs`) from
 `requirements-docs.txt`, and need Python 3.10 or later: where `python3` is older, pass
-`PYTHON=python3.13`. Nothing else in the repository uses Python.
+`PYTHON=python3.13`. Besides them, only `docs/diagrams/stack.py` (`make diagrams`) uses Python, and
+it needs nothing but the standard library.
 
 The end-to-end tests start `drawbridge serve --backend fake` on port 51899 (not 51821, so a real
 daemon on the same machine is left alone) with a fresh state directory, and use the CLI for the
@@ -999,8 +1001,15 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   build that `make web` copies into `internal/webui/dist/`. `internal/sdnotify/` reports
   readiness to systemd, and `internal/version/` holds the build-time version.
 - `zensical.toml` configures the docs site (the nav, the theme, the Markdown extensions) and
-  `requirements-docs.txt` pins its build tools. `test/docs/` has the list check, and a check that no
-  tracked file names a `docs/….md` path that doesn't exist, both run by `make docs`.
+  `requirements-docs.txt` pins its build tools. `test/docs/` has the list check, a check that no
+  tracked file names a `docs/….md` path that doesn't exist, and the diagram check below, all run by
+  `make docs`.
+- `docs/diagrams/stack.py` draws `stack.svg`, the diagram of the stack that the README shows. Only
+  the script makes the SVG: change the drawing there, run `make diagrams`, and commit both.
+  `test/docs/test_diagrams.py` fails when the two differ or a line of text won't fit its box, and
+  the Docs workflow runs it when either file changes. Its facts come from the code as built, so a
+  change to the units, the package's files, a default path or port, or the CLI's commands changes
+  the drawing too, with `AS_OF` in the script set to the release it shows.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
   and `release-check.sh`, `release-notes.sh`, `release-verify.sh`, and `release-install-url.sh`
   (what `release.yml` runs; `release-notes.sh --unwrap` joins a section's wrapped lines, because

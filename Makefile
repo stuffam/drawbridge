@@ -221,6 +221,12 @@ docs: $(DOCS_VENV)/bin/zensical ## Build the docs site into site/ (strictly), an
 docs-serve: $(DOCS_VENV)/bin/zensical ## Preview the docs site at http://localhost:8000, rebuilt as docs/ changes.
 	$(DOCS_VENV)/bin/zensical serve
 
+# The README's diagram is drawn by a script (standard library only), never edited by hand, and
+# `make docs` checks that the committed SVG is what the script draws (test/docs/test_diagrams.py).
+.PHONY: diagrams
+diagrams: ## Draw docs/diagrams/stack.svg, the README's diagram, again from stack.py beside it.
+	$(PYTHON) docs/diagrams/stack.py docs/diagrams/stack.svg
+
 .PHONY: lint
 lint: lint-go lint-web lint-shell spell ## Run every linter and the spelling check.
 

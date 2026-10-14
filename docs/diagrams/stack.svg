@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1720 1256" width="1720" height="1256" role="img" aria-labelledby="t d">
+<title id="t">Drawbridge: the pieces and the paths</title>
+<desc id="d">What runs on a Drawbridge host, who talks to it and over what, where its files are, and what the package installs.</desc>
+<defs>
+<marker id="a-047857" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#047857"/></marker>
+<marker id="s-047857" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#047857"/></marker>
+<marker id="a-1D4ED8" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#1D4ED8"/></marker>
+<marker id="s-1D4ED8" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#1D4ED8"/></marker>
+<marker id="a-6D28D9" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#6D28D9"/></marker>
+<marker id="s-6D28D9" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#6D28D9"/></marker>
+<marker id="a-B45309" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#B45309"/></marker>
+<marker id="s-B45309" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#B45309"/></marker>
+<marker id="a-475569" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#475569"/></marker>
+<marker id="s-475569" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.8 L9,5 L0,9.2 Z" fill="#475569"/></marker>
+</defs>
+<rect width="1720" height="1256" fill="#F5F6F8"/>
+<text x="40" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="27" fill="#111827" font-weight="650">Drawbridge: the pieces and the paths</text>
+<text x="40" y="78" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13.5" fill="#4B5563">What runs on the host, who talks to it, and where everything lives. As built in v0.1.0.</text>
+<path d="M960,40 h30" stroke="#047857" stroke-width="2.5" stroke-linecap="round"/>
+<text x="998" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">VPN traffic</text>
+<path d="M1208,40 h30" stroke="#1D4ED8" stroke-width="2.5" stroke-linecap="round"/>
+<text x="1246" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Web UI and API, over HTTPS</text>
+<path d="M1456,40 h30" stroke="#6D28D9" stroke-width="2.5" stroke-linecap="round"/>
+<text x="1494" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Command line, over a Unix socket</text>
+<path d="M960,64 h30" stroke="#B45309" stroke-width="2.5" stroke-linecap="round"/>
+<text x="998" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Changes the kernel's state</text>
+<path d="M1208,64 h30" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<text x="1246" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Reads or writes a file</text>
+<path d="M1456,64 h30" stroke="#475569" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 4"/>
+<text x="1494" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Polls, or is optional</text>
+<rect x="40" y="112" width="220" height="92" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<path d="M48,112 h204" stroke="#047857" stroke-width="3" stroke-linecap="round"/>
+<text x="52" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">VPN clients</text>
+<text x="52" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">Phones and laptops with the</text>
+<text x="52" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">WireGuard app, from anywhere.</text>
+<rect x="500" y="112" width="240" height="92" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<path d="M508,112 h224" stroke="#1D4ED8" stroke-width="3" stroke-linecap="round"/>
+<text x="512" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">The admin's browser</text>
+<text x="512" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">On the home network, or</text>
+<text x="512" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">through the VPN.</text>
+<rect x="780" y="112" width="244" height="92" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<path d="M788,112 h228" stroke="#1D4ED8" stroke-width="3" stroke-linecap="round"/>
+<text x="792" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">A dashboard, such as Homepage</text>
+<text x="792" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">A read-only API token.</text>
+<text x="792" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">GET routes only.</text>
+<rect x="1210" y="112" width="220" height="92" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<path d="M1218,112 h204" stroke="#6D28D9" stroke-width="3" stroke-linecap="round"/>
+<text x="1222" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">The admin's terminal</text>
+<text x="1222" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">On the host, over SSH:</text>
+<text x="1222" y="173" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">sudo drawbridge …</text>
+<rect x="1460" y="112" width="220" height="92" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<path d="M1468,112 h204" stroke="#047857" stroke-width="3" stroke-linecap="round"/>
+<text x="1472" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">The internet</text>
+<text x="1472" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">And your home network: where</text>
+<text x="1472" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">clients' traffic comes out.</text>
+<rect x="40" y="262" width="1640" height="790" rx="14" fill="#FFFFFF" stroke="#1F2937" stroke-width="1.5"/>
+<text x="62" y="286" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" fill="#374151" font-weight="650" letter-spacing="0.09em">THE HOST  ·  DEBIAN-FAMILY LINUX WITH SYSTEMD, ARM64 OR AMD64</text>
+<rect x="60" y="298" width="1600" height="302" rx="10" fill="#EDF2FE" stroke="none" stroke-width="1"/>
+<text x="80" y="320" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" fill="#374151" font-weight="650" letter-spacing="0.09em">DRAWBRIDGE  ·  ONE BINARY  ·  USER drawbridge  ·  CAP_NET_ADMIN ONLY</text>
+<rect x="80" y="336" width="240" height="244" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="92" y="360" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#111827" font-weight="650">drawbridge-tunnel.service</text>
+<text x="92" y="380" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">drawbridge tunnel up | down</text>
+<text x="92" y="397" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563"></text>
+<text x="92" y="414" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">Runs once at boot. Brings the VPN</text>
+<text x="92" y="431" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">up from the database, using the</text>
+<text x="92" y="448" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">daemon's own reconciler.</text>
+<text x="92" y="465" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563"></text>
+<text x="92" y="482" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">The VPN keeps running when the</text>
+<text x="92" y="499" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">daemon stops or is upgraded.</text>
+<text x="92" y="516" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563"></text>
+<text x="92" y="533" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">Stopping this unit is what takes</text>
+<text x="92" y="550" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">the VPN down.</text>
+<rect x="372" y="336" width="808" height="244" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="388" y="360" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#111827" font-weight="650">drawbridge.service</text>
+<text x="535.2" y="360" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="#4B5563">runs  drawbridge serve: the daemon, with the web UI inside it</text>
+<rect x="388" y="376" width="250" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="398" y="400" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Web UI and API</text>
+<text x="398" y="419" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">HTTPS on TCP 51821: the web app,</text>
+<text x="398" y="435" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">/api/, and a live event stream.</text>
+<text x="398" y="451" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Home network and VPN only.</text>
+<rect x="654" y="376" width="250" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="664" y="400" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Every change, in one order</text>
+<text x="664" y="419" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">validate → database →</text>
+<text x="664" y="435" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">apply to the kernel → event.</text>
+<text x="664" y="451" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The same for the web and the CLI.</text>
+<rect x="920" y="376" width="244" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="930" y="400" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Control socket</text>
+<text x="930" y="419" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827">/run/drawbridge/control.sock</text>
+<text x="930" y="435" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">A Unix socket, for root and the</text>
+<text x="930" y="451" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">drawbridge group.</text>
+<rect x="388" y="480" width="250" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="398" y="504" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Monitor</text>
+<text x="398" y="523" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Polls wg0 every 5 s: who is</text>
+<text x="398" y="539" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">connected, sessions, traffic.</text>
+<text x="398" y="555" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Writes to disk once a minute.</text>
+<rect x="654" y="480" width="250" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="664" y="504" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Reconciler</text>
+<text x="664" y="523" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Makes the kernel match the</text>
+<text x="664" y="539" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">database: after each change,</text>
+<text x="664" y="555" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">and every 30 s to undo drift.</text>
+<rect x="920" y="480" width="244" height="84" rx="8" fill="#F8FAFC" stroke="#C7CFDA" stroke-width="1"/>
+<text x="930" y="504" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">Doctor and integrations</text>
+<text x="930" y="523" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">13 checks of the host and network.</text>
+<text x="930" y="539" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">AdGuard Home: name sync and</text>
+<text x="930" y="555" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">a client's DNS log.</text>
+<rect x="1200" y="336" width="440" height="158" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="1212" y="360" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">The command line</text>
+<text x="1338.6" y="360" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12" fill="#4B5563">drawbridge …</text>
+<text x="1212" y="382" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">client  list · add · show · pause · resume · rename · delete</text>
+<text x="1212" y="398" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">        config · qr · rotate-keys</text>
+<text x="1212" y="414" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">server  show · set · rotate-key · confirm · revert</text>
+<text x="1212" y="430" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">admin   setup-token · create · reset-password · disable-2fa</text>
+<text x="1212" y="446" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">backup  create · restore        tls  show · install · reset</text>
+<text x="1212" y="462" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827" xml:space="preserve">also    events · doctor · apply · version</text>
+<text x="1212" y="484" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#4B5563">Through the control socket. Only backup restore opens the database.</text>
+<rect x="1200" y="506" width="440" height="74" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1" stroke-dasharray="5 4"/>
+<text x="1212" y="530" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">AdGuard Home, if you run it</text>
+<text x="1212" y="549" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827">http://127.0.0.1:3000/control</text>
+<text x="1212" y="565" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Optional. The VPN works the same without it.</text>
+<rect x="60" y="624" width="1600" height="176" rx="10" fill="#FDF4E3" stroke="none" stroke-width="1"/>
+<text x="80" y="646" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" fill="#374151" font-weight="650" letter-spacing="0.09em">STATE ON DISK</text>
+<rect x="80" y="660" width="228" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="92" y="684" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827" font-weight="650">/etc/drawbridge/secret.key</text>
+<text x="92" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">32 bytes, made at install.</text>
+<text x="92" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Unseals the private keys in the</text>
+<text x="92" y="735" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">database. A backup has it;</text>
+<text x="92" y="751" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">a snapshot doesn't.</text>
+<rect x="336" y="660" width="280" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="348" y="684" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827" font-weight="650">/var/lib/drawbridge/drawbridge.db</text>
+<text x="348" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">SQLite, and the source of truth:</text>
+<text x="348" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">settings, clients, sealed keys, events,</text>
+<text x="348" y="735" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">sessions, and traffic history.</text>
+<text x="348" y="751" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Mode 0600.</text>
+<rect x="644" y="660" width="228" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="656" y="684" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827" font-weight="650">/var/lib/drawbridge/tls/</text>
+<text x="656" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">cert.pem and key.pem: the</text>
+<text x="656" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">self-signed certificate.</text>
+<text x="656" y="735" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">uploaded.pem: your own.</text>
+<rect x="900" y="660" width="228" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="912" y="684" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827" font-weight="650">/var/lib/drawbridge/backups/</text>
+<text x="912" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Snapshots of the database:</text>
+<text x="912" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">one a night, and one before</text>
+<text x="912" y="735" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">each migration.</text>
+<rect x="1156" y="660" width="258" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="1168" y="684" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827" font-weight="650">/var/lib/drawbridge/nftables.conf</text>
+<text x="1168" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The last ruleset applied, kept</text>
+<text x="1168" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">for you to read.</text>
+<rect x="1442" y="660" width="198" height="122" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="1454" y="684" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12.5" fill="#111827" font-weight="650">The systemd journal</text>
+<text x="1454" y="703" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Every event, with fields</text>
+<text x="1454" y="719" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">such as DRAWBRIDGE_EVENT</text>
+<text x="1454" y="735" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">and DRAWBRIDGE_CLIENT.</text>
+<rect x="60" y="816" width="1600" height="218" rx="10" fill="#E6F5EE" stroke="none" stroke-width="1"/>
+<text x="1640" y="838" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" fill="#374151" font-weight="650" letter-spacing="0.09em" text-anchor="end">THE KERNEL  ·  DRAWBRIDGE CHANGES ONLY ITS OWN INTERFACE AND ITS OWN TABLE</text>
+<rect x="80" y="878" width="340" height="136" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="92" y="902" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">wg0, the WireGuard interface</text>
+<text x="92" y="922" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Listens on UDP 51820. One peer for each client,</text>
+<text x="92" y="939" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">with only the addresses it may use.</text>
+<text x="92" y="956" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">By default 10.8.0.0/24 and a private IPv6 /64.</text>
+<rect x="460" y="878" width="260" height="136" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="472" y="902" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">IP forwarding</text>
+<text x="472" y="922" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827">net.ipv4.ip_forward</text>
+<text x="472" y="939" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11" fill="#111827">net.ipv6.conf.all.forwarding</text>
+<text x="472" y="956" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Turned on by the package.</text>
+<rect x="760" y="878" width="480" height="136" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="772" y="902" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">nftables: table inet drawbridge</text>
+<text x="772" y="922" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Lets clients' traffic through, and sends it out under the host's own</text>
+<text x="772" y="939" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">address (NAT44 and NAT66).</text>
+<text x="772" y="956" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Drops TCP 51821 from anywhere but the home network and the VPN.</text>
+<text x="772" y="973" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Drawbridge never touches another table.</text>
+<rect x="1280" y="878" width="360" height="136" rx="8" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="1292" y="902" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" fill="#111827" font-weight="650">The uplink (eth0, wlan0, …)</text>
+<text x="1292" y="922" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The interface with the default route. Its subnets</text>
+<text x="1292" y="939" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">are what Drawbridge counts as the home network.</text>
+<rect x="40" y="1070" width="1640" height="166" rx="12" fill="#FFFFFF" stroke="#C7CFDA" stroke-width="1"/>
+<text x="62" y="1096" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" fill="#374151" font-weight="650" letter-spacing="0.09em">PUT THERE BY THE PACKAGE  ·  drawbridge_&lt;version&gt;_&lt;arch&gt;.deb, FROM A GITHUB RELEASE, BY HAND OR WITH install.sh</text>
+<text x="62" y="1124" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/bin/drawbridge</text>
+<text x="438" y="1124" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The program: daemon, tunnel, and CLI, with the web UI inside</text>
+<text x="62" y="1146" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/systemd/system/drawbridge.service</text>
+<text x="438" y="1146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The daemon's unit</text>
+<text x="62" y="1168" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/systemd/system/drawbridge-tunnel.service</text>
+<text x="438" y="1168" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The tunnel's unit</text>
+<text x="62" y="1190" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/sysusers.d/drawbridge.conf</text>
+<text x="438" y="1190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Makes the drawbridge user</text>
+<text x="62" y="1212" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/share/doc/drawbridge/copyright</text>
+<text x="438" y="1212" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">The license</text>
+<text x="882" y="1124" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/sysctl.d/90-drawbridge.conf</text>
+<text x="1258" y="1124" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Turns on IPv4 and IPv6 forwarding</text>
+<text x="882" y="1146" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/modules-load.d/drawbridge.conf</text>
+<text x="1258" y="1146" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Loads the wireguard module at boot</text>
+<text x="882" y="1168" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/NetworkManager/conf.d/90-drawbridge.conf</text>
+<text x="1258" y="1168" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Tells NetworkManager to leave wg0 alone</text>
+<text x="882" y="1190" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/usr/lib/drawbridge/accept-ra</text>
+<text x="1258" y="1190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Run at install, to keep the host's own IPv6</text>
+<text x="882" y="1212" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#111827">/etc/sysctl.d/91-drawbridge-accept-ra.conf</text>
+<text x="1258" y="1212" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.5" fill="#4B5563">Written only where that was needed</text>
+<path d="M50,204 L50,960 L80,960" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-047857)"/>
+<circle cx="50" cy="234" r="4" fill="#047857"/>
+<rect x="62" y="222" width="212" height="24" rx="12" fill="#FFFFFF" stroke="#047857" stroke-width="1"/>
+<text x="74" y="238" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#047857" font-weight="650">Home router forwards UDP 51820</text>
+<path d="M420,946 L460,946" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-047857)"/>
+<path d="M720,946 L760,946" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-047857)"/>
+<path d="M1240,946 L1280,946" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-047857)"/>
+<path d="M1640,946 L1670,946 L1670,204" fill="none" stroke="#047857" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-047857)"/>
+<text x="1660" y="246" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#047857" font-weight="650" text-anchor="end">Out the uplink, after NAT</text>
+<path d="M620,204 L620,336" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-1D4ED8)"/>
+<text x="612" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#1D4ED8" font-weight="650" text-anchor="end">HTTPS, TCP 51821</text>
+<path d="M800,204 L800,232 L640,232 L640,336" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-1D4ED8)"/>
+<text x="650" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#1D4ED8" font-weight="650">Same port, with the token</text>
+<path d="M1320,204 L1320,336" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-6D28D9)"/>
+<text x="1328" y="246" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#6D28D9" font-weight="650">Runs commands</text>
+<path d="M1200,418 L1164,418" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-6D28D9)"/>
+<path d="M886,564 L886,878" fill="none" stroke="#B45309" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-B45309)"/>
+<path d="M886,860 L300,860 L300,878" fill="none" stroke="#B45309" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-B45309)"/>
+<text x="896" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#B45309" font-weight="650">wgctrl, netlink, nft -f</text>
+<path d="M92,580 L92,612 L70,612 L70,902 L80,902" fill="none" stroke="#B45309" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-B45309)"/>
+<path d="M630,564 L630,848 L200,848 L200,878" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)" stroke-dasharray="5 4"/>
+<text x="640" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Polls the peers</text>
+<path d="M250,580 L250,594 L400,594 L400,660" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)"/>
+<text x="408" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Reads</text>
+<path d="M480,580 L480,660" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)" marker-start="url(#s-475569)"/>
+<text x="488" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Reads and writes</text>
+<path d="M308,720 L336,720" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)"/>
+<path d="M760,580 L760,660" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)" marker-start="url(#s-475569)"/>
+<text x="768" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Certificates</text>
+<path d="M1040,580 L1040,660" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)"/>
+<text x="1048" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Snapshots</text>
+<path d="M1168,580 L1168,660" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)"/>
+<text x="1176" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" font-weight="650">Saves the ruleset</text>
+<path d="M1164,522 L1200,522" fill="none" stroke="#475569" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#a-475569)" stroke-dasharray="5 4"/>
+</svg>
