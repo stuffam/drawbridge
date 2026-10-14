@@ -130,8 +130,8 @@ setups.** What exists:
   moves. The getting-started page (`docs/user_docs/getting-started.md`, 2026-10-04, rewritten for a
   release's package on 2026-10-09) covers what to have first, downloading and installing a release's
   package (by hand, or with `install.sh`), first-run setup, the doctor, and a first client;
-  upgrading and removing are guides beside it. Left in M5: router setup and troubleshooting, and
-  cutting the first release.
+  upgrading and removing are guides beside it, and so is a troubleshooting guide. Left in M5: router
+  setup.
 - The release pipeline (2026-10-05, the tenth slice of M5, docs/PLAN.md §11.1): a `vX.Y.Z` tag on
   `main` starts `.github/workflows/release.yml`, which checks the tag (`scripts/release-check.sh`),
   runs every CI job on it (`ci.yml` has a `workflow_call` trigger), builds both packages with
@@ -142,8 +142,9 @@ setups.** What exists:
   The scripts have tests (`make test-release`, `make test-install`, CI's "Release scripts" job).
   v0.1.0-rc.1 was tagged (2026-10-07) and never published, because GitHub renames a `~` in an
   asset's name. v0.1.0-rc.2 is the first release candidate, a pre-release published 2026-10-08
-  after its files were tried on two Raspberry Pis. "The first release" means v0.1.0, which is next
-  (§11.1, docs/MANUAL_CHECKLIST.md §20).
+  after its files were tried on two Raspberry Pis. v0.1.0, the first release, was published
+  2026-10-14, after its own files were tried on a Raspberry Pi and an amd64 virtual server (§11.1,
+  docs/MANUAL_CHECKLIST.md §20).
 - The authenticated JSON API over HTTPS on port 51821 (`internal/api/openapi.json`): first-run
   setup, sessions, server settings, clients, and the event log, reachable only from the LAN and
   the VPN. A dashboard that can't log in (Homepage) reads the status with a read-only API token,

@@ -7,7 +7,7 @@ hide:
 This takes you from a bare Debian-family host to a phone connected to your VPN. The steps:
 
 1. [Before You Start](#before-you-start)
-2. [Install Drawbridge](#installing-drawbridge)
+2. [Installing Drawbridge](#installing-drawbridge)
 3. [Post-Install](#post-install)
 4. [What's Next](#whats-next)
 

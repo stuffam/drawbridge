@@ -1562,7 +1562,8 @@ maintainer's login, so `install.sh` can't try a draft, and a published release c
 pre-release is public and never "latest", which makes it the rehearsal. The draft's own files are
 what to install, not a build from the tree. The first candidate, `v0.1.0-rc.1`, was tagged on
 2026-10-07 and found that GitHub renames a `~` in a file's name (below), so it was never published
-and the candidate that's tried is `v0.1.0-rc.2`.
+and the candidate that's tried is `v0.1.0-rc.2`. The first final release, `v0.1.0`, was tagged on
+2026-10-13 and published on 2026-10-14 at 01:20 UTC; the items that name it are its results.
 
 - `[VERIFIED 2026-10-05]` A dry run (`release.yml` started by hand on a branch, or on a pull request
   that touches it) passes in Actions: the build, the check of the files, and the second build, whose
@@ -1593,6 +1594,16 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   version: the same check, on `v0.1.0-rc.2`. Run 37717349067 (about 10 minutes) succeeded, "Draft
   the release" included, and the draft has seven files, named `drawbridge_0.1.0-rc.2_arm64.deb` and
   so on, with the `-` kept.
+- `[VERIFIED 2026-10-13]` The same on `v0.1.0`, the first final release. Pushing the tag ran the
+  whole workflow (run 38332928741, about 11 minutes), and all 13 jobs succeeded: "Check the tag",
+  all nine of CI's jobs, "Build", "Build again" (the packages byte for byte the first build's, on
+  its own runner), and "Draft the release". The draft was not marked a pre-release, with seven files
+  named `drawbridge_0.1.0_arm64.deb` and so on, and with the changelog's section and the install
+  footer as its notes. One thing was fixed by hand before it was published: GitHub shows each
+  newline in a release's notes as a line break, so the changelog's 100-column lines came out ragged
+  (the published `v0.1.0-rc.2` notes are the same). The draft's description was replaced with the
+  same text, each paragraph and bullet on one line, with `gh release edit --notes-file`, and
+  nothing else about the draft changed.
 - `[VERIFIED 2026-10-07]` `gh attestation verify drawbridge_<version>_<arch>.deb --repo
   stuffam/drawbridge` succeeds for each package, `install.sh`, `SHA256SUMS`, and the three SBOMs of
   `v0.1.0-rc.2` (gh 2.102.0, on a Mac, with the draft's files from `gh release download`), and fails
@@ -1600,6 +1611,14 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   certificate names `.github/workflows/release.yml@refs/tags/v0.1.0-rc.2` at commit `4e52c6d`. The
   command needs gh 2.49 or later: the Raspberry Pi's gh is older and says `unknown command
   "attestation"`, so run it where gh is current (see docs/releasing.md).
+- `[VERIFIED 2026-10-14]` `gh attestation verify` succeeds for `v0.1.0`'s files. One attestation
+  covers all seven of them (they are its subjects), so a check of any one returns the same signed
+  statement, which lists the others' digests, and its certificate names
+  `.github/workflows/release.yml@refs/tags/v0.1.0` at commit `1d3e75f`. The maintainer ran it on the
+  arm64 package from a Mac on 2026-10-13 (digest `fa467f05…`, one attestation matched), and it was
+  run again on the amd64 package and on `SHA256SUMS` from the published release (gh 2.102.0, on a
+  Mac, exit 0 for both). When its output isn't a terminal it prints nothing on success: read its
+  exit status, or pass `--format json`.
 - `[VERIFIED 2026-10-07]` The sums in `SHA256SUMS` match the downloaded files of `v0.1.0-rc.2`, all
   six of them (`shasum -a 256 -c SHA256SUMS` on a Mac; the same check with `sha256sum -c
   --ignore-missing` on the Pi is the next item's first step).
@@ -1641,10 +1660,36 @@ and the candidate that's tried is `v0.1.0-rc.2`.
       phone on cellular connected, with `wg show wg0` listing it at its carrier's address and the
       web UI loading on it through the VPN; and a probe of TCP 51821 from a home laptop that
       timed out, with the port open and closed in the provider's firewall.
-- `[NEXT]` The same with the draft of `v0.1.0`'s own amd64 package, installed from the draft's
-  files, once there is a tag. The package above came from `main`, not from a release. (The draft
-  of `v0.1.0-rc.2` was only inspected: an x86-64 binary, the same file list as the arm64 package,
-  and byte-identical shared files.)
+- `[VERIFIED 2026-10-13]` The draft of `v0.1.0`'s own arm64 package on a Raspberry Pi (step 5 of
+  docs/releasing.md; the model and the OS weren't recorded). `sha256sum -c --ignore-missing
+  SHA256SUMS` on the Pi printed six OK lines, and `gh attestation verify` for the arm64 package ran
+  on a Mac, where gh is current. The maintainer installed the package over `v0.1.0-rc.2` with a
+  phone connected over cellular, and the phone stayed connected. After `apt purge`, they installed
+  it again as a fresh install. `drawbridge version` said `v0.1.0` both times. Nothing else was
+  recorded.
+- `[VERIFIED 2026-10-14]` The same with `v0.1.0`'s own amd64 package, installed from the draft's
+  files before it was published: `drawbridge_0.1.0_amd64.deb`, whose checksum matched `SHA256SUMS`,
+  on a Debian 13 amd64 virtual server at a hosting provider (kernel 6.12.111, systemd 257,
+  systemd-networkd). Run with `amd64-vm-check.sh` as root between about 00:50 and 01:05 UTC, and its
+  log (90 passes, no failures) was read afterward.
+    - A fresh install. The package is amd64 and `0.1.0`, the binary is x86-64, and `drawbridge
+      version` says `v0.1.0 (1d3e75f, 13 Oct 2026)`. Both units were active and enabled under their
+      real x86_64 syscall filter and scored 1.8 OK, and the journal had no refusal or blocked
+      syscall. The doctor passed everything but two results: the warning for a public range on the
+      uplink, expected on a hosting provider's server, and the endpoint, which fails until it's
+      set.
+    - A client in a network namespace on the host: a handshake, pings of the server over IPv4 and
+      IPv6, the web UI through the tunnel over both, and pings out through the host over IPv4 and
+      IPv6 (NAT44 and NAT66, the line that the `+78` build's first run above lacks). A paused
+      client got no answer and came back on resume. A backup, a purge, a reinstall, and `backup
+      restore` gave the same state and a new handshake from the old config.
+    - The published `install.sh --version v0.1.0-rc.2`, on the purged host, chose the amd64 package
+      again. The draft's package then went over it with the client pinging every 0.2 s: 0 of 200
+      lost, the tunnel unit not restarted, `wg0` not recreated, the daemon restarted onto the new
+      build, and the client's config unchanged.
+    - The maintainer ran the steps that need a person on that server (the web UI over an SSH
+      tunnel, a phone on cellular, and the probe of TCP 51821 from outside) and reported nothing
+      unexpected. The details weren't recorded.
 - `[VERIFIED 2026-10-07]` With `v0.1.0-rc.2` published (2026-10-08 02:54 UTC, a pre-release,
   immutable), `sh install.sh --version v0.1.0-rc.2`, on a host without Drawbridge, downloads it from
   GitHub, checks it, and installs it, with the setup token at the end. The maintainer ran it on a
@@ -1659,13 +1704,24 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   `/releases/latest` redirects to `/releases/tag/<tag>` on a repository with releases, and to
   `/releases` on one without (this one, then), and `/releases/download/<tag>/<file>` resolves to the
   file.
-- `[UNVERIFIED]` After v0.1.0 is published, `curl -fsSL
-  https://github.com/stuffam/drawbridge/releases/latest/download/install.sh | sh` asks on the
-  terminal (it can't read standard input for it), and picks v0.1.0 and not the release candidate.
-- `[UNVERIFIED]` The package's upgrade over the previous release keeps the tunnel up and the data
-  (§2 and §18 do it for builds from the tree; this is the same with the released file). The first
-  release has nothing before it, so this waits for the second. Seen so far, with the draft's own
-  file over a build from the tree instead: the maintainer upgraded an older build on their own
+- `[VERIFIED 2026-10-14]` With `v0.1.0` published (at 01:20 UTC, and "latest"), `/releases/latest`
+  redirects to `/releases/tag/v0.1.0`, and the published `install.sh`
+  (`.../releases/latest/download/install.sh`), run as `sh install.sh --yes` with no `--version`,
+  picks `v0.1.0` and not the release candidate. Run in a Debian 13 container with real systemd
+  (arm64, on a Mac), it downloaded `drawbridge_0.1.0_arm64.deb`, said the checksum matched,
+  installed `0.1.0`, printed the setup token, and left both units active, and `drawbridge version`
+  said `v0.1.0 (1d3e75f, 13 Oct 2026)`.
+- `[UNVERIFIED]` The piped form, `curl -fsSL
+  https://github.com/stuffam/drawbridge/releases/latest/download/install.sh | sh`, asks on the
+  terminal (it can't read standard input for it).
+- `[VERIFIED 2026-10-14]` The package's upgrade over the previous release keeps the tunnel up and
+  the data (§2 and §18 do it for builds from the tree; this is the same with the released file).
+  `v0.1.0`'s own files over `v0.1.0-rc.2`: on the amd64 server above, with a client pinging every
+  0.2 s (0 of 200 lost, the tunnel unit not restarted, `wg0` not recreated, the client's config
+  unchanged), and on a Raspberry Pi, with a phone connected over cellular, which stayed connected
+  (2026-10-13). Both builds are schema 11, so no migration ran: `v0.1.1` over `v0.1.0`, and the
+  first release that adds a migration, are still to see. Seen earlier, with `v0.1.0-rc.2`'s draft
+  over a build from the tree instead: the maintainer upgraded an older build on their own
   Raspberry Pi, with its real VPN, and reported no problems (2026-10-07). In the same container host
   as above (2026-10-07), `v0.0.0-aold`
   (`3f0314d`, schema 10) with a client connected, then `apt-get install` of the `v0.1.0-rc.2`
@@ -1691,26 +1747,42 @@ and the candidate that's tried is `v0.1.0-rc.2`.
   (`provider: mike`, `alias: true`), and the old unversioned address `/getting-started/` was a 404,
   as expected. Not seen: what the environment does without its second setting, because both were
   changed together.
-- `[NEXT]` Publishing `v0.1.0` (docs/releasing.md, step 6) starts the **Docs** workflow on the tag,
-  and **Publish** succeeds: `gh-pages` gets `v0.1` with the alias `latest` beside `dev`,
-  `versions.json` lists `v0.1` with `latest`, the version selector says "v0.1 latest", and the
-  site's root goes to `latest/` and from there to `v0.1/`. The commands that do it have only run
-  against a local remote (ADR 0013).
-- `[NEXT]` The install guide link in `v0.1.0`'s notes, `.../drawbridge/v0.1/getting-started/`,
-  opens the guide once the docs have published. The notes exist before then, so the link is dead
-  while the **Docs** run is going.
-- `[NEXT]` A push to `main` that changes the docs, after `v0.1.0`, publishes `dev` and nothing else:
-  `latest` and the root stay where they are.
+- `[VERIFIED 2026-10-14]` Publishing `v0.1.0` (docs/releasing.md, step 6) started the **Docs**
+  workflow on the release (run 38495149843, at 01:20 UTC), and it succeeded. `gh-pages` has `v0.1`
+  with the alias `latest` beside `dev`, `versions.json` lists `v0.1` with `latest`, the version
+  selector says "v0.1 latest", and the site's root is a redirect page to `latest/`. The `latest/`
+  pages are redirect pages too: their script goes to `../../v0.1/...` with the query and the
+  `#anchor` carried along, and a `<noscript>` meta refresh follows without them. This is the first
+  time the version and alias commands ran against GitHub itself (they had run against a local
+  remote, ADR 0013; the earlier publish was `dev`). The pages that `v0.1.0`'s notes, the README, and
+  the app link to, such as `v0.1/getting-started/`, `v0.1/guides/`, and
+  `v0.1/guides/diagnostics/`, answered 200, as did the `latest/` addresses tried and `dev/`, and
+  the old unversioned `/getting-started/` is still a 404.
+- `[VERIFIED 2026-10-14]` The install guide link in `v0.1.0`'s notes,
+  `.../drawbridge/v0.1/getting-started/`, opens the guide now that the docs have published, with
+  the headings of the reworked pages (#86).
+- `[VERIFIED 2026-10-14]` The README's link to the setup heading,
+  `.../drawbridge/latest/getting-started/#setting-up-drawbridge-in-your-browser`, goes through the
+  `latest/` redirect to `v0.1/getting-started/` and lands on the heading "Setting up Drawbridge in
+  your browser" (in the built-in browser: the heading at the top of the window, and it stayed
+  there). The anchor is that heading's own, so renaming the heading breaks the link, and nothing
+  checks it.
+- `[UNVERIFIED]` A push to `main` that changes the docs, after `v0.1.0`, publishes `dev` and nothing
+  else: `latest` and the root stay where they are. The next push that changes the docs is the first
+  to show it.
 - `[NEXT]` Publishing `v0.1.1` refreshes `v0.1`, which keeps `latest`, and leaves `dev` alone.
 - `[NEXT]` A pre-release publishes no docs: the **Docs** run for the next pre-release, if there is
   one, shows **Build** and **Publish** skipped. (`v0.1.0-rc.2` was published before the workflow
   listened for releases.)
-- `[NEXT]` The addresses the app prints open the guide they name. On an installed `v0.1.0`, the
-  uplink check's hint (a host with no IPv6 default route) and `serve`'s newer-database error name
-  `.../drawbridge/v0.1/guides/...`; on a pre-release or a build between releases they name `dev`;
-  and the line `postinst` prints when it can't check `accept_ra` names the Diagnostic Tools guide
-  under `latest`. Each opens once its docs have published.
-- `[NEXT]` The web UI's **Help** icon opens the guides' index for the build in a new tab. On an
-  installed `v0.1.0` it opens `.../drawbridge/v0.1/guides/`, which loads once the **Docs** run has
-  published `v0.1`, and the System page's links to the backup and snapshot guides open under `v0.1`
-  too. On a pre-release or a build between releases it opens `dev`.
+- `[UNVERIFIED]` The addresses the app prints open the guide they name. On an installed `v0.1.0`,
+  the uplink check's hint (a host with no IPv6 default route) and `serve`'s newer-database error
+  name `.../drawbridge/v0.1/guides/...`; on a pre-release or a build between releases they name
+  `dev`; and the line `postinst` prints when it can't check `accept_ra` names the Diagnostic Tools
+  guide under `latest`. Seen so far: on the amd64 server's installed `v0.1.0`, the doctor's hint for
+  a public range names `.../drawbridge/v0.1/guides/diagnostics/`, which answers 200. The others
+  haven't been opened.
+- `[UNVERIFIED]` The web UI's **Help** icon opens the guides' index for the build in a new tab. On
+  an installed `v0.1.0` it opens `.../drawbridge/v0.1/guides/`, which now loads (it answers 200),
+  and the System page's links to the backup and snapshot guides open under `v0.1` too. On a
+  pre-release or a build between releases it opens `dev`. The icon hasn't been clicked on an
+  installed `v0.1.0`.
