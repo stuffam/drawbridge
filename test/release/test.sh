@@ -129,6 +129,114 @@ same "notes: the last section, without its --- or the link definitions at the fo
 expect "notes: a version with no section" 1 'no section' "$notes" v3.0.0 "$work/CHANGELOG.md"
 expect "notes: no changelog" 1 "can't read" "$notes" v1.0.0 "$work/nope.md"
 expect "notes: a missing argument" 1 'usage' "$notes"
+expect "notes: an option it doesn't have is a usage error, not a version" 1 'usage' "$notes" --nope v1.2.0
+
+# GitHub's release page shows every newline in a release's notes as a line break, so the
+# changelog's 100-column lines come out ragged there. `--unwrap` joins the lines of a paragraph or
+# a list item into one. What a newline means in Markdown stays as it was: a block's start (a
+# heading, a list item, a rule, a table row, a quote, a link definition), a fenced code block, and
+# a hard break (two spaces or a backslash at the end of a line). `@@` stands for two trailing
+# spaces, which an editor might strip from this file.
+fixture() { sed 's/@@$/  /'; }
+fixture >"$work/CHANGELOG-wrapped.md" <<'EOF'
+## [v2.0.0] — 2026-11-01
+
+A paragraph that is wrapped
+over three lines, with a
+[link that
+wraps](https://example.com/x).
+
+### Notes
+
+- **A bullet that wraps** at a hundred
+  columns, and has a second line.
+- A short bullet.
+    - A nested bullet that
+      wraps too.
+1. A numbered item that
+   wraps.
+2. The second item.
+
+A line with a hard break@@
+after two spaces, and one with a\
+backslash.
+
+```bash
+sudo drawbridge doctor
+  --keep   # stays as it is
+```
+
+| A | B |
+| --- | --- |
+| a long cell | another |
+
+> A quote
+> over two lines.
+
+Text just above a heading
+### Right below it
+
+[guide]: https://example.com/guide
+After the definition, a paragraph
+that wraps.
+
+## [v1.0.0] — 2026-10-01
+
+Old.
+EOF
+want=$(
+	fixture <<'EOF'
+A paragraph that is wrapped over three lines, with a [link that wraps](https://example.com/x).
+
+### Notes
+
+- **A bullet that wraps** at a hundred columns, and has a second line.
+- A short bullet.
+    - A nested bullet that wraps too.
+1. A numbered item that wraps.
+2. The second item.
+
+A line with a hard break@@
+after two spaces, and one with a\
+backslash.
+
+```bash
+sudo drawbridge doctor
+  --keep   # stays as it is
+```
+
+| A | B |
+| --- | --- |
+| a long cell | another |
+
+> A quote
+> over two lines.
+
+Text just above a heading
+### Right below it
+
+[guide]: https://example.com/guide
+After the definition, a paragraph that wraps.
+EOF
+)
+same "notes --unwrap: paragraphs and list items on one line, blocks, fences, and hard breaks as they were" \
+	"$want" "$("$notes" --unwrap v2.0.0 "$work/CHANGELOG-wrapped.md" 2>&1)"
+expect "notes: without --unwrap the section keeps its line breaks" 0 '^over three lines, with a$' \
+	"$notes" v2.0.0 "$work/CHANGELOG-wrapped.md"
+expect "notes --unwrap: a version with no section" 1 'no section' "$notes" --unwrap v3.0.0 "$work/CHANGELOG-wrapped.md"
+{
+	echo '## [v9.0.0] — 2026-11-02'
+	echo
+	printf '%s\n' "$want"
+} >"$work/CHANGELOG-again.md"
+same "notes --unwrap: unwrapping what is unwrapped already changes nothing" \
+	"$want" "$("$notes" --unwrap v9.0.0 "$work/CHANGELOG-again.md" 2>&1)"
+# However it is wrapped, no word may be lost or changed, for every release in the real changelog.
+while read -r v; do
+	same "notes --unwrap: $v's words are the section's, in the real changelog" \
+		"$("$notes" "$v" "$root/CHANGELOG.md" | tr -s '[:space:]' ' ')" \
+		"$("$notes" --unwrap "$v" "$root/CHANGELOG.md" | tr -s '[:space:]' ' ')"
+done < <(sed -n 's/^## \[\(v[^]]*\)\].*/\1/p' "$root/CHANGELOG.md")
 
 # ---- changelog-release.sh ----
 
@@ -515,6 +623,12 @@ expect "docs.yml: a release's publish has a concurrency group of its own" 0 "eve
 named="VERSION: \${{ needs.check.outputs.version || '0.0.0-dev' }}"
 same "release.yml: both builds are given the tag's version, and a dry run's is 0.0.0-dev" 2 \
 	"$(grep -cF -- "$named" "$root/.github/workflows/release.yml")"
+
+# The draft's description is the changelog's section, and GitHub shows each newline in it as a line
+# break, so the section is joined first (see release-notes.sh --unwrap).
+# shellcheck disable=SC2016 # $TAG is the workflow's variable, written out as the workflow has it
+same "release.yml: the draft's notes are the section with its lines joined" 1 \
+	"$(grep -cF 'scripts/release-notes.sh --unwrap "$TAG"' "$root/.github/workflows/release.yml")"
 
 # ---- release-verify.sh ----
 
