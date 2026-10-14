@@ -172,12 +172,13 @@ jobs:
           notes=$(mktemp)
           # A release's notes can't change once published, so the link names this version's docs.
           install_url=$(scripts/release-install-url.sh "$TAG")
+          # GitHub shows each newline in a release's description as a line break, so the changelog's
+          # section is joined into one line per paragraph and list item, and so is the footer.
           {
-            scripts/release-notes.sh "$TAG"
+            scripts/release-notes.sh --unwrap "$TAG"
             printf '\n---\n\n**Install:** follow the [install guide](%s).\n' "$install_url"
             cat <<'EOF'
-          **Check what you downloaded:** `sha256sum -c --ignore-missing SHA256SUMS`, and
-          `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
+          **Check what you downloaded:** `sha256sum -c --ignore-missing SHA256SUMS`, and `gh attestation verify drawbridge_*.deb --repo stuffam/drawbridge`.
           EOF
           } >"$notes"
           args=(--draft --verify-tag --title "$TAG" --notes-file "$notes")
