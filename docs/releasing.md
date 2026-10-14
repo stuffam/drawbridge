@@ -91,7 +91,7 @@ once it's pushed, so make it, check it, and only then push it:
 git fetch origin
 git switch main
 git pull --ff-only
-git tag -a v0.1.0 -m "Drawbridge v0.1.0"
+git tag -a v0.1.0 -m "v0.1.0"
 scripts/release-check.sh v0.1.0
 ```
 
@@ -152,9 +152,11 @@ whatever changed since the last release); record what you saw there.
 gh release edit v0.1.0 --repo stuffam/drawbridge --draft=false
 ```
 
-Or open the draft on GitHub and press **Publish release**. After this its files can't be changed
-and its tag can't move, so don't publish until step 5 is done. A pre-release is published the
-same way and is marked as one.
+Or open the draft on GitHub, press **Edit**, and press **Publish release** at the bottom of the
+form. The draft's page has no publish button of its own, and **Draft a new release** starts a
+different release, so don't use it. In the form, leave the tag as `v0.1.0`, an existing tag. After
+this its files can't be changed and its tag can't move, so don't publish until step 5 is done. A
+pre-release is published the same way and is marked as one.
 
 ## Step 7: afterward
 
