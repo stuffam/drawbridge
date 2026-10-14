@@ -51,6 +51,12 @@ before installing or upgrading (a downgrade isn't supported, a setting that now 
 else, a test that was changed on purpose), then what changed, under Added, Changed, Fixed, and the
 like.
 
+The changelog stays wrapped at 100 columns. GitHub shows each newline in a release's notes as a
+line break, so the workflow joins each paragraph and list item into one line before it drafts the
+release (`scripts/release-notes.sh --unwrap`). Headings, list items, tables, quotes, fenced code,
+and lines that end in a hard break keep their line breaks. Write code in a fence, not an indented
+block.
+
 A published release's notes can't change, so a link in them has to stay right. Link to a guide on
 the docs site by its version, `https://stuffam.github.io/drawbridge/v0.1/getting-started/`, where
 `v0.1` is the release's minor. Link to a file that isn't on the site (the requirements, the manual

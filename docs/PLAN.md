@@ -1549,7 +1549,9 @@ package does once it's installed (above).
        the config fingerprint, which flags every client that was handed a config as outdated; a
        setting that now means something else), then what changed, under Added, Changed, Fixed, and
        the like. `scripts/release-notes.sh` takes the notes from the heading to the next `## `
-       heading and leaves out the `---` lines and the links that close it.
+       heading and leaves out the `---` lines and the links that close it. The workflow gives it
+       `--unwrap`, which joins the lines of each paragraph and list item into one, because GitHub's
+       release page shows a newline as a line break and the changelog is wrapped at 100 columns.
     2. Run the on-hardware checklist (§12) on the reference platform for what changed since the
        last release, with the CI artifact built from the commit to be tagged.
     3. Tag that commit (`git tag -a vX.Y.Z`) and push the tag. The workflow below does the rest,

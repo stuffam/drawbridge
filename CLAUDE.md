@@ -1002,7 +1002,9 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
   tracked file names a `docs/….md` path that doesn't exist, both run by `make docs`.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
   and `release-check.sh`, `release-notes.sh`, `release-verify.sh`, and `release-install-url.sh`
-  (what `release.yml` runs; the last makes the install guide's link for a release's notes), and
+  (what `release.yml` runs; `release-notes.sh --unwrap` joins a section's wrapped lines, because
+  GitHub shows a newline in a release's description as a line break, and `release-install-url.sh`
+  makes the install guide's link for a release's notes), and
   `changelog-release.sh` (what the Prepare release workflow runs: it turns `[Unreleased]` into a
   version's section and rebuilds the links at the foot of `CHANGELOG.md`), and `docs-version.sh`
   (what `docs.yml` runs for a published release: the docs version it publishes as, and whether
