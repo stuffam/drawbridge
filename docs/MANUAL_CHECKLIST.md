@@ -1767,10 +1767,20 @@ and the candidate that's tried is `v0.1.0-rc.2`. The first final release, `v0.1.
   your browser" (in the built-in browser: the heading at the top of the window, and it stayed
   there). The anchor is that heading's own, so renaming the heading breaks the link, and nothing
   checks it.
-- `[UNVERIFIED]` A push to `main` that changes the docs, after `v0.1.0`, publishes `dev` and nothing
-  else: `latest` and the root stay where they are. The next push that changes the docs is the first
-  to show it.
+- `[VERIFIED 2026-10-14]` A push to `main` that changes the docs, after `v0.1.0`, publishes `dev`
+  and nothing else: `latest` and the root stay where they are. The merge of #89 (`bbb718e`, which
+  changed the link text in Getting Started's list) ran the **Docs** workflow (run 38497548731, which
+  succeeded), and its commit on `gh-pages` (`4acec76`, "Deployed bbb718e to dev") touched only
+  `dev/`. `versions.json` still lists `dev` and `v0.1` with `latest`, the root and the `latest/`
+  pages were as they were, and `dev/getting-started/` shows the new text while
+  `v0.1/getting-started/` keeps the old. A page read right after the Pages build can still be the
+  previous one: Pages sends `cache-control: max-age=600`.
 - `[NEXT]` Publishing `v0.1.1` refreshes `v0.1`, which keeps `latest`, and leaves `dev` alone.
+- `[NEXT]` The draft of the next release has notes with no ragged lines. Its draft step gives
+  `release-notes.sh` `--unwrap` (#90), so the description is the changelog's section with each
+  paragraph and list item on one line, and the footer's two lines are separate lines. That is the
+  first draft the workflow joins itself: `v0.1.0`'s was joined by hand, and `v0.1.0-rc.2`'s
+  published notes are ragged.
 - `[NEXT]` A pre-release publishes no docs: the **Docs** run for the next pre-release, if there is
   one, shows **Build** and **Publish** skipped. (`v0.1.0-rc.2` was published before the workflow
   listened for releases.)
