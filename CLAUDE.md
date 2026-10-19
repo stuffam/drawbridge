@@ -1007,9 +1007,11 @@ the router allows inbound UDP 51820 to the host's stable address (with a real cl
 - `docs/diagrams/stack.py` draws `stack.svg`, the diagram of the stack that the README shows. Only
   the script makes the SVG: change the drawing there, run `make diagrams`, and commit both.
   `test/docs/test_diagrams.py` fails when the two differ or a line of text won't fit its box, and
-  the Docs workflow runs it when either file changes. Its facts come from the code as built, so a
-  change to the units, the package's files, a default path or port, or the CLI's commands changes
-  the drawing too, with `AS_OF` in the script set to the release it shows.
+  the Docs workflow runs it when either file changes. `.gitattributes` marks the SVG
+  `linguist-generated`, so a pull request's diff folds it and the script is what gets reviewed. Its
+  facts come from the code as built, so a change to the units, the package's files, a default path
+  or port, or the CLI's commands changes the drawing too, with `AS_OF` in the script set to the
+  release it shows.
 - `scripts/` holds the release's scripts (docs/PLAN.md §11.1): `install.sh` (what an admin runs),
   and `release-check.sh`, `release-notes.sh`, `release-verify.sh`, and `release-install-url.sh`
   (what `release.yml` runs; `release-notes.sh --unwrap` joins a section's wrapped lines, because
