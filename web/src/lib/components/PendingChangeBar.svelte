@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { api } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { changeLines, pending, secondsLeft, setPending } from '$lib/pending.svelte';
+	import { api } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { changeLines, pending, secondsLeft, setPending } from '#lib/pending.svelte.js';
 
 	let now = $state(Date.now());
 	let busy = $state(false);

@@ -3,10 +3,10 @@
 	// opens and again whenever the admin asks. A check can take a few seconds (it asks DNS), so
 	// the list stays up while it runs again, and the new results replace it together.
 	import { onMount } from 'svelte';
-	import { api, type CheckStatus, type DiagnosticCheck } from '$lib/api';
-	import { needsAttention, statusLabels, summarize } from '$lib/diagnostics';
-	import { errorMessage } from '$lib/errors';
-	import { formatClock } from '$lib/format';
+	import { api, type CheckStatus, type DiagnosticCheck } from '#lib/api.js';
+	import { needsAttention, statusLabels, summarize } from '#lib/diagnostics.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatClock } from '#lib/format.js';
 
 	let checks = $state<DiagnosticCheck[]>();
 	let checkedAt = $state<Date>();

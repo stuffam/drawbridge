@@ -5,9 +5,9 @@
 	// of the admin's next login. The daemon checks the pair before anything changes, and the next
 	// connection is shown the new certificate with no restart.
 	import { onMount } from 'svelte';
-	import { api, type Certificate } from '$lib/api';
-	import { checkPem, describeValidity, sourceLabels } from '$lib/certificate';
-	import { errorMessage } from '$lib/errors';
+	import { api, type Certificate } from '#lib/api.js';
+	import { checkPem, describeValidity, sourceLabels } from '#lib/certificate.js';
+	import { errorMessage } from '#lib/errors.js';
 	import CopyButton from './CopyButton.svelte';
 	import Result from './Result.svelte';
 

@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { api, type TrafficHistory, type TrafficRange } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { formatBitrate, formatBytes } from '$lib/format';
-	import { poll } from '$lib/poll';
-	import { chartRange } from '$lib/range.svelte';
-	import { buildChartData, chartSeries, refreshMs } from '$lib/traffic';
-	import NetworkChart from '$lib/components/NetworkChart.svelte';
-	import RangeSelect from '$lib/components/RangeSelect.svelte';
+	import { api, type TrafficHistory, type TrafficRange } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatBitrate, formatBytes } from '#lib/format.js';
+	import { poll } from '#lib/poll.js';
+	import { chartRange } from '#lib/range.svelte.js';
+	import { buildChartData, chartSeries, refreshMs } from '#lib/traffic.js';
+	import NetworkChart from '#lib/components/NetworkChart.svelte';
+	import RangeSelect from '#lib/components/RangeSelect.svelte';
 
 	// The range `history` holds, which lags the chosen range until the new range's data arrives.
 	let shown = $state<TrafficRange>(chartRange.value);

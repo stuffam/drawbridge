@@ -9,23 +9,23 @@
 		type Settings,
 		type TrafficRange,
 		type TrafficSeries
-	} from '$lib/api';
-	import { attentionHeadline, dashboardChecks } from '$lib/diagnostics';
-	import { errorMessage } from '$lib/errors';
-	import { clientState, endpointAddress, formatBitrate, formatBytes } from '$lib/format';
-	import { live, onLiveEvent, useLive } from '$lib/live.svelte';
-	import { poll } from '$lib/poll';
-	import { chartRange } from '$lib/range.svelte';
-	import { sortClients, storedSort, storeSort, type SortKey } from '$lib/sort';
-	import { buildSeriesData, refreshMs, bandwidthSeries } from '$lib/traffic';
-	import CopyButton from '$lib/components/CopyButton.svelte';
-	import LinkCard from '$lib/components/LinkCard.svelte';
-	import NetworkChart from '$lib/components/NetworkChart.svelte';
-	import RangeSelect from '$lib/components/RangeSelect.svelte';
-	import SortSelect from '$lib/components/SortSelect.svelte';
-	import StateBadge from '$lib/components/StateBadge.svelte';
-	import { build } from '$lib/build.svelte';
-	import { formatVersion, repoUrl, versionLink } from '$lib/version';
+	} from '#lib/api.js';
+	import { attentionHeadline, dashboardChecks } from '#lib/diagnostics.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { clientState, endpointAddress, formatBitrate, formatBytes } from '#lib/format.js';
+	import { live, onLiveEvent, useLive } from '#lib/live.svelte.js';
+	import { poll } from '#lib/poll.js';
+	import { chartRange } from '#lib/range.svelte.js';
+	import { sortClients, storedSort, storeSort, type SortKey } from '#lib/sort.js';
+	import { buildSeriesData, refreshMs, bandwidthSeries } from '#lib/traffic.js';
+	import CopyButton from '#lib/components/CopyButton.svelte';
+	import LinkCard from '#lib/components/LinkCard.svelte';
+	import NetworkChart from '#lib/components/NetworkChart.svelte';
+	import RangeSelect from '#lib/components/RangeSelect.svelte';
+	import SortSelect from '#lib/components/SortSelect.svelte';
+	import StateBadge from '#lib/components/StateBadge.svelte';
+	import { build } from '#lib/build.svelte.js';
+	import { formatVersion, repoUrl, versionLink } from '#lib/version.js';
 
 	// How often the dashboard runs the host's checks again.
 	const checksMs = 5 * 60 * 1000;
@@ -91,7 +91,7 @@
 	// The Clients page has no route parameter for a state filter, only a query string.
 	function goClients(state: 'all' | 'online' | 'paused' | 'outdated') {
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		void goto(resolve('/clients') + '?state=' + state);
+		void goto(resolve('/(app)/clients') + '?state=' + state);
 	}
 
 	// All-time totals, summed across every client (0 for one that's paused or never connected).
@@ -155,13 +155,13 @@
 {#if status?.adguard_warning}
 	<p class="alert-warning" role="status" data-testid="adguard-warning">
 		{status.adguard_warning}
-		<a class="font-medium underline" href={resolve('/settings')}>See Settings</a>.
+		<a class="font-medium underline" href={resolve('/(app)/settings')}>See Settings</a>.
 	</p>
 {/if}
 {#if settings && !settings.endpoint}
 	<p class="alert-warning" role="status">
 		Clients can't get a config until the server's public address is set.
-		<a class="font-medium underline" href={resolve('/settings')}>Set it in Settings</a>.
+		<a class="font-medium underline" href={resolve('/(app)/settings')}>Set it in Settings</a>.
 	</p>
 {/if}
 {#if attention.length > 0}
@@ -177,7 +177,7 @@
 			{/each}
 		</ul>
 		<p class="mt-1">
-			<a class="font-medium underline" href={resolve('/system')}>See System</a> for how to fix
+			<a class="font-medium underline" href={resolve('/(app)/system')}>See System</a> for how to fix
 			{attention.length === 1 ? 'it' : 'them'}.
 		</p>
 	</div>
@@ -236,11 +236,17 @@
 	</section>
 {/if}
 
-<LinkCard href={resolve('/charts')} labelledby="bandwidth-heading" class="flex flex-col gap-3">
+<LinkCard
+	href={resolve('/(app)/charts')}
+	labelledby="bandwidth-heading"
+	class="flex flex-col gap-3"
+>
 	<div class="flex flex-wrap items-start justify-between gap-2">
 		<div>
 			<h2 id="bandwidth-heading" class="font-semibold">
-				<a class="hover:underline focus-visible:underline" href={resolve('/charts')}>Bandwidth</a>
+				<a class="hover:underline focus-visible:underline" href={resolve('/(app)/charts')}
+					>Bandwidth</a
+				>
 			</h2>
 			<p class="text-sm text-neutral-500 dark:text-neutral-400">Network traffic of all clients</p>
 		</div>
@@ -262,9 +268,15 @@
 
 <div class="grid gap-6 lg:grid-cols-2">
 	{#if settings}
-		<LinkCard href={resolve('/settings')} labelledby="server-heading" class="flex flex-col gap-3">
+		<LinkCard
+			href={resolve('/(app)/settings')}
+			labelledby="server-heading"
+			class="flex flex-col gap-3"
+		>
 			<h2 id="server-heading" class="font-semibold">
-				<a class="hover:underline focus-visible:underline" href={resolve('/settings')}>Server</a>
+				<a class="hover:underline focus-visible:underline" href={resolve('/(app)/settings')}
+					>Server</a
+				>
 			</h2>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
 				<dt class="text-neutral-500 dark:text-neutral-400">Endpoint</dt>
@@ -290,13 +302,15 @@
 	{/if}
 
 	<LinkCard
-		href={resolve('/clients')}
+		href={resolve('/(app)/clients')}
 		labelledby="clients-heading"
 		class="@container flex flex-col gap-3"
 	>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 id="clients-heading" class="font-semibold">
-				<a class="hover:underline focus-visible:underline" href={resolve('/clients')}>Clients</a>
+				<a class="hover:underline focus-visible:underline" href={resolve('/(app)/clients')}
+					>Clients</a
+				>
 			</h2>
 			{#if clients.length > 0}
 				<SortSelect id="dashboard-sort" options={sortOptions} bind:value={sort} />

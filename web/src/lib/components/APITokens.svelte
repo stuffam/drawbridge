@@ -3,12 +3,12 @@
 	// The secret is shown once, when the token is made, and is kept only here, in memory, until the
 	// admin says they have it.
 	import { onMount } from 'svelte';
-	import { api, type APIToken, type NewAPITokenResult } from '$lib/api';
-	import { build } from '$lib/build.svelte';
-	import { errorMessage } from '$lib/errors';
-	import { formatAgo, formatTime } from '$lib/format';
-	import { homepageWidget } from '$lib/tokens';
-	import { docsUrl } from '$lib/version';
+	import { api, type APIToken, type NewAPITokenResult } from '#lib/api.js';
+	import { build } from '#lib/build.svelte.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatAgo, formatTime } from '#lib/format.js';
+	import { homepageWidget } from '#lib/tokens.js';
+	import { docsUrl } from '#lib/version.js';
 	import CopyButton from './CopyButton.svelte';
 	import Result from './Result.svelte';
 

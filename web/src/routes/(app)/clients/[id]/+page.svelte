@@ -10,9 +10,9 @@
 		type DrawbridgeEvent,
 		type TrafficRange,
 		type TrafficSeries
-	} from '$lib/api';
-	import { saveText } from '$lib/download';
-	import { errorMessage } from '$lib/errors';
+	} from '#lib/api.js';
+	import { saveText } from '#lib/download.js';
+	import { errorMessage } from '#lib/errors.js';
 	import {
 		clientState,
 		configFileName,
@@ -23,21 +23,21 @@
 		formatBitrate,
 		formatBytes,
 		formatTime
-	} from '$lib/format';
-	import { live, onLiveEvent, useLive } from '$lib/live.svelte';
-	import { poll } from '$lib/poll';
-	import { chartRange } from '$lib/range.svelte';
-	import { buildSeriesData, refreshMs, bandwidthSeries } from '$lib/traffic';
-	import ClientDNSLog from '$lib/components/ClientDNSLog.svelte';
-	import CopyButton from '$lib/components/CopyButton.svelte';
-	import DeleteClientModal from '$lib/components/DeleteClientModal.svelte';
-	import NetworkChart from '$lib/components/NetworkChart.svelte';
-	import OutdatedBadge from '$lib/components/OutdatedBadge.svelte';
-	import RangeSelect from '$lib/components/RangeSelect.svelte';
-	import RenameClientModal from '$lib/components/RenameClientModal.svelte';
-	import Result from '$lib/components/Result.svelte';
-	import RotateKeysModal from '$lib/components/RotateKeysModal.svelte';
-	import StateBadge from '$lib/components/StateBadge.svelte';
+	} from '#lib/format.js';
+	import { live, onLiveEvent, useLive } from '#lib/live.svelte.js';
+	import { poll } from '#lib/poll.js';
+	import { chartRange } from '#lib/range.svelte.js';
+	import { buildSeriesData, refreshMs, bandwidthSeries } from '#lib/traffic.js';
+	import ClientDNSLog from '#lib/components/ClientDNSLog.svelte';
+	import CopyButton from '#lib/components/CopyButton.svelte';
+	import DeleteClientModal from '#lib/components/DeleteClientModal.svelte';
+	import NetworkChart from '#lib/components/NetworkChart.svelte';
+	import OutdatedBadge from '#lib/components/OutdatedBadge.svelte';
+	import RangeSelect from '#lib/components/RangeSelect.svelte';
+	import RenameClientModal from '#lib/components/RenameClientModal.svelte';
+	import Result from '#lib/components/Result.svelte';
+	import RotateKeysModal from '#lib/components/RotateKeysModal.svelte';
+	import StateBadge from '#lib/components/StateBadge.svelte';
 
 	let id = $derived(page.params.id ?? '');
 	let client = $state<Client>();
@@ -210,8 +210,9 @@
 
 <svelte:head><title>{client?.name ?? 'Client'} · Drawbridge</title></svelte:head>
 
-<a class="text-sm text-indigo-700 hover:underline dark:text-indigo-300" href={resolve('/clients')}
-	>← Clients</a
+<a
+	class="text-sm text-indigo-700 hover:underline dark:text-indigo-300"
+	href={resolve('/(app)/clients')}>← Clients</a
 >
 
 {#if missing}
@@ -279,7 +280,8 @@
 				<p class="alert-error" role="alert">
 					{configError}
 					{#if configError.includes('endpoint')}
-						<a class="font-medium underline" href={resolve('/settings')}>Set it in Settings</a>.
+						<a class="font-medium underline" href={resolve('/(app)/settings')}>Set it in Settings</a
+						>.
 					{/if}
 				</p>
 			{/if}

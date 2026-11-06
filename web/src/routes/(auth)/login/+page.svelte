@@ -3,9 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api, ApiError } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import Result from '$lib/components/Result.svelte';
+	import { api, ApiError } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import Result from '#lib/components/Result.svelte';
 
 	let username = $state('');
 	let password = $state('');
@@ -18,7 +18,7 @@
 
 	onMount(async () => {
 		try {
-			if ((await api.setupStatus()).needed) await goto(resolve('/setup'));
+			if ((await api.setupStatus()).needed) await goto(resolve('/(auth)/setup'));
 		} catch {
 			// The form reports connection problems when it's used.
 		}
@@ -31,7 +31,7 @@
 			const url = new URL(n, page.url.origin);
 			if (url.origin === page.url.origin) return url.pathname + url.search;
 		}
-		return resolve('/');
+		return resolve('/(app)');
 	}
 
 	async function submit(e: SubmitEvent) {

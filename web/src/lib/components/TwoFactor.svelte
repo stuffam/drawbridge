@@ -5,10 +5,10 @@
 	// memory, until the admin says they have them.
 	import { onMount } from 'svelte';
 	import QRCode from 'qrcode';
-	import { api, type TOTPEnrollment, type User } from '$lib/api';
-	import { saveText } from '$lib/download';
-	import { errorMessage } from '$lib/errors';
-	import { groupSecret, LOW_RECOVERY_CODES, recoveryCodesFile } from '$lib/totp';
+	import { api, type TOTPEnrollment, type User } from '#lib/api.js';
+	import { saveText } from '#lib/download.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { groupSecret, LOW_RECOVERY_CODES, recoveryCodesFile } from '#lib/totp.js';
 	import CopyButton from './CopyButton.svelte';
 	import Result from './Result.svelte';
 

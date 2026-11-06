@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { chartRange, setChartRange } from '$lib/range.svelte';
-	import { rangeLabels, trafficRanges } from '$lib/traffic';
+	import { chartRange, setChartRange } from '#lib/range.svelte.js';
+	import { rangeLabels, trafficRanges } from '#lib/traffic.js';
 
 	let { id }: { id: string } = $props();
 </script>

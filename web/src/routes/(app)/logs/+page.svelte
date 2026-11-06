@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { api, type Client, type DrawbridgeEvent, type EventFilter } from '$lib/api';
-	import { saveText } from '$lib/download';
-	import { errorMessage } from '$lib/errors';
-	import { eventActor, eventDetails, eventKinds, eventLabel, formatTime } from '$lib/format';
-	import { live, onLiveEvent, useLive } from '$lib/live.svelte';
+	import { api, type Client, type DrawbridgeEvent, type EventFilter } from '#lib/api.js';
+	import { saveText } from '#lib/download.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { eventActor, eventDetails, eventKinds, eventLabel, formatTime } from '#lib/format.js';
+	import { live, onLiveEvent, useLive } from '#lib/live.svelte.js';
 
 	const pageSize = 50;
 	/** How far back each choice of "When" reaches, in hours. */

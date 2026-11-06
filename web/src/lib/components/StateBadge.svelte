@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { stateLabels, type ClientState } from '$lib/format';
+	import { stateLabels, type ClientState } from '#lib/format.js';
 
 	let { state }: { state: ClientState } = $props();
 

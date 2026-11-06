@@ -2,15 +2,15 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api, onUnauthorized } from '$lib/api';
-	import { build, loadBuild } from '$lib/build.svelte';
-	import { live, useLive } from '$lib/live.svelte';
-	import { setPending } from '$lib/pending.svelte';
-	import { poll } from '$lib/poll';
-	import { cycleMode, modeLabels, theme } from '$lib/theme.svelte';
-	import { docsUrl } from '$lib/version';
-	import AddClientModal from '$lib/components/AddClientModal.svelte';
-	import PendingChangeBar from '$lib/components/PendingChangeBar.svelte';
+	import { api, onUnauthorized } from '#lib/api.js';
+	import { build, loadBuild } from '#lib/build.svelte.js';
+	import { live, useLive } from '#lib/live.svelte.js';
+	import { setPending } from '#lib/pending.svelte.js';
+	import { poll } from '#lib/poll.js';
+	import { cycleMode, modeLabels, theme } from '#lib/theme.svelte.js';
+	import { docsUrl } from '#lib/version.js';
+	import AddClientModal from '#lib/components/AddClientModal.svelte';
+	import PendingChangeBar from '#lib/components/PendingChangeBar.svelte';
 
 	let { data, children } = $props();
 
@@ -20,7 +20,7 @@
 		// The login page returns here afterward; the query string is why this isn't a bare
 		// resolve().
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		void goto(resolve('/login') + '?next=' + encodeURIComponent(page.url.pathname));
+		void goto(resolve('/(auth)/login') + '?next=' + encodeURIComponent(page.url.pathname));
 	});
 
 	function current(href: string): boolean {
@@ -33,7 +33,7 @@
 		try {
 			await api.logout();
 		} finally {
-			await goto(resolve('/login'));
+			await goto(resolve('/(auth)/login'));
 		}
 	}
 
@@ -82,11 +82,11 @@
 
 <header class="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
 	<div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3">
-		<a href={resolve('/')} class="text-2xl font-semibold tracking-tight">Drawbridge</a>
+		<a href={resolve('/(app)')} class="text-2xl font-semibold tracking-tight">Drawbridge</a>
 		<nav class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1" aria-label="Main">
 			<a
-				href={resolve('/clients')}
-				class="group relative flex items-center rounded-md p-2 {current(resolve('/clients'))
+				href={resolve('/(app)/clients')}
+				class="group relative flex items-center rounded-md p-2 {current(resolve('/(app)/clients'))
 					? 'text-neutral-900 dark:text-white'
 					: 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'}"
 				aria-label="Clients"
@@ -108,8 +108,8 @@
 				{@render tooltip('Clients')}
 			</a>
 			<a
-				href={resolve('/charts')}
-				class="group relative flex items-center rounded-md p-2 {current(resolve('/charts'))
+				href={resolve('/(app)/charts')}
+				class="group relative flex items-center rounded-md p-2 {current(resolve('/(app)/charts'))
 					? 'text-neutral-900 dark:text-white'
 					: 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'}"
 				aria-label="Charts"
@@ -130,8 +130,8 @@
 				{@render tooltip('Charts')}
 			</a>
 			<a
-				href={resolve('/settings')}
-				class="group relative flex items-center rounded-md p-2 {current(resolve('/settings'))
+				href={resolve('/(app)/settings')}
+				class="group relative flex items-center rounded-md p-2 {current(resolve('/(app)/settings'))
 					? 'text-neutral-900 dark:text-white'
 					: 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'}"
 				aria-label="Server Settings"
@@ -154,8 +154,8 @@
 				{@render tooltip('Server Settings')}
 			</a>
 			<a
-				href={resolve('/logs')}
-				class="group relative flex items-center rounded-md p-2 {current(resolve('/logs'))
+				href={resolve('/(app)/logs')}
+				class="group relative flex items-center rounded-md p-2 {current(resolve('/(app)/logs'))
 					? 'text-neutral-900 dark:text-white'
 					: 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'}"
 				aria-label="Logs"
@@ -183,8 +183,8 @@
 				{@render tooltip('Logs')}
 			</a>
 			<a
-				href={resolve('/system')}
-				class="group relative flex items-center rounded-md p-2 {current(resolve('/system'))
+				href={resolve('/(app)/system')}
+				class="group relative flex items-center rounded-md p-2 {current(resolve('/(app)/system'))
 					? 'text-neutral-900 dark:text-white'
 					: 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'}"
 				aria-label="System"
@@ -327,7 +327,7 @@
 						</p>
 						<hr class="my-1 border-neutral-200 dark:border-neutral-800" />
 						<a
-							href={resolve('/account')}
+							href={resolve('/(app)/account')}
 							class="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 							onclick={() => (showUserMenu = false)}
 						>

@@ -3,10 +3,10 @@
 	// own Save, apart from the server settings, because it's a different part of the API. The
 	// password is write-only: the server never sends it back, so the field starts empty.
 	import { onMount } from 'svelte';
-	import { api, type AdGuardConnection, type AdGuardTest } from '$lib/api';
-	import { adguardRequest, needsPassword } from '$lib/adguard';
-	import { errorMessage } from '$lib/errors';
-	import { formatTime } from '$lib/format';
+	import { api, type AdGuardConnection, type AdGuardTest } from '#lib/api.js';
+	import { adguardRequest, needsPassword } from '#lib/adguard.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatTime } from '#lib/format.js';
 	import Result from './Result.svelte';
 
 	let saved = $state<AdGuardConnection>();

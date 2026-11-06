@@ -4,10 +4,10 @@
 	// and when asked again, not on a timer: each read is a few requests to AdGuard Home.
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { api, type DNSLog, type DNSQuery } from '$lib/api';
-	import { adguardLogsUrl } from '$lib/adguard';
-	import { errorMessage } from '$lib/errors';
-	import { formatClock, formatTime } from '$lib/format';
+	import { api, type DNSLog, type DNSQuery } from '#lib/api.js';
+	import { adguardLogsUrl } from '#lib/adguard.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatClock, formatTime } from '#lib/format.js';
 
 	let { id }: { id: string } = $props();
 
@@ -68,7 +68,7 @@
 	{:else if log.state === 'off'}
 		<p class="hint">
 			What this client looks up comes from AdGuard Home's query log.
-			<a class="font-medium underline" href={resolve('/settings')}
+			<a class="font-medium underline" href={resolve('/(app)/settings')}
 				>Turn on AdGuard Home in Settings</a
 			>
 			to see it here.

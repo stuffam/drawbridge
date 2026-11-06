@@ -503,8 +503,10 @@ These are the rules most likely to get silently broken.
   the setup and login endpoints needs a session; every change needs the `X-Drawbridge` header.
 - **The web app talks to the server only through `web/src/lib/api.ts`**, which adds the CSRF
   header and sends a lapsed session to the login. Internal links and `goto` go through
-  SvelteKit's `resolve()` (ESLint enforces it); route IDs with parameters include the group:
-  `resolve('/(app)/clients/[id]', { id })`.
+  SvelteKit's `resolve()` (ESLint enforces it); route IDs include the group, as SvelteKit 3's
+  types require: `resolve('/(app)/clients')`, `resolve('/(app)/clients/[id]', { id })`. Imports from
+  `src/lib` are `#lib/...` (SvelteKit 3 removed `$lib`; `package.json`'s `imports` declares it), and
+  a TypeScript module's path ends in `.js` (`#lib/api.js`).
 - **The CSP stays strict.** `script-src` allows `'self'` and the app shell's bootstrap script by
   hash, nothing else. Don't add `'unsafe-inline'` or `'unsafe-eval'` to it; change the UI instead.
 - **The two address families are kept in lockstep.** Every networking feature is built and

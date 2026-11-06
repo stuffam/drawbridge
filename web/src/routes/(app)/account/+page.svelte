@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type Session } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { describeUserAgent, formatAgo, formatTime } from '$lib/format';
-	import APITokens from '$lib/components/APITokens.svelte';
-	import Result from '$lib/components/Result.svelte';
-	import TwoFactor from '$lib/components/TwoFactor.svelte';
+	import { api, type Session } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { describeUserAgent, formatAgo, formatTime } from '#lib/format.js';
+	import APITokens from '#lib/components/APITokens.svelte';
+	import Result from '#lib/components/Result.svelte';
+	import TwoFactor from '#lib/components/TwoFactor.svelte';
 
 	let { data } = $props();
 
@@ -56,7 +56,7 @@
 		try {
 			await api.revokeSession(s.id);
 			if (s.current) {
-				await goto(resolve('/login'));
+				await goto(resolve('/(auth)/login'));
 				return;
 			}
 			await loadSessions();

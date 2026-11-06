@@ -1,16 +1,22 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api, type Client } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { clientState, formatAgo, formatBytes, stateLabels, type ClientState } from '$lib/format';
-	import { live, useLive } from '$lib/live.svelte';
-	import { poll } from '$lib/poll';
-	import { sortClients, storedSort, storeSort, type SortKey } from '$lib/sort';
-	import OutdatedBadge from '$lib/components/OutdatedBadge.svelte';
-	import Result from '$lib/components/Result.svelte';
-	import SortSelect from '$lib/components/SortSelect.svelte';
-	import StateBadge from '$lib/components/StateBadge.svelte';
+	import { api, type Client } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import {
+		clientState,
+		formatAgo,
+		formatBytes,
+		stateLabels,
+		type ClientState
+	} from '#lib/format.js';
+	import { live, useLive } from '#lib/live.svelte.js';
+	import { poll } from '#lib/poll.js';
+	import { sortClients, storedSort, storeSort, type SortKey } from '#lib/sort.js';
+	import OutdatedBadge from '#lib/components/OutdatedBadge.svelte';
+	import Result from '#lib/components/Result.svelte';
+	import SortSelect from '#lib/components/SortSelect.svelte';
+	import StateBadge from '#lib/components/StateBadge.svelte';
 
 	let clients = $state<Client[]>();
 	let now = $state(Date.now());
