@@ -2,9 +2,9 @@
 	// The DNS choice for clients, shared by the setup wizard and Settings. "This server" works
 	// only when a resolver answers on the server's VPN addresses, so the check asks them.
 	import { onMount } from 'svelte';
-	import { api, type DNSCheck, type Settings } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { publicDNS, serverDNS, type DNSMode } from '$lib/dns';
+	import { api, type DNSCheck, type Settings } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { publicDNS, serverDNS, type DNSMode } from '#lib/dns.js';
 
 	let {
 		settings,

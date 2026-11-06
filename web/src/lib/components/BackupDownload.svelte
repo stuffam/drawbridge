@@ -5,13 +5,13 @@
 	// to carry them off. Restoring is not here: it replaces the password too, so only the root
 	// command line does it.
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api';
-	import { checkPassphrase, MIN_PASSPHRASE } from '$lib/backup';
-	import { saveBlob } from '$lib/download';
-	import { build } from '$lib/build.svelte';
-	import { errorMessage } from '$lib/errors';
-	import { formatAgo, formatBytes, formatTime } from '$lib/format';
-	import { docsUrl } from '$lib/version';
+	import { api } from '#lib/api.js';
+	import { checkPassphrase, MIN_PASSPHRASE } from '#lib/backup.js';
+	import { saveBlob } from '#lib/download.js';
+	import { build } from '#lib/build.svelte.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatAgo, formatBytes, formatTime } from '#lib/format.js';
+	import { docsUrl } from '#lib/version.js';
 	import Result from './Result.svelte';
 
 	let { username }: { username: string } = $props();

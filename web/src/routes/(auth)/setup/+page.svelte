@@ -2,11 +2,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type Settings } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import DNSFields from '$lib/components/DNSFields.svelte';
-	import Result from '$lib/components/Result.svelte';
-	import { dnsFor, dnsModeOf, type DNSMode } from '$lib/dns';
+	import { api, type Settings } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import DNSFields from '#lib/components/DNSFields.svelte';
+	import Result from '#lib/components/Result.svelte';
+	import { dnsFor, dnsModeOf, type DNSMode } from '#lib/dns.js';
 
 	// Step 1 creates the admin account, step 2 sets the endpoint clients connect to, and step 3
 	// picks the DNS they use.
@@ -25,7 +25,7 @@
 
 	onMount(async () => {
 		try {
-			if (!(await api.setupStatus()).needed) await goto(resolve('/login'));
+			if (!(await api.setupStatus()).needed) await goto(resolve('/(auth)/login'));
 		} catch (err) {
 			error = errorMessage(err);
 		}
@@ -75,7 +75,7 @@
 		try {
 			const dns = dnsFor(settings, dnsMode, dnsCustom, dnsUsable);
 			if (dns.join() !== settings.dns.join()) await api.updateServer({ dns });
-			await goto(resolve('/'));
+			await goto(resolve('/(app)'));
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Snippet } from 'svelte';
-	import { clickOpensCard } from '$lib/card-link';
+	import { clickOpensCard } from '#lib/card-link.js';
 
 	let {
 		href,

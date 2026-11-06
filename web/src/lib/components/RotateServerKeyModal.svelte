@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { api, type SettingsResult } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { setPendingFromResponse } from '$lib/pending.svelte';
-	import { settledResult } from '$lib/settled';
+	import { api, type SettingsResult } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { setPendingFromResponse } from '#lib/pending.svelte.js';
+	import { settledResult } from '#lib/settled.js';
 	import Result from './Result.svelte';
 
 	let {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sortLabels, type SortKey } from '$lib/sort';
+	import { sortLabels, type SortKey } from '#lib/sort.js';
 
 	let {
 		value = $bindable(),

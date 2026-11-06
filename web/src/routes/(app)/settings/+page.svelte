@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type Settings, type SettingsPatch, type SettingsResult } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
-	import { onLiveEvent } from '$lib/live.svelte';
-	import { setPendingFromResponse } from '$lib/pending.svelte';
-	import { lateNote, settledResult } from '$lib/settled';
-	import CopyButton from '$lib/components/CopyButton.svelte';
-	import AdGuardSettings from '$lib/components/AdGuardSettings.svelte';
-	import DNSFields from '$lib/components/DNSFields.svelte';
-	import RotateServerKeyModal from '$lib/components/RotateServerKeyModal.svelte';
-	import Result from '$lib/components/Result.svelte';
-	import { dnsFor, dnsModeOf, type DNSMode } from '$lib/dns';
+	import { api, type Settings, type SettingsPatch, type SettingsResult } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { onLiveEvent } from '#lib/live.svelte.js';
+	import { setPendingFromResponse } from '#lib/pending.svelte.js';
+	import { lateNote, settledResult } from '#lib/settled.js';
+	import CopyButton from '#lib/components/CopyButton.svelte';
+	import AdGuardSettings from '#lib/components/AdGuardSettings.svelte';
+	import DNSFields from '#lib/components/DNSFields.svelte';
+	import RotateServerKeyModal from '#lib/components/RotateServerKeyModal.svelte';
+	import Result from '#lib/components/Result.svelte';
+	import { dnsFor, dnsModeOf, type DNSMode } from '#lib/dns.js';
 
 	let saved = $state<Settings>();
 	let endpointHost = $state('');

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
-	import NewVersionBar from '$lib/components/NewVersionBar.svelte';
+	import favicon from '#lib/assets/favicon.svg';
+	import NewVersionBar from '#lib/components/NewVersionBar.svelte';
 
 	let { children } = $props();
 </script>

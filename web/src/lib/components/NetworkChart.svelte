@@ -2,10 +2,10 @@
 	import { untrack } from 'svelte';
 	import uPlot from 'uplot';
 	import 'uplot/dist/uPlot.min.css';
-	import type { TrafficRange } from '$lib/api';
-	import { axisSize, xAxis } from '$lib/chart';
-	import { formatChartTime } from '$lib/format';
-	import type { ChartSeries } from '$lib/traffic';
+	import type { TrafficRange } from '#lib/api.js';
+	import { axisSize, xAxis } from '#lib/chart.js';
+	import { formatChartTime } from '#lib/format.js';
+	import type { ChartSeries } from '#lib/traffic.js';
 
 	let {
 		x,

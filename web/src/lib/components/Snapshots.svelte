@@ -3,12 +3,12 @@
 	// and one before an upgrade changes the database. They're listed here and not offered for
 	// download: a snapshot has no passphrase, and the database has the admin's password hash in it.
 	import { onMount } from 'svelte';
-	import { api, type Snapshots } from '$lib/api';
-	import { snapshotLabel } from '$lib/backup';
-	import { build } from '$lib/build.svelte';
-	import { errorMessage } from '$lib/errors';
-	import { formatBytes, formatTime } from '$lib/format';
-	import { docsUrl } from '$lib/version';
+	import { api, type Snapshots } from '#lib/api.js';
+	import { snapshotLabel } from '#lib/backup.js';
+	import { build } from '#lib/build.svelte.js';
+	import { errorMessage } from '#lib/errors.js';
+	import { formatBytes, formatTime } from '#lib/format.js';
+	import { docsUrl } from '#lib/version.js';
 
 	let snaps = $state<Snapshots>();
 	let error = $state('');

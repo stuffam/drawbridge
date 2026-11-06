@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
+	import { api } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
 	import Result from './Result.svelte';
 
 	let {
@@ -45,7 +45,7 @@
 		try {
 			await api.deleteClient(id);
 			dialog?.close();
-			await goto(resolve('/clients'));
+			await goto(resolve('/(app)/clients'));
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {

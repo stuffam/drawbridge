@@ -1,8 +1,8 @@
 <script lang="ts">
-	import BackupDownload from '$lib/components/BackupDownload.svelte';
-	import Diagnostics from '$lib/components/Diagnostics.svelte';
-	import Snapshots from '$lib/components/Snapshots.svelte';
-	import WebCertificate from '$lib/components/WebCertificate.svelte';
+	import BackupDownload from '#lib/components/BackupDownload.svelte';
+	import Diagnostics from '#lib/components/Diagnostics.svelte';
+	import Snapshots from '#lib/components/Snapshots.svelte';
+	import WebCertificate from '#lib/components/WebCertificate.svelte';
 
 	let { data } = $props();
 </script>

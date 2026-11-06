@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api } from '$lib/api';
-	import { errorMessage } from '$lib/errors';
+	import { api } from '#lib/api.js';
+	import { errorMessage } from '#lib/errors.js';
 	import Result from './Result.svelte';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
